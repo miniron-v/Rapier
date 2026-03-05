@@ -274,6 +274,7 @@ New Input System → GestureRecognizer → InputState Enum → C# event → Char
 | 버전 | 날짜 | 내용 |
 |------|------|------|
 | v0.1.0 | 2026-03-05 | 초안 작성. 기술 스택, 아키텍처, 컨벤션, 폴더 구조 확립 |
+| v0.2.1 | 2026-03-05 | GuidelinesEditor.cs 추가. md 직접 수정 유틸 도입으로 cs 재생성 방식 제거 |
 
 ---
 
