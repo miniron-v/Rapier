@@ -18,7 +18,7 @@ namespace Game.Core.Editor
 {
     public static class GuidelinesCreator
     {
-        private const string OUTPUT_PATH = "Assets/_Project/_Docs/PROJECT_GUIDELINES.md";
+        private const string OUTPUT_PATH = "Assets/_Project/00_Docs/PROJECT_GUIDELINES.md";
 
         [MenuItem("Tools/Write Project Guidelines")]
         public static void WriteGuidelines()
@@ -109,27 +109,30 @@ namespace Game.Core.Editor
 
 ## 4. 폴더 구조
 
-```
 Assets/
-└── _Project/
-    ├── _Docs/              # 개발 문서
-    ├── Scripts/
-    │   ├── Combat/         # Model, View, Presenter
-    │   ├── Characters/     # Warrior, Assassin, Rapier, Ranger
+├── Rapier-Private/               # 비공개 (별도 Git repo, .gitignore 제외)
+│   ├── Art/
+│   ├── Audio/
+│   └── ThirdParty/
+│
+└── _Project/                     # 공개 저장소 대상
+    ├── 00_Docs/                  # 개발 문서, 지침서
+    │   └── Editor/
+    ├── 10_Scripts/
+    │   ├── Core/                 # Interfaces, Base, Utils
     │   ├── Input/
-    │   ├── Core/           # Interfaces, Base, Utils
-    │   ├── UI/
-    │   └── Data/
-    ├── ScriptableObjects/  # Characters, Skills, Events
-    ├── Prefabs/            # Characters, Enemies, Skills, UI
-    ├── Scenes/             # SampleScene, _Test/
-    ├── Art/                # Sprites, Animations, VFX
-    └── Audio/
-```
+    │   ├── Combat/               # Model, View, Presenter
+    │   ├── Characters/           # Base, Warrior, Assassin, Rapier, Ranger
+    │   ├── Enemies/
+    │   ├── UI/                   # HUD, Common
+    │   └── Data/                 # Characters, Skills
+    ├── 20_Prefabs/               # Characters, Enemies, Skills, UI
+    ├── 30_ScriptableObjects/     # Characters, Skills
+    └── 40_Scenes/                # SampleScene, _Test/
 
 규칙: 모든 프로젝트 에셋은 반드시 _Project/ 하위에 위치.
+.gitignore 제외 대상: Assets/Rapier-Private/
 
----
 
 ## 5. 네임스페이스 규칙
 
