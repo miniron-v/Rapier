@@ -8,6 +8,8 @@
 //   - 매 작업 세션 종료 시 AI가 직접 갱신합니다.
 //   - 섹션 구조를 유지하면서 내용만 교체합니다.
 //   - 사람이 이 파일을 직접 편집하지 않습니다.
+//   - 작업 중 새로운 MCP 제약을 발견하면 즉시 [9] 섹션에 추가합니다.
+//   - [5] 완료 목록, [6] 이슈, [7] 다음 작업은 세션마다 업데이트합니다.
 // =============================================================
 
 // -------------------------------------------------------
@@ -20,6 +22,8 @@
 // 입력        : New Input System (Touch + Mouse 듀얼 바인딩)
 // 아키텍처    : MVP + 이벤트 기반 (C# Interface / C# event / SO 채널)
 // 저장소      : 공개(GitHub) + 비공개(Rapier-Private) 이중 구조
+// 공개 저장소  : https://github.com/[저장소명] — 스크립트 공개, 피드백 수용
+// 비공개 저장소: Rapier-Private/ (Assets/ 하위, 별도 .git 보유) — Art, Audio, ThirdParty 보관
 // 유니티 경로 : Rapier/ 가 공개 저장소 루트. Assets/ 상위.
 
 // -------------------------------------------------------
@@ -130,3 +134,28 @@
 // □ 현재 씬 상태 확인 (find_gameobjects)
 // □ [6] 알려진 이슈 중 처리할 항목 확인
 // □ [7] 다음 작업 중 오늘 진행할 항목 사용자와 협의
+
+// -------------------------------------------------------
+// [9] 알려진 MCP 제약 및 주의사항
+// -------------------------------------------------------
+// [MCP-01] Assets/Reimport All 절대 실행 금지
+//   사유: Unity를 재시작시켜 MCP 연결이 끊어짐. 복구를 위해 사용자가 직접 Unity를 재발시해야 함.
+//   대안: 스크립트 재컴파일이 필요하면 파일을 저장하는 것만으로 충분. AssetDatabase.Refresh()는 안전.
+//
+// [MCP-02] .md 파일 직접 편집 불가
+//   사유: MCP find_in_file, apply_text_edits 등이 .cs 파일만 지원.
+//   대안: GuidelinesEditor.cs 의 UpdateSection() / AppendChangeLog() 를 통해 간접 수정.
+//
+// [MCP-03] apply_text_edits 한글 endCol 문제
+//   사유: 한글은 멀티바이트라 endCol을 바이트 기준으로 지정하면 범위 초과 오류가 나거나,
+//   문자가 잘리지 않고 뒤에 권저기가 넘칠 수 있음.
+//   대안: 수정할 줄을 완전히 덮으려면 endLine+1, endCol 1 로 다음 줄까지 포함하는 방식 사용.
+//   예: {startLine: N, startCol: 1, endLine: N+1, endCol: 1, newText: "새 내용\n"}
+//
+// [MCP-04] batch_execute 는 manage_asset 미지원
+//   사유: batch_execute에서 manage_asset 명령은 'Unknown command' 오류 발생.
+//   대안: 폴더 대량 생성이 필요하면 에디터 스크립트(CreateFolder 루프)를 작성하여 메뉴로 실행.
+//
+// [MCP-05] script_apply_edits anchor_replace 는 클래스 구조 파일에만 안정적
+//   사유: 좌주석만 있거나 namespace/class 없는 파일에선 앙커를 못 찾는 경우가 많음.
+//   대안: AI_CONTEXT.cs 같은 순수 주석 파일은 apply_text_edits(라인 번호 기반)를 사용.
