@@ -25,11 +25,9 @@ namespace Game.Core.Editor
     [InitializeOnLoad]
     public static class GuidelinesSync
     {
-        private const string MD_PATH      = "Assets/_Project/_Docs/PROJECT_GUIDELINES.md";
-        private const string CREATOR_PATH = "Assets/_Project/_Docs/Editor/GuidelinesCreator.cs";
+        private const string MD_PATH      = "Assets/_Project/00_Docs/PROJECT_GUIDELINES.md";
+        private const string CREATOR_PATH = "Assets/_Project/00_Docs/Editor/GuidelinesCreator.cs";
 
-        // GuidelinesCreator.cs 에서 캐시 영역을 찾는 패턴
-        // => // <GUIDELINES_CACHE_START>\n@"...내용..."; // <GUIDELINES_CACHE_END>
         private const string CACHE_START_MARKER = "// <GUIDELINES_CACHE_START>";
         private const string CACHE_END_MARKER   = "// <GUIDELINES_CACHE_END>";
 
@@ -71,42 +69,25 @@ namespace Game.Core.Editor
                 return;
             }
 
-            // 불일치 → GuidelinesCreator.cs 캐시 영역을 md 내용으로 교체
             string updatedCreator = ReplaceCache(creatorContent, mdContent);
             File.WriteAllText(creatorFullPath, updatedCreator, Encoding.UTF8);
             AssetDatabase.Refresh();
             Debug.Log("[GuidelinesSync] 🔄 md 변경 감지 → GuidelinesCreator.cs 캐시 자동 갱신 완료.");
         }
 
-        /// <summary>
-        /// GuidelinesCreator.cs 에서 마커 사이의 verbatim string 내용을 추출합니다.
-        /// 패턴: => // CACHE_START\n@"...내용..."; // CACHE_END
-        /// </summary>
         private static string ExtractCache(string creatorContent)
         {
-            // CACHE_START 마커 뒤의 @"..." 를 추출
-            string pattern = Regex.Escape(CACHE_START_MARKER)
-                + @"\s*\r?\n@""([\s\S]*?)""\s*;"
-                + @"\s*//"
-                + @"\s*"
-                + Regex.Escape(CACHE_END_MARKER.Replace("// ", ""));
-
-            // 단순화: START 마커 이후 @" 시작, "; // CACHE_END 로 끝나는 영역 추출
             int startIdx = creatorContent.IndexOf(CACHE_START_MARKER);
             int endIdx   = creatorContent.IndexOf(CACHE_END_MARKER);
 
             if (startIdx < 0 || endIdx < 0 || endIdx <= startIdx)
                 return null;
 
-            // @" 찾기 (CACHE_START 이후)
             int atQuoteIdx = creatorContent.IndexOf("@\"", startIdx);
             if (atQuoteIdx < 0 || atQuoteIdx > endIdx)
                 return null;
 
-            int contentStart = atQuoteIdx + 2; // @" 다음부터
-
-            // "; // <GUIDELINES_CACHE_END> 바로 앞의 " 찾기
-            // endIdx 기준으로 역방향에서 "; 를 찾음
+            int contentStart = atQuoteIdx + 2;
             int closingQuote = creatorContent.LastIndexOf("\";", endIdx);
             if (closingQuote < 0)
                 return null;
@@ -114,9 +95,6 @@ namespace Game.Core.Editor
             return creatorContent.Substring(contentStart, closingQuote - contentStart);
         }
 
-        /// <summary>
-        /// GuidelinesCreator.cs 의 캐시 영역(@"..."; 부분)을 새 md 내용으로 교체합니다.
-        /// </summary>
         private static string ReplaceCache(string creatorContent, string newMdContent)
         {
             int startIdx = creatorContent.IndexOf(CACHE_START_MARKER);
@@ -132,7 +110,7 @@ namespace Game.Core.Editor
                 return creatorContent;
 
             string before = creatorContent.Substring(0, atQuoteIdx);
-            string after  = creatorContent.Substring(closingQuote + 2); // "; 이후
+            string after  = creatorContent.Substring(closingQuote + 2);
 
             return before + "@\"" + newMdContent + "\";" + after;
         }
