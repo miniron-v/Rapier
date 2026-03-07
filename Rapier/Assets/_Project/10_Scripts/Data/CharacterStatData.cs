@@ -13,6 +13,9 @@ namespace Game.Characters
     public class CharacterStatData : ScriptableObject
     {
         [Header("기본 정보")]
+        [Tooltip("시각적으로 표시할 스프라이트. SO에서 할당.")]
+        public UnityEngine.Sprite sprite;
+
         public string characterName = "Unknown";
 
         [Header("전투 스탯")]
@@ -21,9 +24,24 @@ namespace Game.Characters
         [Min(0)] public float moveSpeed   = 5f;
 
         [Header("회피")]
-        [Min(0)] public float dodgeInvincibleDuration = 0.2f; // 무적 시간(초)
+        [Min(0)] public float dodgeInvincibleDuration = 0.2f;
+
+        [Header("대시 (Swipe 회피)")]
+        [Tooltip("대시 이동 거리 (월드 단위)")]
+        [Min(0)] public float dashDistance = 4f;
+        [Tooltip("대시 속도 (시작부터 끝까지, 높을수록 빠름)")]
+        [Min(0)] public float dashSpeed    = 20f;
+
 
         [Header("스킬 차지")]
-        [Min(0)] public float chargeRequiredTime = 0.3f; // 완충까지 필요한 Hold 시간(초)
+        [Min(0)] public float chargeRequiredTime = 0.3f;
+
+        [Header("공격 범위 (사각형)")]
+        [Tooltip("공격 범위 가로 (월드 단위)")]
+        [Min(0)] public float attackWidth  = 2.0f;
+        [Tooltip("공격 범위 세로 (월드 단위)")]
+        [Min(0)] public float attackHeight = 1.5f;
+        [Tooltip("공격 범위 중심을 앞으로 얼마나 밀지 (월드 단위)")]
+        [Min(0)] public float attackOffset = 1.0f;
     }
 }

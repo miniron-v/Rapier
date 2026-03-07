@@ -12,9 +12,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e9cd7ae634716b742bb08155308f16f2, type: 3}
   m_Name: PlayerStatData
   m_EditorClassIdentifier: Assembly-CSharp::Game.Characters.CharacterStatData
+  sprite: {fileID: -2413806693520163455, guid: a86470a33a6bf42c4b3595704624658b, type: 3}
   characterName: Player
   maxHp: 500
   attackPower: 50
-  moveSpeed: 5
+  moveSpeed: 500
   dodgeInvincibleDuration: 0.2
+  dashDistance: 5
+  dashSpeed: 10000
   chargeRequiredTime: 0.3
+  attackWidth: 2
+  attackHeight: 1.5
+  attackOffset: 1

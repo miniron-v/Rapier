@@ -1,6 +1,8 @@
 using UnityEngine;
 using Game.Core;
 using Game.Input;
+using Game.Combat;
+using Game.Enemies;
 
 namespace Game.Characters
 {
@@ -23,74 +25,139 @@ namespace Game.Characters
         protected ICharacterView     View   { get; private set; }
         protected GestureRecognizer  Gesture { get; private set; }
 
-        // ── 차지 상태 ─────────────────────────────────────────────
-        private float _holdDuration;
-        private bool  _isCharging;
+        // ── 이동/대시 상태 ─────────────────────────────────────────────
+        private float   _holdDuration;
+        private bool    _isCharging;
+        private Vector2 _moveDirection;      // 현재 조이스틱 방향
+        private bool    _isDashing;
+        private Vector2 _dashTarget;
+        private float   _dashSpeed;
 
         // ── 초기화 ────────────────────────────────────────────────
-        protected void Init(CharacterStatData statData, ICharacterView view)
+protected void Init(CharacterStatData statData, ICharacterView view)
         {
             Model = new CharacterModel(statData);
             View  = view;
 
-            // 모델 이벤트 → View 연결
             Model.OnHpChanged     += ratio => View.UpdateHpGauge(ratio / statData.maxHp);
             Model.OnDeath         += HandleDeath;
             Model.OnChargeChanged += View.UpdateChargeGauge;
 
-            // ServiceLocator에서 GestureRecognizer 획득
-            Gesture = ServiceLocator.Get<GestureRecognizer>();
-            if (Gesture == null)
-                Debug.LogError($"[{GetType().Name}] GestureRecognizer가 ServiceLocator에 등록되지 않음.");
+            // GestureRecognizer는 Start()에서 가져옴 (모든 Awake 완료 후)
         }
 
         // ── 이벤트 구독 / 해제 ────────────────────────────────────
-        protected virtual void OnEnable()
-        {
-            if (Gesture == null) return;
-            Gesture.OnTap       += HandleTap;
-            Gesture.OnSwipe     += HandleSwipe;
-            Gesture.OnDragDelta += HandleDrag;
-            Gesture.OnHold      += HandleHold;
-            Gesture.OnRelease   += HandleRelease;
-            Gesture.OnJustDodge += HandleJustDodge;
-        }
+protected virtual void OnEnable() { }
+        // 실제 구독은 Start()에서 수행
 
-        protected virtual void OnDisable()
+protected virtual void OnDisable()
         {
             if (Gesture == null) return;
-            Gesture.OnTap       -= HandleTap;
-            Gesture.OnSwipe     -= HandleSwipe;
-            Gesture.OnDragDelta -= HandleDrag;
-            Gesture.OnHold      -= HandleHold;
-            Gesture.OnRelease   -= HandleRelease;
-            Gesture.OnJustDodge -= HandleJustDodge;
+            Gesture.OnTap           -= HandleTap;
+            Gesture.OnSwipe         -= HandleSwipe;
+            Gesture.OnMoveDirection -= HandleMoveDirection;
+            Gesture.OnMoveEnd       -= HandleMoveEnd;
+            Gesture.OnHold          -= HandleHold;
+            Gesture.OnRelease       -= HandleRelease;
+            Gesture.OnJustDodge     -= HandleJustDodge;
         }
 
         // ── 공통 입력 처리 ────────────────────────────────────────
-        private void HandleTap(Vector2 screenPos)
+private void HandleTap(Vector2 screenPos)
         {
             if (!Model.IsAlive) return;
             View.PlayAttack();
+            PerformAttack();
             OnTap(screenPos);
         }
 
-        private void HandleSwipe(Vector2 direction)
+        /// <summary>
+        /// 가장 가까운 적을 향해 사각형 범위 판정.
+        /// attackWidth, attackHeight, attackOffset 은 CharacterStatData에서 조정.
+        /// </summary>
+        private void PerformAttack()
+        {
+            var waveManager = ServiceLocator.Get<WaveManager>();
+            if (waveManager == null) return;
+
+            var stat    = Model.StatData;
+            var nearest = waveManager.GetNearestEnemy(transform.position);
+
+            // 타겟 방향: 가장 가까운 적, 없으면 위쪽
+            var dir = nearest != null
+                ? ((Vector2)nearest.transform.position - (Vector2)transform.position).normalized
+                : Vector2.up;
+
+            // 범위 중심 = 플레이어 위치 + 방향 * offset
+            var boxCenter = (Vector2)transform.position + dir * stat.attackOffset;
+            var boxSize   = new Vector2(stat.attackWidth, stat.attackHeight);
+            float angle   = Vector2.SignedAngle(Vector2.up, dir);
+
+            var hits = Physics2D.OverlapBoxAll(boxCenter, boxSize, angle);
+            foreach (var hit in hits)
+            {
+                var damageable = hit.GetComponent<IDamageable>();
+                if (damageable == null || !damageable.IsAlive) continue;
+                if (hit.gameObject == gameObject) continue; // 자기 자신 제외
+                damageable.TakeDamage(stat.attackPower, dir);
+            }
+        }
+
+private void HandleSwipe(Vector2 direction)
         {
             if (!Model.IsAlive) return;
+
+            // 대시: Swipe 방향으로 dashDistance만큼 빠르게 이동
+            var stat    = Model.StatData;
+            _dashTarget = (Vector2)transform.position + direction * stat.dashDistance;
+            _dashSpeed  = stat.dashSpeed;
+
+            var stage = ServiceLocator.Get<StageBuilder>();
+            if (stage != null) _dashTarget = stage.ClampToStage(_dashTarget);
+
+            _isDashing     = true;
+            _moveDirection = Vector2.zero;
+
             View.PlayDodge(direction);
             OnSwipe(direction);
         }
 
-        private void HandleDrag(Vector2 delta)
+private void HandleMoveDirection(Vector2 dir)
+        {
+            if (!Model.IsAlive || _isDashing) return;
+            _moveDirection = dir;
+        }
+
+        private void HandleMoveEnd()
+        {
+            _moveDirection = Vector2.zero;
+        }
+
+        // Update로 이동 처리 (매 프레임 일정 속도 유지)
+        protected virtual void Update()
         {
             if (!Model.IsAlive) return;
 
-            // 스크린 델타 → 월드 이동량으로 변환
-            var worldDelta = delta * (Model.StatData.moveSpeed * Time.deltaTime);
-            var nextPos    = (Vector2)transform.position + worldDelta;
-            View.MoveTo(nextPos);
-            OnDrag(delta);
+            if (_isDashing)
+            {
+                var next = Vector2.MoveTowards(
+                    transform.position, _dashTarget, _dashSpeed * Time.deltaTime);
+                View.MoveTo(next);
+                if (Vector2.Distance(next, _dashTarget) < 0.05f)
+                    _isDashing = false;
+                return;
+            }
+
+            if (_moveDirection.sqrMagnitude > 0.01f)
+            {
+                var worldDelta = _moveDirection * (Model.StatData.moveSpeed * Time.deltaTime);
+                var nextPos    = (Vector2)transform.position + worldDelta;
+
+                var stage = ServiceLocator.Get<StageBuilder>();
+                if (stage != null) nextPos = stage.ClampToStage(nextPos);
+
+                View.MoveTo(nextPos);
+            }
         }
 
         private void HandleHold(float duration)
@@ -159,5 +226,24 @@ namespace Game.Characters
 
         /// <summary>Release 후 공통 정리 이후 캐릭터별 후처리.</summary>
         protected virtual void OnRelease(InputState lastState) { }
-    }
+    
+
+protected virtual void Start()
+        {
+            // 모든 Awake 완료 후 GestureRecognizer 구독
+            Gesture = ServiceLocator.Get<GestureRecognizer>();
+            if (Gesture == null)
+            {
+                Debug.LogError($"[{GetType().Name}] GestureRecognizer가 ServiceLocator에 없음. InputSystemInitializer가 먼저 Awake되어야 함.");
+                return;
+            }
+            Gesture.OnTap           += HandleTap;
+            Gesture.OnSwipe         += HandleSwipe;
+            Gesture.OnMoveDirection += HandleMoveDirection;
+            Gesture.OnMoveEnd       += HandleMoveEnd;
+            Gesture.OnHold          += HandleHold;
+            Gesture.OnRelease       += HandleRelease;
+            Gesture.OnJustDodge     += HandleJustDodge;
+        }
+}
 }
