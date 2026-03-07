@@ -19,6 +19,7 @@ using UnityEngine;
 using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
+using Debug = UnityEngine.Debug;
 
 namespace Game.Core.Editor
 {

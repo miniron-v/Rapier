@@ -111,18 +111,28 @@
 //        - 밀밸런스 수치 확정 (패엁, HP, 공격력)
 //        - 프로토타입 기획서 v1.0.0 작성 및 배포
 // [v0.9] 지침서 v0.4.0 갱신 (클리어 조건, 조작 조건 수치 명세화)
+// [v1.0] Phase 1 구현 완료
+//        - InputState.cs, ServiceLocator.cs, GestureRecognizer.cs, GestureDebugger.cs 생성
+//        - Device Simulator(iPhone 12) 테스트 완료. 로그/영역/판별 모두 정상
 // -------------------------------------------------------
 // [6] 알려진 이슈 / 기술 부채
 // -------------------------------------------------------
 // [부채-01] ProjectFolderSetup.cs 는 초기 세팅용. 재실행해도 무해하지만 추후 정리 가능.
 // [부채-02] GuidelinesEditor.AppendChangeLog()의 섹션 번호("## 12.")가 하드코딩되어 있음.
 //           섹션 번호가 바뀌면 수동 수정 필요.
-// [부채-03] SampleScene에 테스트용 TestCube가 남아 있음. 본격 작업 전 삭제 필요.
+// [부채-03] ~~SampleScene에 테스트용 TestCube가 남아 있음~~ → 해결 (Phase 1 시작 전 제거)
+// [부채-04] GestureDebugger.cs 는 Phase 1 테스트 전용. Phase 2 시작 전 씬에서 제거 및 스크립트 삭제 필요.
+// [부채-05] Game.Debug 네임스페이스는 UnityEngine.Debug 를 가림 → 사용 금지. UI 디버그 클래스는 Game.UI.Debug 사용.
 
 // -------------------------------------------------------
 // [7] 다음 작업 (Next Steps)
 // -------------------------------------------------------
-// [NEXT-01] TestCube 씨에서 제거
+// [NEXT-01] ~~TestCube 씨에서 제거~~ → 완료
+// [NEXT-02] Phase 2 시작 전 준비
+//           - GestureDebugger.cs 제거 (씨 + 스크립트)
+//           - Phase 2 — 쾐릭터 기반 클래스 구현
+//             └ ICharacterView / CharacterStatData SO / CharacterModel
+//             └ CharacterPresenterBase (추상) / CharacterView (플레이스홀더)
 // [NEXT-02] Phase 1 — 기반 시스템 구현
 //           - ServiceLocator
 //           - InputState enum
@@ -177,3 +187,12 @@
 //   사유: MCP는 텍스트 기반 API만 제공. .docx 같은 바이너리 파일은 생성 불가.
 //          에디터 스크립트로 File.Copy 시도 시, Unity와 클로드 컨테이너가 서로 다른 파일 시스템에 있어 접근 불가.
 //   대안: 클로드가 docx 생성 후 다운로드 링크 제공 → 사용자가 직접 Assets/_Project/00_Docs/에 드래그 앤 드롭.
+//
+// [MCP-07] CanvasScaler 기본값이 ConstantPixelSize라 Device Simulator에서 UI가 작게 보임
+//   사유: 코드로 Canvas 생성 시 CanvasScaler를 별도 설정 안 하면 ConstantPixelSize가 기본값.
+//          Device Simulator(예: iPhone 12)는 고해상도라 실제 UI가 상당히 작게 렌더링됨.
+//   대안: CanvasScaler.uiScaleMode = ScaleWithScreenSize, referenceResolution = (1080, 1920)으로 설정.
+//
+// [MCP-08] 코드로 RectTransform 생성 시 Pivot이 (0.5, 0.5) 기본값이라 Anchor와 업있는 경우 화면 밖으로 나감
+//   사유: anchoredPosition은 pivot 기준으로 계산됨. Anchor를 좌상단(0,1)으로 설정해도 pivot이 (0.5,0.5)면 반전 누락됨.
+//   대안: 코드로 RectTransform 생성 시 pivot을 anchor와 일치시켜 설정. 예: 좌상단 = pivot(0f, 1f).
