@@ -196,3 +196,14 @@
 // [MCP-08] 코드로 RectTransform 생성 시 Pivot이 (0.5, 0.5) 기본값이라 Anchor와 업있는 경우 화면 밖으로 나감
 //   사유: anchoredPosition은 pivot 기준으로 계산됨. Anchor를 좌상단(0,1)으로 설정해도 pivot이 (0.5,0.5)면 반전 누락됨.
 //   대안: 코드로 RectTransform 생성 시 pivot을 anchor와 일치시켜 설정. 예: 좌상단 = pivot(0f, 1f).
+//
+// [TIP-01] 2D Sprite 패키지 내장 스프라이트 사용법
+//   경로: Packages/com.unity.2d.sprite/Editor/ObjectMenuCreation/DefaultAssets/Textures/v2/
+//   로드: AssetDatabase.LoadAssetAtPath<Sprite>(경로 + 파일명)
+//   사용 가능한 스프라이트 8종:
+//     Square, Circle, Capsule, Triangle,
+//     9Sliced, HexagonFlatTop, HexagonPointTop, IsometricDiamond
+//   플레이스홀더 용도별 권장 패턴:
+//     플레이어 캠릭터 → Circle
+//     일반 적 → Square 또는 Capsule
+//     보스 → HexagonFlatTop 또는 HexagonPointTop
