@@ -10,7 +10,8 @@ namespace Game.Characters
         void MoveTo(UnityEngine.Vector2 position);
 
         /// <summary>공격 애니메이션 재생.</summary>
-        void PlayAttack();
+    void PlayAttack();
+    void PlayHit();     // 피격 플래시
 
         /// <summary>회피 애니메이션 재생.</summary>
         void PlayDodge(UnityEngine.Vector2 direction);

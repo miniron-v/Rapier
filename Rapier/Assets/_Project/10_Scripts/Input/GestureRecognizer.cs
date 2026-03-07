@@ -1,61 +1,66 @@
 using System;
 using UnityEngine;
-using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.EnhancedTouch;
 using Touch = UnityEngine.InputSystem.EnhancedTouch.Touch;
 
 namespace Game.Input
 {
     /// <summary>
-    /// 터치 입력을 Tap / Swipe / Drag / Hold / JustDodge 로 판별해 발행한다.
+    /// 터치 입력을 제스처로 판별해 이벤트로 발행한다.
     ///
-    /// [판별 기준]
-    ///   Tap      : 거리 < 20px, 지속 < 0.2초
-    ///   Swipe    : 거리 >= 20px, 지속 < 0.3초
-    ///   Drag     : 거리 >= 20px, 지속 >= 0.3초  (매 프레임 Delta 발행)
-    ///   Hold     : 정지 상태, 지속 >= 0.3초      (매 프레임 발행)
-    ///   JustDodge: 외부에서 MarkEnemyAttackWindow() 호출 중 Swipe 입력 시
+    /// [판별 흐름]
+    ///   FingerDown  → 터치 시작, 모든 상태 초기화
+    ///   FingerMove  → _currentPos 갱신만 (판별 없음)
+    ///   Update      → 시간 누적
+    ///                 - dist >= MOVE_START_DISTANCE AND duration >= SWIPE_MAX_DURATION
+    ///                   → Move 확정 (조이스틱 발행 시작)
+    ///                 - dist < TAP_MAX_DISTANCE AND duration >= HOLD_MIN_DURATION
+    ///                   → Hold 확정
+    ///   FingerUp    → 최종 판별
+    ///                 - Move 중 → MoveEnd
+    ///                 - dist >= SWIPE_MIN_DISTANCE AND duration < SWIPE_MAX_DURATION
+    ///                   → Swipe (또는 JustDodge)
+    ///                 - dist < TAP_MAX_DISTANCE AND duration < TAP_MAX_DURATION
+    ///                   → Tap
+    ///                 - 그 외 Hold/Move → Release만
     ///
-    /// [유효 영역]
-    ///   화면 하단 40% 이내에서 시작된 터치만 처리한다.
-    ///
-    /// [이벤트]
-    ///   OnTap       (Vector2 screenPos)
-    ///   OnSwipe     (Vector2 direction)
-    ///   OnDragDelta (Vector2 delta)
-    ///   OnHold      (float duration)
-    ///   OnRelease   (InputState lastState)
-    ///   OnJustDodge (Vector2 direction)
+    /// [유효 영역] 화면 하단 40%
     /// </summary>
     public class GestureRecognizer : MonoBehaviour
     {
-        // ── 판별 기준 상수 ──────────────────────────────────────────
-        private const float TAP_MAX_DISTANCE  = 20f;  // px
-        private const float TAP_MAX_DURATION  = 0.2f; // 초
-        private const float SWIPE_MAX_DURATION = 0.3f; // 초
-        private const float HOLD_MIN_DURATION  = 0.3f; // 초
-        private const float DRAG_MIN_DISTANCE  = 20f;  // px
-        private const float VALID_AREA_RATIO   = 0.4f; // 화면 하단 40%
+        // ── 판별 기준 상수 ───────────────────────────────────────
+        private const float VALID_AREA_RATIO    = 0.4f;
+        private const float TAP_MAX_DISTANCE    = 20f;   // px
+        private const float TAP_MAX_DURATION    = 0.2f;  // 초
+        private const float SWIPE_MIN_DISTANCE  = 60f;   // px  (빠른 플릭 최소 거리)
+        private const float SWIPE_MAX_DURATION  = 0.25f; // 초  (이 시간 이상 = Move)
+        private const float MOVE_START_DISTANCE = 20f;   // px  (조이스틱 활성화 거리)
+        private const float HOLD_MIN_DURATION   = 0.3f;  // 초
 
-        // ── 이벤트 ──────────────────────────────────────────────────
-        public event Action<Vector2> OnTap;
-        public event Action<Vector2> OnSwipe;
-        public event Action<Vector2> OnDragDelta;
-        public event Action<float>   OnHold;
+        // ── 이벤트 ───────────────────────────────────────────────
+        public event Action<Vector2>    OnTap;
+        public event Action<Vector2>    OnSwipe;
+        public event Action<Vector2>    OnMoveDirection; // Move 중 매 프레임
+        public event Action             OnMoveEnd;
+        public event Action<float>      OnHold;          // Hold 중 매 프레임
         public event Action<InputState> OnRelease;
-        public event Action<Vector2> OnJustDodge;
+        public event Action<Vector2>    OnJustDodge;
 
-        // ── 현재 상태 (읽기 전용 공개) ─────────────────────────────
-        public InputState CurrentState { get; private set; } = InputState.None;
+        // 조이스틱 상태 공개 (UI 표시용)
+        public Vector2    JoystickOrigin  { get; private set; }
+        public Vector2    JoystickCurrent { get; private set; }
+        public bool       IsMoving        { get; private set; }
+        public InputState CurrentState    { get; private set; } = InputState.None;
 
-        // ── 내부 상태 ────────────────────────────────────────────────
+        // ── 내부 상태 ────────────────────────────────────────────
         private bool    _isTouching;
         private Vector2 _startPos;
-        private Vector2 _prevPos;
+        private Vector2 _currentPos;
         private float   _touchDuration;
-        private bool    _enemyAttackWindow; // 저스트 회피 판정 가능 여부
+        private bool    _gestureCommitted;  // Move 또는 Hold 확정 여부
+        private int  _attackWindowCount;
 
-        // ── 라이프사이클 ─────────────────────────────────────────────
+        // ── 라이프사이클 ─────────────────────────────────────────
         private void OnEnable()
         {
             EnhancedTouchSupport.Enable();
@@ -75,76 +80,81 @@ namespace Game.Input
         private void Update()
         {
             if (!_isTouching) return;
-
             _touchDuration += Time.deltaTime;
 
-            // Hold 판정: 정지 상태에서 일정 시간 이상
-            if (CurrentState == InputState.Hold || IsStationary())
+            float dist = Vector2.Distance(_currentPos, _startPos);
+
+            if (!_gestureCommitted)
             {
-                if (_touchDuration >= HOLD_MIN_DURATION)
+                // Move 확정: 거리 + 시간 모두 충족 (Swipe와 구분 핵심)
+                if (dist >= MOVE_START_DISTANCE && _touchDuration >= SWIPE_MAX_DURATION)
                 {
-                    CurrentState = InputState.Hold;
-                    OnHold?.Invoke(_touchDuration);
+                    _gestureCommitted = true;
+                    CurrentState      = InputState.Drag;
+                    IsMoving          = true;
+                }
+                // Hold 확정: 정지 + 시간 충족
+                else if (dist < TAP_MAX_DISTANCE && _touchDuration >= HOLD_MIN_DURATION)
+                {
+                    _gestureCommitted = true;
+                    CurrentState      = InputState.Hold;
                 }
             }
+
+            // Move: 조이스틱 방향 매 프레임 발행
+            if (CurrentState == InputState.Drag)
+            {
+                JoystickOrigin  = _startPos;
+                JoystickCurrent = _currentPos;
+                OnMoveDirection?.Invoke((_currentPos - _startPos).normalized);
+            }
+
+            // Hold: 지속시간 매 프레임 발행
+            if (CurrentState == InputState.Hold)
+                OnHold?.Invoke(_touchDuration);
         }
 
-        // ── 터치 이벤트 핸들러 ───────────────────────────────────────
+        // ── 터치 핸들러 ──────────────────────────────────────────
         private void HandleFingerDown(Finger finger)
         {
-            // 멀티 터치 무시 (단일 손가락만)
             if (_isTouching) return;
-
             var pos = finger.screenPosition;
-
-            // 유효 영역 검사: 화면 하단 40%
             if (pos.y > Screen.height * VALID_AREA_RATIO) return;
 
-            _isTouching    = true;
-            _startPos      = pos;
-            _prevPos       = pos;
-            _touchDuration = 0f;
-            CurrentState   = InputState.None;
+            _isTouching       = true;
+            _startPos         = pos;
+            _currentPos       = pos;
+            _touchDuration    = 0f;
+            _gestureCommitted = false;
+            CurrentState      = InputState.None;
+            IsMoving          = false;
         }
 
         private void HandleFingerMove(Finger finger)
         {
             if (!_isTouching) return;
-
-            var pos   = finger.screenPosition;
-            var delta = pos - _prevPos;
-            _prevPos  = pos;
-
-            float totalDist = Vector2.Distance(pos, _startPos);
-
-            // Drag 판정: 거리 조건 충족 + 지속 시간 >= 0.3초
-            if (totalDist >= DRAG_MIN_DISTANCE && _touchDuration >= SWIPE_MAX_DURATION)
-            {
-                CurrentState = InputState.Drag;
-                OnDragDelta?.Invoke(delta);
-            }
+            _currentPos = finger.screenPosition;
         }
 
         private void HandleFingerUp(Finger finger)
         {
             if (!_isTouching) return;
 
-            var endPos   = finger.screenPosition;
-            float dist   = Vector2.Distance(endPos, _startPos);
-            var dir      = (endPos - _startPos).normalized;
-            var lastState = CurrentState;
+            var endPos = finger.screenPosition;
+            float dist = Vector2.Distance(endPos, _startPos);
+            var dir    = dist > 0.01f ? (endPos - _startPos).normalized : Vector2.up;
+            var last   = CurrentState;
 
-            // ── 제스처 최종 판별 ──
-            if (dist < TAP_MAX_DISTANCE && _touchDuration < TAP_MAX_DURATION)
+            if (IsMoving)
             {
-                // Tap
-                CurrentState = InputState.Tap;
-                OnTap?.Invoke(_startPos);
+                // Move 종료
+                IsMoving = false;
+                OnMoveEnd?.Invoke();
             }
-            else if (dist >= DRAG_MIN_DISTANCE && _touchDuration < SWIPE_MAX_DURATION)
+            else if (dist >= SWIPE_MIN_DISTANCE && _touchDuration < SWIPE_MAX_DURATION)
             {
-                // Swipe (혹은 JustDodge)
-                if (_enemyAttackWindow)
+                // Swipe: 빠른 플릭 (Move 확정 전에 뗀 경우)
+                if (_attackWindowCount > 0)
                 {
                     CurrentState = InputState.JustDodge;
                     OnJustDodge?.Invoke(dir);
@@ -154,34 +164,37 @@ namespace Game.Input
                     CurrentState = InputState.Swipe;
                     OnSwipe?.Invoke(dir);
                 }
+                {
+                    CurrentState = InputState.Swipe;
+                    OnSwipe?.Invoke(dir);
+                }
             }
-            // Hold / Drag 는 Up 시 별도 판정 없이 Release만 알림
+            else if (dist < TAP_MAX_DISTANCE && _touchDuration < TAP_MAX_DURATION)
+            {
+                // Tap
+                CurrentState = InputState.Tap;
+                OnTap?.Invoke(_startPos);
+            }
+            // Hold / 미확정 → Release만 발행
 
-            OnRelease?.Invoke(lastState);
+            OnRelease?.Invoke(last);
             ResetState();
         }
 
-        // ── 외부 API ─────────────────────────────────────────────────
-        /// <summary>
-        /// 적 공격 판정 윈도우 시작/종료를 알린다.
-        /// EnemyPresenter가 공격 직전 true, 이후 false로 호출한다.
-        /// </summary>
-        public void MarkEnemyAttackWindow(bool isOpen)
-        {
-            _enemyAttackWindow = isOpen;
-        }
+        // ── 외부 API ─────────────────────────────────────────────
+        public void OpenAttackWindow()  => _attackWindowCount++;
+        public void CloseAttackWindow() => _attackWindowCount = Mathf.Max(0, _attackWindowCount - 1);
+        public bool IsAttackWindowOpen  => _attackWindowCount > 0;
 
-        // ── 내부 유틸 ────────────────────────────────────────────────
-        private bool IsStationary()
-        {
-            return Vector2.Distance(_prevPos, _startPos) < TAP_MAX_DISTANCE;
-        }
-
+        // ── 내부 초기화 ──────────────────────────────────────────
         private void ResetState()
         {
-            _isTouching    = false;
-            _touchDuration = 0f;
-            CurrentState   = InputState.None;
+            _isTouching       = false;
+            _touchDuration    = 0f;
+            _gestureCommitted = false;
+            JoystickOrigin    = Vector2.zero;
+            JoystickCurrent   = Vector2.zero;
+            CurrentState      = InputState.None;
         }
     }
 }
