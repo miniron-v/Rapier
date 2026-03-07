@@ -104,7 +104,13 @@
 //        - GuidelinesEditor.cs  : md 섹션 직접 수정 유틸 (cs 재생성 방식 제거)
 // [v0.5] 폴더 구조 확정 및 생성 (인덱스 번호, Private 분리)
 //        - 지침서 v0.2.0 → v0.2.1 갱신
-
+// [v0.6] AI_CONTEXT.cs 생성 및 표준 컨텍스트 시스템 구축
+// [v0.7] 지침서 v0.3.0 갱신 (DI 전략, 테스트 전략, 데이터 설계 원칙 추가)
+// [v0.8] 프로토타입 기획 논의 및 확정
+//        - 시스템/오브젝트 목록 분석, 구현 순서(Phase 1~6) 확정
+//        - 밀밸런스 수치 확정 (패엁, HP, 공격력)
+//        - 프로토타입 기획서 v1.0.0 작성 및 배포
+// [v0.9] 지침서 v0.4.0 갱신 (클리어 조건, 조작 조건 수치 명세화)
 // -------------------------------------------------------
 // [6] 알려진 이슈 / 기술 부채
 // -------------------------------------------------------
@@ -116,14 +122,21 @@
 // -------------------------------------------------------
 // [7] 다음 작업 (Next Steps)
 // -------------------------------------------------------
-// [NEXT-01] TestCube 씬에서 제거
-// [NEXT-02] Input System 구현
-//           - InputActions 에셋 생성 (Touch + Mouse 듀얼 바인딩)
-//           - GestureRecognizer.cs : Drag/Tap/Swipe/Hold 구분 로직
-//           - InputState enum 정의
-//           - 입력 유효 영역 (화면 하단 40%) 필터링
-// [NEXT-03] CharacterPresenterBase / ICharacterView 인터페이스 정의
-// [NEXT-04] 첫 번째 캐릭터 구현 (전사 또는 합의 후 결정)
+// [NEXT-01] TestCube 씨에서 제거
+// [NEXT-02] Phase 1 — 기반 시스템 구현
+//           - ServiceLocator
+//           - InputState enum
+//           - GestureRecognizer (단위 테스트 포함)
+// [NEXT-03] Phase 2 — 캐릭터 기반 클래스
+//           - ICharacterView 인터페이스
+//           - CharacterStatData SO
+//           - CharacterModel
+//           - CharacterPresenterBase (추상)
+//           - CharacterView (플레이스홀더 스프라이트)
+// [NEXT-04] Phase 3 — 플레이어 이동 + 카메라 추적
+// [NEXT-05] Phase 4 — 전투 기반 (CombatSystem, 일반 적)
+// [NEXT-06] Phase 5 — UI 연결 (HP바, 차지 게이지, Debug 패널)
+// [NEXT-07] Phase 6 — 첫 번째 케릭터 고유 메커니즘 (충의 후 결정)
 
 // -------------------------------------------------------
 // [8] 새 세션 시작 시 AI 체크리스트
@@ -159,3 +172,8 @@
 // [MCP-05] script_apply_edits anchor_replace 는 클래스 구조 파일에만 안정적
 //   사유: 좌주석만 있거나 namespace/class 없는 파일에선 앙커를 못 찾는 경우가 많음.
 //   대안: AI_CONTEXT.cs 같은 순수 주석 파일은 apply_text_edits(라인 번호 기반)를 사용.
+//
+// [MCP-06] Unity 내부에 바이너리 파일 직접 생성 불가
+//   사유: MCP는 텍스트 기반 API만 제공. .docx 같은 바이너리 파일은 생성 불가.
+//          에디터 스크립트로 File.Copy 시도 시, Unity와 클로드 컨테이너가 서로 다른 파일 시스템에 있어 접근 불가.
+//   대안: 클로드가 docx 생성 후 다운로드 링크 제공 → 사용자가 직접 Assets/_Project/00_Docs/에 드래그 앤 드롭.

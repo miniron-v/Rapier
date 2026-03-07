@@ -55,7 +55,17 @@ namespace Game.Core.Editor
 | 화면 방향 | 세로 모드 (Portrait) |
 | 렌더 파이프라인 | URP 2D |
 | 조작 | 화면 하단 40% 영역, 단일 손가락(엄지) 조작 / PC 마우스 지원 |
+| 클리어 조건 | 보스 처치 |
 | 목표 | 프로토타입 → 안정적 서비스 → 수익화 |
+
+### 핵심 조작 상태 (Input States)
+
+| 입력 | 상태 | 조건 | 설명 |
+|------|------|------|------|
+| Drag | Move | 이동 거리 ≥ 20px, 지속 ≥ 0.3초 | 순수 이동. 공격 판정 없음 |
+| Tap | Attack | 이동 거리 < 20px, 지속 < 0.2초 | 제자리 정지 후 전방 광역 공격 |
+| Swipe | Dodge | 이동 거리 ≥ 20px, 지속 < 0.3초 | 방향 회피. 무적 0.2초 |
+| Hold → Release | Charge → Skill | 정지 상태, 지속 ≥ 0.3초 | 스킬 차지 후 발동 |
 
 ### 핵심 조작 상태 (Input States)
 
@@ -318,6 +328,7 @@ New Input System → GestureRecognizer → InputState Enum → C# event → Char
 | v0.1.0 | 2026-03-05 | 초안 작성. 기술 스택, 아키텍처, 컨벤션, 폴더 구조 확립 |
 | v0.2.1 | 2026-03-05 | GuidelinesEditor.cs 추가. md 직접 수정 유틸 도입으로 cs 재생성 방식 제거 |
 | v0.3.0 | 2026-03-05 | DI 전략, 테스트 전략, 데이터 설계 원칙 추가. 이벤트 통신 표에 ServiceLocator 항목 추가 |
+| v0.4.0 | 2026-03-07 | 클리어 조건 추가. 조작 조건 수치 명세화 (Tap/Swipe/Drag/Hold 기준값 확정) |
 
 ---
 
