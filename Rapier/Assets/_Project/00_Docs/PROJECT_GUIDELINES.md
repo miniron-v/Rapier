@@ -46,6 +46,49 @@
 
 [Model] <--Interface--> [Presenter] <--직접참조--> [View]
 
+- Model: 순수 데이터와 상태. MonoBehaviour 금지. SO 또는 순수 C# 클래스.
+- View: 화면 표시와 애니메이션만. 로직 금지. MonoBehaviour.
+- Presenter: Model과 View 중재. 게임 로직의 핵심. MonoBehaviour.
+
+### DI (Dependency Injection) 전략
+
+- 기본 원칙: 수동 DI 사용. Presenter 생성 시 Init() 메서드로 의존성을 명시적으로 주입.
+- 전역 시스템(InputManager 등) 단일 접근점: ServiceLocator 패턴 허용 (남용 금지).
+- DI 프레임워크(VContainer 등): 기획 안정화 및 씬 구조 확정 후 도입 검토.
+
+### 테스트 전략
+
+- 단위 테스트 대상: MonoBehaviour 의존성 없는 순수 로직.
+  예) GestureRecognizer 판별 로직, 데미지 계산, SO 데이터 유효성 검사.
+- 수동 테스트 대상: Presenter ↔ View 통합 동작, 플레이어 조작감.
+- 테스트 ROI가 낮은 곳에 테스트 코드 강제 금지.
+
+### 데이터 설계 원칙
+
+- 캐릭터 스탯, 스킬 수치 등 순수 데이터는 ScriptableObject로 분리.
+- 전투 상태(HP, 쿨타임 등) 런타임 데이터는 순수 C# 클래스 또는 구조체로 관리.
+- Model은 MonoBehaviour를 상속하지 않으며 Unity 라이프사이클에 의존하지 않음.
+
+### SOLID 원칙
+
+| 원칙 | 적용 방법 |
+|------|-----------|
+| SRP | 클래스 하나는 하나의 책임만 |
+| OCP | 캐릭터 추가 시 기존 코드 수정 없이 확장 |
+| LSP | 자식 클래스는 부모를 완전히 대체 가능 |
+| ISP | IAttackable, IDodgeable 등 작은 단위로 분리 |
+| DIP | Presenter는 구체 View가 아닌 IView Interface에 의존 |
+
+### 금지 패턴
+
+- Singleton 남용 금지
+- View에서 로직 처리 금지
+- GameObject.Find(), SendMessage() 사용 금지
+
+### 기본 패턴: MVP (Model - View - Presenter)
+
+[Model] <--Interface--> [Presenter] <--직접참조--> [View]
+
 - **Model**: 순수 데이터와 상태. MonoBehaviour 금지. SO 또는 순수 C# 클래스.
 - **View**: 화면 표시와 애니메이션만. 로직 금지. MonoBehaviour.
 - **Presenter**: Model과 View 중재. 게임 로직의 핵심. MonoBehaviour.
@@ -155,12 +198,11 @@ Assets/
 |------|------|
 | Presenter ↔ View 계약 | C# Interface |
 | 동일 씬 내 시스템 간 통신 | C# event |
+| 전역 시스템 단일 접근점 | ServiceLocator (남용 금지, 등록 목록 관리 필요) |
 | 씬 경계를 넘는 글로벌 이벤트 | SO 이벤트 채널 (추후 도입) |
 
 - 이벤트 구독은 OnEnable, 해제는 OnDisable에서 반드시 쌍으로 처리
 - 핸들러 이름: Handle + 동사 (HandleTapPerformed)
-
----
 
 ## 8. ScriptableObject 활용 규칙
 
@@ -236,6 +278,7 @@ New Input System → GestureRecognizer → InputState Enum → C# event → Char
 |------|------|------|
 | v0.1.0 | 2026-03-05 | 초안 작성. 기술 스택, 아키텍처, 컨벤션, 폴더 구조 확립 |
 | v0.2.1 | 2026-03-05 | GuidelinesEditor.cs 추가. md 직접 수정 유틸 도입으로 cs 재생성 방식 제거 |
+| v0.3.0 | 2026-03-05 | DI 전략, 테스트 전략, 데이터 설계 원칙 추가. 이벤트 통신 표에 ServiceLocator 항목 추가 |
 
 ---
 
