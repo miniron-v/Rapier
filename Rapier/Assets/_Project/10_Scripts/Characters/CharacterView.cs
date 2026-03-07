@@ -43,6 +43,19 @@ namespace Game.Characters
             _targetPosition = position;
         }
 
+        public void PlayHit()
+        {
+            StopAllCoroutines();
+            StartCoroutine(FlashColor(Color.red, 0.1f));
+        }
+
+public void SetSprite(UnityEngine.Sprite sprite)
+        {
+            if (_renderer != null && sprite != null)
+                _renderer.sprite = sprite;
+        }
+
+
         public void PlayAttack()
         {
             // 플레이스홀더: 색상 플래시
