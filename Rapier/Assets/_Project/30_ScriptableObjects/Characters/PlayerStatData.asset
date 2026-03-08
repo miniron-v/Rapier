@@ -20,7 +20,7 @@ MonoBehaviour:
   dodgeInvincibleDuration: 0.2
   dashDistance: 5
   dashSpeed: 10000
-  chargeRequiredTime: 0.3
+  chargeRequiredTime: 1
   attackWidth: 2
   attackHeight: 1.5
   attackOffset: 1

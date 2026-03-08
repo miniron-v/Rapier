@@ -34,6 +34,7 @@ namespace Game.Enemies
         private float   _attackCooldownTimer;
         private bool    _isAttacking;
         private bool    _hasHitPlayer;       // 히트박스 활성 중 1회만 피해
+        private EnemyHpBar _hpBar;
         private float   _attackHitTimer;
         private Vector2 _approachOffset;     // 분산 접근용 고정 오프셋
 
@@ -43,8 +44,9 @@ namespace Game.Enemies
         // ── 초기화 ───────────────────────────────────────────────
 private void Awake()
         {
-            _view = GetComponent<EnemyView>();
-            _sr   = GetComponent<SpriteRenderer>();
+            _view  = GetComponent<EnemyView>();
+            _sr    = GetComponent<SpriteRenderer>();
+            _hpBar = GetComponentInChildren<EnemyHpBar>(true);
         }
 
 private void Start()
@@ -80,6 +82,10 @@ public void Spawn(EnemyStatData statData, Vector2 position)
 
             var baseColor = new Color(0.9f, 0.3f, 0.3f);
             _view.ResetVisual(baseColor);
+
+            // HP 바 초기화
+            _hpBar?.Init(_model);
+
             gameObject.SetActive(true);
         }
 
