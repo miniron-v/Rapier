@@ -92,12 +92,14 @@ namespace Game.Input
                     _gestureCommitted = true;
                     CurrentState      = InputState.Drag;
                     IsMoving          = true;
+                    UnityEngine.Debug.Log("[Input] MOVE 시작");
                 }
                 // Hold 확정: 정지 + 시간 충족
                 else if (dist < TAP_MAX_DISTANCE && _touchDuration >= HOLD_MIN_DURATION)
                 {
                     _gestureCommitted = true;
                     CurrentState      = InputState.Hold;
+                    UnityEngine.Debug.Log("[Input] HOLD 시작");
                 }
             }
 
@@ -136,7 +138,7 @@ namespace Game.Input
             _currentPos = finger.screenPosition;
         }
 
-        private void HandleFingerUp(Finger finger)
+private void HandleFingerUp(Finger finger)
         {
             if (!_isTouching) return;
 
@@ -147,35 +149,33 @@ namespace Game.Input
 
             if (IsMoving)
             {
-                // Move 종료
                 IsMoving = false;
                 OnMoveEnd?.Invoke();
             }
             else if (dist >= SWIPE_MIN_DISTANCE && _touchDuration < SWIPE_MAX_DURATION)
             {
-                // Swipe: 빠른 플릭 (Move 확정 전에 뗀 경우)
                 if (_attackWindowCount > 0)
                 {
                     CurrentState = InputState.JustDodge;
+                    Debug.Log($"[Input] JUST DODGE 판정");
                     OnJustDodge?.Invoke(dir);
                 }
                 else
                 {
                     CurrentState = InputState.Swipe;
-                    OnSwipe?.Invoke(dir);
-                }
-                {
-                    CurrentState = InputState.Swipe;
+                    string dirLabel = Mathf.Abs(dir.x) > Mathf.Abs(dir.y)
+                        ? (dir.x > 0 ? "→" : "←")
+                        : (dir.y > 0 ? "↑" : "↓");
+                    Debug.Log($"[Input] SWIPE {dirLabel}");
                     OnSwipe?.Invoke(dir);
                 }
             }
             else if (dist < TAP_MAX_DISTANCE && _touchDuration < TAP_MAX_DURATION)
             {
-                // Tap
                 CurrentState = InputState.Tap;
+                Debug.Log("[Input] TAP");
                 OnTap?.Invoke(_startPos);
             }
-            // Hold / 미확정 → Release만 발행
 
             OnRelease?.Invoke(last);
             ResetState();

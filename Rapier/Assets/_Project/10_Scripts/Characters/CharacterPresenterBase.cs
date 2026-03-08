@@ -75,7 +75,7 @@ private void HandleTap(Vector2 screenPos)
         /// 가장 가까운 적을 향해 사각형 범위 판정.
         /// attackWidth, attackHeight, attackOffset 은 CharacterStatData에서 조정.
         /// </summary>
-        private void PerformAttack()
+private void PerformAttack()
         {
             var waveManager = ServiceLocator.Get<WaveManager>();
             if (waveManager == null) return;
@@ -83,24 +83,25 @@ private void HandleTap(Vector2 screenPos)
             var stat    = Model.StatData;
             var nearest = waveManager.GetNearestEnemy(transform.position);
 
-            // 타겟 방향: 가장 가까운 적, 없으면 위쪽
             var dir = nearest != null
                 ? ((Vector2)nearest.transform.position - (Vector2)transform.position).normalized
                 : Vector2.up;
 
-            // 범위 중심 = 플레이어 위치 + 방향 * offset
-            var boxCenter = (Vector2)transform.position + dir * stat.attackOffset;
-            var boxSize   = new Vector2(stat.attackWidth, stat.attackHeight);
-            float angle   = Vector2.SignedAngle(Vector2.up, dir);
+            var boxCenter  = (Vector2)transform.position + dir * stat.attackOffset;
+            var boxSize    = new Vector2(stat.attackWidth, stat.attackHeight);
+            float angle    = Vector2.SignedAngle(Vector2.up, dir);
+            int enemyLayer = LayerMask.GetMask("Enemy");
 
-            var hits = Physics2D.OverlapBoxAll(boxCenter, boxSize, angle);
+            var hits = Physics2D.OverlapBoxAll(boxCenter, boxSize, angle, enemyLayer);
+            int hitCount = 0;
             foreach (var hit in hits)
             {
                 var damageable = hit.GetComponent<IDamageable>();
                 if (damageable == null || !damageable.IsAlive) continue;
-                if (hit.gameObject == gameObject) continue; // 자기 자신 제외
                 damageable.TakeDamage(stat.attackPower, dir);
+                hitCount++;
             }
+            Debug.Log($"[Attack] 히트: {hitCount}명 / 범위 중심: {boxCenter} / 크기: {boxSize}");
         }
 
 private void HandleSwipe(Vector2 direction)

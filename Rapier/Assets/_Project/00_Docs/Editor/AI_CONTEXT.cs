@@ -94,59 +94,67 @@
 
 // -------------------------------------------------------
 // [5] 완료된 작업 목록
-// -------------------------------------------------------
 // [v0.1] MCP 연결 확인 및 테스트 (큐브 생성)
-// [v0.2] 프로젝트 규칙 결정 (아키텍처, 입력, 씬 전략, 네임스페이스)
+// [v0.2] 프로젝트 규칙 결정 (아키텍처, 입력, 씨 전략, 네임스페이스)
 // [v0.3] PROJECT_GUIDELINES.md 초안 작성 (v0.1.0)
-// [v0.4] 지침서 동기화 시스템 구축
-//        - GuidelinesCreator.cs : md 캐시 + 재생성
-//        - GuidelinesSync.cs    : 재컴파일 시 md→cs 자동 갱신
-//        - GuidelinesEditor.cs  : md 섹션 직접 수정 유틸 (cs 재생성 방식 제거)
-// [v0.5] 폴더 구조 확정 및 생성 (인덱스 번호, Private 분리)
-//        - 지침서 v0.2.0 → v0.2.1 갱신
+// [v0.4] 지침서 동기화 시스템 구축 (GuidelinesCreator / Sync / Editor)
+// [v0.5] 폴더 구조 확정 및 생성
 // [v0.6] AI_CONTEXT.cs 생성 및 표준 컨텍스트 시스템 구축
-// [v0.7] 지침서 v0.3.0 갱신 (DI 전략, 테스트 전략, 데이터 설계 원칙 추가)
-// [v0.8] 프로토타입 기획 논의 및 확정
-//        - 시스템/오브젝트 목록 분석, 구현 순서(Phase 1~6) 확정
-//        - 밀밸런스 수치 확정 (패엁, HP, 공격력)
-//        - 프로토타입 기획서 v1.0.0 작성 및 배포
-// [v0.9] 지침서 v0.4.0 갱신 (클리어 조건, 조작 조건 수치 명세화)
-// [v1.0] Phase 1 구현 완료
-//        - InputState.cs, ServiceLocator.cs, GestureRecognizer.cs, GestureDebugger.cs 생성
-//        - Device Simulator(iPhone 12) 테스트 완료. 로그/영역/판별 모두 정상
+// [v0.7~0.9] 지침서 v0.3~v0.4 갱신, 프로토타입 기획 확정, 기획서 v1.1.0 작성
+//
+// [Phase 1] 완료 ✅
+//   - InputState.cs, ServiceLocator.cs
+//   - GestureRecognizer.cs (하단 40% 유효영역, Move/Tap/Swipe/Hold/JustDodge)
+//   - InputSystemInitializer.cs (ServiceLocator 등록)
+//
+// [Phase 2] 완료 ✅
+//   - ICharacterView.cs (PlayAttack/PlayHit/PlayDodge/PlayDeath/UpdateHpGauge/UpdateChargeGauge/SetSprite)
+//   - CharacterStatData.cs (SO, sprite/이동/대시/공격범위 수치 포함)
+//   - CharacterModel.cs (런타임 상태, TakeDamage/Heal/SetInvincible)
+//   - CharacterPresenterBase.cs (추상, Update 이동/대시, PerformAttack)
+//   - CharacterView.cs (ICharacterView 구현, FlashColor 코루틴)
+//
+// [Phase 3] 완료 ✅
+//   - PlayerPresenter.cs (IDamageable 구현, SO 스프라이트 할당)
+//   - CameraFollow.cs (LateUpdate Lerp, _smoothing=0.1f)
+//   - StageBuilder.cs (격자 배경, 방향 4개, BoxCollider2D 범경)
+//   - VirtualJoystick.cs (Move 중 사라지는 원형 조이스틱)
+//   조작 교정 (GestureRecognizer 두 차례 재설계):
+//     - Move: dist >= 20px AND duration >= 0.25초 두 조건 충족 시 확정
+//     - Swipe: dist >= 60px AND duration < 0.25초 (FingerUp 시)
+//     - 코드 연결 모두 Start()에서 수행 (Awake 순서 문제 해결)
+//
+// [Phase 4] 완료 ✅
+//   - IDamageable.cs (Game.Combat)
+//   - EnemyStatData.cs (SO, sprite/스탯/공격범위/AI 수치)
+//   - EnemyModel.cs (적 런타임 상태)
+//   - EnemyView.cs (피격 플래시, 사망 비활성화)
+//   - EnemyPresenter.cs (추적 AI, 공격 1회 제한, AttackWindow 카운터)
+//   - WaveManager.cs (10초 웨이브, 오브젝트 풀, GetNearestEnemy)
+//   - Enemy_Template.prefab (Enemy 레이어 8번, BoxCollider2D 포함)
+//   - NormalEnemyStatData.asset
+//   GestureRecognizer 변경:
+//     - _enemyAttackWindow bool → _attackWindowCount int 카운터
+//     - OpenAttackWindow() / CloseAttackWindow() / IsAttackWindowOpen API
+//   활성 콘솔 로그 (참가 확인용):
+//     [Input] TAP / SWIPE →←↑↓ / MOVE 시작 / HOLD 시작 / JUST DODGE
+//     [Attack] 히트: N명 / 범위 중심: ... / 크기: ...
+//   OnScreenLog 제거 → UILogger 오브젝트 삭제
+//   현재 미해결 이슈:
+//     - 플레이어 공격 Hit 0 (범위 시각화 후 확인 예정)
+//
 // -------------------------------------------------------
-// [6] 알려진 이슈 / 기술 부채
-// -------------------------------------------------------
-// [부채-01] ProjectFolderSetup.cs 는 초기 세팅용. 재실행해도 무해하지만 추후 정리 가능.
-// [부채-02] GuidelinesEditor.AppendChangeLog()의 섹션 번호("## 12.")가 하드코딩되어 있음.
-//           섹션 번호가 바뀌면 수동 수정 필요.
-// [부채-03] ~~SampleScene에 테스트용 TestCube가 남아 있음~~ → 해결 (Phase 1 시작 전 제거)
-// [부채-04] GestureDebugger.cs 는 Phase 1 테스트 전용. Phase 2 시작 전 씬에서 제거 및 스크립트 삭제 필요.
-// [부채-05] Game.Debug 네임스페이스는 UnityEngine.Debug 를 가림 → 사용 금지. UI 디버그 클래스는 Game.UI.Debug 사용.
-
-// -------------------------------------------------------
-// [7] 다음 작업 (Next Steps)
-// -------------------------------------------------------
-// [NEXT-01] ~~TestCube 씨에서 제거~~ → 완료
-// [NEXT-02] Phase 2 시작 전 준비
-//           - GestureDebugger.cs 제거 (씨 + 스크립트)
-//           - Phase 2 — 쾐릭터 기반 클래스 구현
-//             └ ICharacterView / CharacterStatData SO / CharacterModel
-//             └ CharacterPresenterBase (추상) / CharacterView (플레이스홀더)
-// [NEXT-02] Phase 1 — 기반 시스템 구현
-//           - ServiceLocator
-//           - InputState enum
-//           - GestureRecognizer (단위 테스트 포함)
-// [NEXT-03] Phase 2 — 캐릭터 기반 클래스
-//           - ICharacterView 인터페이스
-//           - CharacterStatData SO
-//           - CharacterModel
-//           - CharacterPresenterBase (추상)
-//           - CharacterView (플레이스홀더 스프라이트)
-// [NEXT-04] Phase 3 — 플레이어 이동 + 카메라 추적
-// [NEXT-05] Phase 4 — 전투 기반 (CombatSystem, 일반 적)
-// [NEXT-06] Phase 5 — UI 연결 (HP바, 차지 게이지, Debug 패널)
-// [NEXT-07] Phase 6 — 첫 번째 케릭터 고유 메커니즘 (충의 후 결정)
+// [NEXT-01] Phase 5 — UI 연결
+//   - 플레이어 HP바 (화면 상단)
+//   - 차지 게이지 (플레이어 주변 또는 화면 하단)
+//   - 적 HP바 (적 오브젝트 위)
+//
+// [NEXT-02] Phase 5 첨부 — 플레이어 공격 범위 시각화
+//   - OverlapBox 영역을 Gizmo 또는 임시 UI로 표시
+//   - Hit 0 원인 확인 및 수정
+//
+// [NEXT-03] Phase 6 — 첫 번째 쾐릭터 고유 메커니즘 + 저스트 회피 슬로우
+//
 
 // -------------------------------------------------------
 // [8] 새 세션 시작 시 AI 체크리스트
