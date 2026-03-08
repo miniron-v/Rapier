@@ -32,7 +32,8 @@ namespace Game.Enemies
         private IDamageable       _playerDamageable;
 
         private float   _attackCooldownTimer;
-        private bool    _isAttacking;        // 현재 히트박스 활성 중
+        private bool    _isAttacking;
+        private bool    _hasHitPlayer;       // 히트박스 활성 중 1회만 피해
         private float   _attackHitTimer;
         private Vector2 _approachOffset;     // 분산 접근용 고정 오프셋
 
@@ -91,53 +92,52 @@ public void Spawn(EnemyStatData statData, Vector2 position)
         }
 
         // ── 루프 ─────────────────────────────────────────────────
-        private void Update()
+private void Update()
         {
             if (!IsAlive || _playerTransform == null) return;
 
             float dist = Vector2.Distance(transform.position, _playerTransform.position);
 
-            // 히트박스 활성 처리
+            // 히트박스 활성 중
             if (_isAttacking)
             {
                 _attackHitTimer -= Time.deltaTime;
 
-                // 플레이어가 아직 범위 내에 있는 동안 매 프레임 체크
-                if (dist <= _statData.attackRange)
+                // 1회만 피해 적용
+                if (!_hasHitPlayer && dist <= _statData.attackRange)
                 {
+                    _hasHitPlayer = true;
                     _gesture?.OpenAttackWindow();
                     _playerDamageable?.TakeDamage(_statData.attackPower, GetDirectionToPlayer());
+                    _gesture?.CloseAttackWindow();
                 }
 
                 if (_attackHitTimer <= 0f)
-                {
-                    _gesture?.CloseAttackWindow();
                     _isAttacking = false;
-                }
+
                 return;
             }
 
-            // 공격 범위 내: 쿨다운 감소 및 공격 시작
+            // 공격 범위 내: 쿨다운 감소
             if (dist <= _statData.attackRange)
             {
                 _attackCooldownTimer -= Time.deltaTime;
                 if (_attackCooldownTimer <= 0f)
-                {
                     StartAttack();
-                }
                 return;
             }
 
-            // 추적: 분산 오프셋을 더한 방향으로 이동
-            var dir      = GetDirectionToPlayer() + _approachOffset;
-            var nextPos  = (Vector2)transform.position
-                           + dir.normalized * (_statData.moveSpeed * Time.deltaTime);
+            // 추적
+            var dir     = GetDirectionToPlayer() + _approachOffset;
+            var nextPos = (Vector2)transform.position
+                          + dir.normalized * (_statData.moveSpeed * Time.deltaTime);
             transform.position = nextPos;
         }
 
-        private void StartAttack()
+private void StartAttack()
         {
             _isAttacking         = true;
+            _hasHitPlayer        = false;
             _attackHitTimer      = _statData.attackHitDuration;
             _attackCooldownTimer = _statData.attackCooldown;
         }
