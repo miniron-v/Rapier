@@ -51,6 +51,10 @@ private void Awake()
             View.PlayHit();
         }
 
+/// <summary>HudView 등 외부에서 Model 이벤트를 구독할 수 있도록 노출.</summary>
+        public CharacterModel PublicModel => Model;
+
+
 
         // ── 입력 override (필요 시 확장) ─────────────────────────
         // 기본 이동/공격/회피는 CharacterPresenterBase가 처리.
