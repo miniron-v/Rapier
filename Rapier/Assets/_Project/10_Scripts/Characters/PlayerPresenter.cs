@@ -1,6 +1,7 @@
 using UnityEngine;
 using Game.Core;
 using Game.Input;
+using Game.Combat;
 
 namespace Game.Characters
 {
@@ -9,14 +10,14 @@ namespace Game.Characters
     /// CharacterPresenterBase의 첫 번째 구체 구현체.
     /// 캐릭터별 고유 메커니즘은 Phase 6에서 자식 클래스로 분리 예정.
     /// </summary>
-    public class PlayerPresenter : CharacterPresenterBase
+    public class PlayerPresenter : CharacterPresenterBase, IDamageable
     {
         [Header("데이터")]
         [SerializeField] private CharacterStatData _statData;
 
         private CharacterView _view;
 
-        private void Awake()
+private void Awake()
         {
             _view = GetComponent<CharacterView>();
 
@@ -28,7 +29,10 @@ namespace Game.Characters
 
             Init(_statData, _view);
 
-            // ServiceLocator에 등록
+            // SO에서 스프라이트 할당
+            if (_statData.sprite != null)
+                _view.SetSprite(_statData.sprite);
+
             ServiceLocator.Register(this);
         }
 
@@ -36,6 +40,17 @@ namespace Game.Characters
         {
             ServiceLocator.Unregister<PlayerPresenter>();
         }
+
+// ── IDamageable 구현 ────────────────────────────────────
+        public bool IsAlive => Model != null && Model.IsAlive;
+
+        public void TakeDamage(float amount, Vector2 knockbackDir)
+        {
+            if (!IsAlive) return;
+            Model.TakeDamage(amount);
+            View.PlayHit();
+        }
+
 
         // ── 입력 override (필요 시 확장) ─────────────────────────
         // 기본 이동/공격/회피는 CharacterPresenterBase가 처리.
