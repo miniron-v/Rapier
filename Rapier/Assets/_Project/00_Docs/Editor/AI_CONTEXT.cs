@@ -149,16 +149,17 @@
 //       > HpBg > HpFill (Horizontal fill) + EnemyHpBar 컴포넌트
 //   프리팹 경로: Assets/_Project/20_Prefabs/Enemy_Template.prefab
 
-// -------------------------------------------------------
 // [6] 미해결 이슈
 // -------------------------------------------------------
-// [ISSUE-01] 플레이어 공격 Hit 0
+// 현재 미해결 이슈 없음.
+
 //   Physics2D.OverlapBoxAll이 적을 감지하지 못함.
 //   공격 범위 Gizmo 시각화 후 원인 확인 예정.
 
 // -------------------------------------------------------
-// [7] 다음 작업
-// -------------------------------------------------------
+// [NEXT-01] ✅ 완료 — Phase 5 부록: 공격 범위 Gizmo 시각화 + ISSUE-01 해결
+//            원인: Enemy_Template.prefab의 SpriteRenderer에 Sprite 미할당 → BoxCollider2D Size 사실상 0
+// [NEXT-02] Phase 6 — 첫 번째 쾐릭터 고유 메커니즘 + 저스트 회피 슬로우
 // [NEXT-01] Phase 5 부록 — 플레이어 공격 범위 시각화 + ISSUE-01 해결
 // [NEXT-02] Phase 6 — 첫 번째 캐릭터 고유 메커니즘 + 저스트 회피 슬로우
 
@@ -188,6 +189,12 @@
 //   폴더 대량 생성 → 에디터 스크립트 작성 후 메뉴로 실행.
 //
 // [MCP-05] script_apply_edits anchor_replace 는 클래스 구조 파일에만 안정적
+//   BoxCollider2D: SpriteRenderer에 Sprite=None이면 Collider Size가 거의 0으로 자동 계산됨
+//     → Physics2D.OverlapBoxAll 감지 불가. Sprite를 먼저 할당한 뒤 Collider를 추가하거나,
+//       수동으로 Size를 지정할 것.
+//   UI Image (HpBar 등): Filled 모드에서 참조하는 Image 컴포넌트가 None이면
+//     fillAmount 갱신이 완전히 무시됨. 코드로 HpBar 생성 시 Image 참조를 반드시 null 체크할 것.
+//
 //   순수 주석 파일(AI_CONTEXT 등)은 apply_text_edits(라인 번호 기반) 사용.
 //
 // [MCP-06] Unity 내부에 바이너리 파일 직접 생성 불가
@@ -234,6 +241,13 @@
 //        교훈: 앞으로 어떻게 할 것인가
 //
 // [MISTAKE-01] execute_menu_item 미사용으로 사용자에게 수동 실행 요청
+//
+// [MISTAKE-05] 원인 미확정 상태에서 MCP로 코드 수정하여 토큰 낙비
+//   상황: OverlapBoxAll hits.Length=0 디버깅 중 레이어/콜라이더 정상 여부 확인 시
+//   실수: 에디터에서 바로 확인 가능한 사항(레이어, 콜라이더, 스프라이트 할당 등)을
+//         사용자에게 먼저 질문하지 않고 MCP로 코드를 수정함
+//   교훈: 에디터에서 직접 확인 가능한 사항은 사용자에게 먼저 질문하고,
+//         MCP 작업은 원인이 확정된 후에만 진행할 것
 //   상황: HUD 셋업 메뉴(Rapier/Setup/Rebuild HUD Canvas) 실행 시
 //   실수: execute_menu_item으로 직접 실행 가능한 메뉴를 사용자에게 넘김
 //   교훈: Unity 에디터 메뉴는 항상 execute_menu_item으로 AI가 직접 실행할 것
