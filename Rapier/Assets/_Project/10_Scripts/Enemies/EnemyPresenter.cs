@@ -75,6 +75,25 @@ public void Spawn(EnemyStatData statData, Vector2 position)
             if (_sr != null && statData.sprite != null)
                 _sr.sprite = statData.sprite;
 
+            // ── 레이어 강제 설정 (Physics2D OverlapBox 감지 보장) ──
+            int enemyLayer = LayerMask.NameToLayer("Enemy");
+            if (enemyLayer == -1)
+                Debug.LogError("[EnemyPresenter] \"Enemy\" 레이어가 존재하지 않음! Project Settings > Tags and Layers 확인 필요.");
+            else
+                gameObject.layer = enemyLayer;
+
+            // ── Collider 활성화 확인 ──
+            var col = GetComponent<Collider2D>();
+            if (col == null)
+                Debug.LogError($"[EnemyPresenter] {name} 에 Collider2D가 없음! 프리팹에 BoxCollider2D 추가 필요.");
+            else if (!col.enabled)
+            {
+                col.enabled = true;
+                Debug.LogWarning($"[EnemyPresenter] {name} 의 Collider2D가 비활성 상태였음. 강제 활성화.");
+            }
+
+            Debug.Log($"[EnemyPresenter] Spawn — layer={gameObject.layer}({LayerMask.LayerToName(gameObject.layer)}), collider={col != null}, enabled={col?.enabled}");
+
             // 분산 접근 오프셋
             float angle   = Random.Range(-statData.approachAngleVariance,
                                           statData.approachAngleVariance);

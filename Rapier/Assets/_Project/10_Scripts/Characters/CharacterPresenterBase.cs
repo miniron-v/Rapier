@@ -21,20 +21,28 @@ namespace Game.Characters
     public abstract class CharacterPresenterBase : MonoBehaviour
     {
         // ── 내부 참조 ─────────────────────────────────────────────
-        protected CharacterModel     Model  { get; private set; }
-        protected ICharacterView     View   { get; private set; }
+        protected CharacterModel     Model   { get; private set; }
+        protected ICharacterView     View    { get; private set; }
         protected GestureRecognizer  Gesture { get; private set; }
 
         // ── 이동/대시 상태 ─────────────────────────────────────────────
         private float   _holdDuration;
         private bool    _isCharging;
-        private Vector2 _moveDirection;      // 현재 조이스틱 방향
+        private Vector2 _moveDirection;
         private bool    _isDashing;
         private Vector2 _dashTarget;
         private float   _dashSpeed;
 
+        // ── 공격 Gizmo 상태 (시각화용) ────────────────────────────
+        private Vector2 _lastAttackCenter;
+        private Vector2 _lastAttackSize;
+        private float   _lastAttackAngle;
+        private bool    _showAttackGizmo;
+        private float   _gizmoTimer;
+        private const float GizmoDuration = 0.5f;
+
         // ── 초기화 ────────────────────────────────────────────────
-protected void Init(CharacterStatData statData, ICharacterView view)
+        protected void Init(CharacterStatData statData, ICharacterView view)
         {
             Model = new CharacterModel(statData);
             View  = view;
@@ -42,15 +50,12 @@ protected void Init(CharacterStatData statData, ICharacterView view)
             Model.OnHpChanged     += ratio => View.UpdateHpGauge(ratio / statData.maxHp);
             Model.OnDeath         += HandleDeath;
             Model.OnChargeChanged += View.UpdateChargeGauge;
-
-            // GestureRecognizer는 Start()에서 가져옴 (모든 Awake 완료 후)
         }
 
         // ── 이벤트 구독 / 해제 ────────────────────────────────────
-protected virtual void OnEnable() { }
-        // 실제 구독은 Start()에서 수행
+        protected virtual void OnEnable() { }
 
-protected virtual void OnDisable()
+        protected virtual void OnDisable()
         {
             if (Gesture == null) return;
             Gesture.OnTap           -= HandleTap;
@@ -63,7 +68,7 @@ protected virtual void OnDisable()
         }
 
         // ── 공통 입력 처리 ────────────────────────────────────────
-private void HandleTap(Vector2 screenPos)
+        private void HandleTap(Vector2 screenPos)
         {
             if (!Model.IsAlive) return;
             View.PlayAttack();
@@ -75,7 +80,7 @@ private void HandleTap(Vector2 screenPos)
         /// 가장 가까운 적을 향해 사각형 범위 판정.
         /// attackWidth, attackHeight, attackOffset 은 CharacterStatData에서 조정.
         /// </summary>
-private void PerformAttack()
+        private void PerformAttack()
         {
             var waveManager = ServiceLocator.Get<WaveManager>();
             if (waveManager == null) return;
@@ -87,10 +92,19 @@ private void PerformAttack()
                 ? ((Vector2)nearest.transform.position - (Vector2)transform.position).normalized
                 : Vector2.up;
 
-            var boxCenter  = (Vector2)transform.position + dir * stat.attackOffset;
-            var boxSize    = new Vector2(stat.attackWidth, stat.attackHeight);
-            float angle    = Vector2.SignedAngle(Vector2.up, dir);
+            var boxCenter = (Vector2)transform.position + dir * stat.attackOffset;
+            var boxSize   = new Vector2(stat.attackWidth, stat.attackHeight);
+            float angle   = Vector2.SignedAngle(Vector2.up, dir);
             int enemyLayer = LayerMask.GetMask("Enemy");
+
+            // ── Gizmo 갱신 ──────────────────────────────────────
+            _lastAttackCenter = boxCenter;
+            _lastAttackSize   = boxSize;
+            _lastAttackAngle  = angle;
+            _showAttackGizmo  = true;
+            _gizmoTimer       = GizmoDuration;
+
+            Debug.Log($"[Attack] dir={dir} | center={boxCenter} | size={boxSize} | angle={angle:F1}° | layer={enemyLayer}");
 
             var hits = Physics2D.OverlapBoxAll(boxCenter, boxSize, angle, enemyLayer);
             int hitCount = 0;
@@ -101,14 +115,13 @@ private void PerformAttack()
                 damageable.TakeDamage(stat.attackPower, dir);
                 hitCount++;
             }
-            Debug.Log($"[Attack] 히트: {hitCount}명 / 범위 중심: {boxCenter} / 크기: {boxSize}");
+            Debug.Log($"[Attack] 히트: {hitCount}명 / 적 오브젝트 수: {hits.Length}");
         }
 
-private void HandleSwipe(Vector2 direction)
+        private void HandleSwipe(Vector2 direction)
         {
             if (!Model.IsAlive) return;
 
-            // 대시: Swipe 방향으로 dashDistance만큼 빠르게 이동
             var stat    = Model.StatData;
             _dashTarget = (Vector2)transform.position + direction * stat.dashDistance;
             _dashSpeed  = stat.dashSpeed;
@@ -123,7 +136,7 @@ private void HandleSwipe(Vector2 direction)
             OnSwipe(direction);
         }
 
-private void HandleMoveDirection(Vector2 dir)
+        private void HandleMoveDirection(Vector2 dir)
         {
             if (!Model.IsAlive || _isDashing) return;
             _moveDirection = dir;
@@ -134,10 +147,16 @@ private void HandleMoveDirection(Vector2 dir)
             _moveDirection = Vector2.zero;
         }
 
-        // Update로 이동 처리 (매 프레임 일정 속도 유지)
         protected virtual void Update()
         {
             if (!Model.IsAlive) return;
+
+            // Gizmo 타이머
+            if (_showAttackGizmo)
+            {
+                _gizmoTimer -= Time.deltaTime;
+                if (_gizmoTimer <= 0f) _showAttackGizmo = false;
+            }
 
             if (_isDashing)
             {
@@ -200,38 +219,46 @@ private void HandleMoveDirection(Vector2 dir)
         private void HandleDeath()
         {
             View.PlayDeath();
-            OnDisable(); // 이벤트 구독 해제
+            OnDisable();
+        }
+
+        // ── Gizmo 시각화 ──────────────────────────────────────────
+        private void OnDrawGizmos()
+        {
+            if (!Application.isPlaying) return;
+            if (!_showAttackGizmo) return;
+
+            // 공격 범위 박스 (노란색)
+            Gizmos.color = new Color(1f, 1f, 0f, 0.4f);
+            var rot = Quaternion.Euler(0f, 0f, _lastAttackAngle);
+            var oldMatrix = Gizmos.matrix;
+            Gizmos.matrix = Matrix4x4.TRS(
+                new Vector3(_lastAttackCenter.x, _lastAttackCenter.y, 0f),
+                rot,
+                Vector3.one);
+            Gizmos.DrawCube(Vector3.zero, new Vector3(_lastAttackSize.x, _lastAttackSize.y, 0.1f));
+
+            // 외곽선 (진한 노란색)
+            Gizmos.color = Color.yellow;
+            Gizmos.DrawWireCube(Vector3.zero, new Vector3(_lastAttackSize.x, _lastAttackSize.y, 0.1f));
+            Gizmos.matrix = oldMatrix;
+
+            // 중심점 (빨간색 십자)
+            Gizmos.color = Color.red;
+            Gizmos.DrawSphere(new Vector3(_lastAttackCenter.x, _lastAttackCenter.y, 0f), 0.1f);
         }
 
         // ── 자식 클래스 override 지점 (선택적) ───────────────────
-        /// <summary>Tap 후 캐릭터별 추가 처리.</summary>
-        protected virtual void OnTap(Vector2 screenPos) { }
-
-        /// <summary>Swipe 후 캐릭터별 추가 처리 (일반 회피).</summary>
-        protected virtual void OnSwipe(Vector2 direction) { }
-
-        /// <summary>Drag 중 캐릭터별 추가 처리.</summary>
-        protected virtual void OnDrag(Vector2 delta) { }
-
-        /// <summary>Hold 중 캐릭터별 추가 처리.</summary>
-        protected virtual void OnHold(float duration) { }
-
-        /// <summary>
-        /// Release 시 스킬 발동 지점.
-        /// fullyCharged: 차지 완충 여부 / justDodgeReady: 저스트 회피 슬로우 상태 여부.
-        /// </summary>
+        protected virtual void OnTap(Vector2 screenPos)        { }
+        protected virtual void OnSwipe(Vector2 direction)      { }
+        protected virtual void OnDrag(Vector2 delta)           { }
+        protected virtual void OnHold(float duration)          { }
         protected virtual void OnSkillRelease(bool fullyCharged, bool justDodgeReady) { }
-
-        /// <summary>저스트 회피 후 캐릭터별 추가 처리.</summary>
-        protected virtual void OnJustDodge(Vector2 direction) { }
-
-        /// <summary>Release 후 공통 정리 이후 캐릭터별 후처리.</summary>
+        protected virtual void OnJustDodge(Vector2 direction)  { }
         protected virtual void OnRelease(InputState lastState) { }
-    
 
-protected virtual void Start()
+        protected virtual void Start()
         {
-            // 모든 Awake 완료 후 GestureRecognizer 구독
             Gesture = ServiceLocator.Get<GestureRecognizer>();
             if (Gesture == null)
             {
@@ -246,5 +273,5 @@ protected virtual void Start()
             Gesture.OnRelease       += HandleRelease;
             Gesture.OnJustDodge     += HandleJustDodge;
         }
-}
+    }
 }
