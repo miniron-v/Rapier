@@ -135,10 +135,15 @@
 // [Phase 5] UI 연결
 //   HudView.cs — Player에 부착. Start()에서 자식 Canvas 내 이름으로 자동 탐색.
 //                Model.OnHpChanged     → HpFill.fillAmount
-//                Model.OnChargeChanged → ChargeGaugeFill.fillAmount
-//   EnemyHpBar.cs — 적 위 World Space HP 바. EnemyModel.OnHpChanged 구독.
-//   EnemyPresenter.cs 수정 — Awake에서 GetComponentInChildren<EnemyHpBar>, Spawn()에서 Init()
-//   PlayerPresenter.cs 수정 — PublicModel 프로퍼티 추가 (HudView 접근용)
+// [MCP-06] 문서 관리 워크플로우
+//   .md 파일이 원본. Claude가 apply_text_edits로 직접 편집.
+//   편집 후 execute_menu_item("Rapier/Docs/Sync to DOCX") 호출 → Pandoc이 .docx 자동 생성.
+//   팀원은 생성된 .docx를 열람. .docx를 직접 편집하지 않는다.
+//   최초 DesignDoc MD 생성: execute_menu_item("Rapier/Docs/Create DesignDoc MD")
+//   관리 대상:
+//     Assets/_Project/00_Docs/Rapier_Prototype_DesignDoc_v1.1.0.md  (기획서 원본)
+//     Assets/_Project/00_Docs/PROJECT_GUIDELINES.md                  (지침서 원본)
+//
 //   HudSetup.cs — Rapier/Setup 메뉴로 씬 HUD 자동 생성
 //   씬 오브젝트 구조:
 //     Player > PlayerHudCanvas (World Space, localScale=0.01, sizeDelta=200×200)
