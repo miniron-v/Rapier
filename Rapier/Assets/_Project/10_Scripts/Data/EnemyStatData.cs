@@ -28,6 +28,8 @@ namespace Game.Enemies
         [Min(0)] public float attackRange  = 1.2f;
         [Tooltip("공격 주기 (초)")]
         [Min(0)] public float attackCooldown = 1.5f;
+        [Tooltip("공격 예고 연출 시간 (초) — 이 구간 동안 색상 변화 + 범위 표시, 저스트 회피 가능")]
+        [Min(0)] public float attackWindupDuration = 0.5f;
         [Tooltip("공격 히트박스 활성 시간 (초) — 저스트 회피 윈도우")]
         [Min(0)] public float attackHitDuration = 0.3f;
 

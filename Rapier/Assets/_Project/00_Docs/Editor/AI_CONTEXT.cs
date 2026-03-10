@@ -88,20 +88,21 @@
 // └── _Project/
 //     ├── 00_Docs/
 //     │   ├── PROJECT_GUIDELINES.md          (팀 지침서 v0.2.1)
-//     │   ├── Rapier_Prototype_DesignDoc.md  (기획서 원본 v1.2.0)
+//     │   ├── Rapier_Prototype_DesignDoc.md  (기획서 원본 v1.3.0)
 //     │   ├── Rapier_Prototype_DesignDoc.docx (팀원용 뷰어, 자동 생성)
 //     │   └── Editor/
 //     │       ├── DocSyncTool.cs
 //     │       ├── ProjectFolderSetup.cs
 //     │       ├── HudSetup.cs
-//     │       └── AI_CONTEXT.cs         ← 이 파일
+//     │       └── AI_CONTEXT.cs         <- 이 파일
 //     ├── 10_Scripts/
-//     │   ├── Core/        (ServiceLocator, Interfaces, Utils)
+//     │   ├── Core/        (ServiceLocator, Interfaces, Utils, CameraFollow)
 //     │   ├── Input/       (GestureRecognizer, InputSystemInitializer)
 //     │   ├── Combat/      (IDamageable)
 //     │   ├── Characters/  (Base, Warrior, Assassin, Rapier, Ranger)
 //     │   ├── Enemies/     (EnemyModel, EnemyView, EnemyPresenter, WaveManager, EnemyHpBar)
 //     │   ├── UI/HUD/      (HudView)
+//     │   ├── DevTools/    (JustDodgeDebugger — #if UNITY_EDITOR 전용)
 //     │   └── Data/        (CharacterStatData, EnemyStatData, NormalEnemyStatData.asset)
 //     ├── 20_Prefabs/      (Enemy_Template.prefab)
 //     ├── 30_ScriptableObjects/
@@ -144,13 +145,60 @@
 //   PlayerPresenter.cs 수정 — PublicModel 프로퍼티 추가 (HudView 접근용)
 //   HudSetup.cs — Rapier/Setup 메뉴로 씬 HUD 자동 생성
 //   씬 오브젝트 구조:
-//     Player > PlayerHudCanvas (World Space, localScale=0.01, sizeDelta=200×200)
+//     Player > PlayerHudCanvas (World Space, localScale=0.01, sizeDelta=200x200)
 //       > HpBarBg      (Square 스프라이트) > HpFill (Horizontal fill, fillAmount=1)
 //       > ChargeGaugeBg  (Circle 스프라이트, Radial360, fillAmount=1)
-//       > ChargeGaugeFill (Circle 스프라이트, Radial360, fillAmount=0→1)
+//       > ChargeGaugeFill (Circle 스프라이트, Radial360, fillAmount=0->1)
+//       > DodgeCooldownBg (Square 스프라이트, 14x60유닛, 우측 +90)
+//           > DodgeCooldownFill (Vertical fill, Bottom origin, 노랑, fillAmount=0->1)
 //     Enemy_Template.prefab > EnemyHpBarCanvas (World Space)
 //       > HpBg > HpFill (Horizontal fill) + EnemyHpBar 컴포넌트
 //   프리팹 경로: Assets/_Project/20_Prefabs/Enemy_Template.prefab
+//
+// [Phase 6] 전투 고도화 + 저스트 회피 연출
+//   [6-1] 저스트 회피 슬로우모션 (CharacterPresenterBase)
+//     - AnimationCurve slowCurve (Inspector 조정, 기본: 0->1.0, 0.5->0.15, 0.75->0.05, 1.0->1.0)
+//     - slowDuration = 3f (unscaledTime 기반)
+//     - SlowMotionRoutine(): 중복 발동 시 재시작, 사망/비활성 시 timeScale 복구
+//
+//   [6-2] 무적 프레임 + 공격 딜레이 + 범위 가시화 (CharacterPresenterBase)
+//     - Swipe 시 InvincibleRoutine(): 0.2초 무적 (unscaledTime)
+//     - AttackRoutine(): WaitForSecondsRealtime(0.5초) 딜레이, 슬로우 영향 없음
+//     - _isAttacking 플래그: 딜레이 중 연타 차단
+//     - 공격 범위 인게임 가시화: 반투명 노란 사각형 스프라이트 (동적 생성)
+//     - Gizmo 시각화 유지 (에디터 전용)
+//
+//   [6-3] 적 공격 예고 시스템 (EnemyView, EnemyPresenter, EnemyStatData)
+//     - EnemyStatData: attackWindupDuration = 0.5f 추가
+//     - EnemyView.PlayWindup(duration, attackRange): 색상 빨강 보간 + 원형 범위 스프라이트
+//     - EnemyView.StopWindup(): 색상 복구 + 범위 스프라이트 숨김
+//     - EnemyPresenter 공격 흐름: Windup -> Hit -> None
+//
+//   [6-4] PlayerPresenter TakeDamage 재설계
+//     - IsInvincible == true  -> 피해 무시 + ForceJustDodge(knockbackDir * -1f)
+//     - IsInvincible == false -> Model.TakeDamage() + View.PlayHit()
+//
+//   [6-5] 카메라 줌 펀치 (CameraFollow)
+//     - ServiceLocator 등록/해제
+//     - TriggerZoomPunch(): zoomCurve(Inspector) 기반 orthographicSize 변화
+//     - unscaledTime 기반, 중복 발동 시 재시작
+//     - HandleJustDodge()에서 호출
+//
+//   [6-6] 회피 쿨타임 (CharacterPresenterBase, CharacterStatData, CharacterModel)
+//     - CharacterStatData: dodgeCooldown = 2f 추가
+//     - CharacterModel: DodgeCooldownRatio 프로퍼티 + OnDodgeCooldownChanged 이벤트 추가
+//     - DodgeCooldownRoutine(): unscaledTime 기반 0->1 비율 전달
+//     - 쿨타임 중 HandleSwipe() 차단
+//
+//   [6-7] 회피 쿨타임 HUD (HudView, HudSetup)
+//     - DodgeCooldownFill: Vertical fill, Bottom origin, 노랑
+//     - DodgeCooldownBg: ratio >= 1f -> SetActive(false), ratio <= 0f -> SetActive(true)
+//     - 시작 시 즉시 숨김 (사용 가능 상태)
+//
+//   [6-8] JustDodgeDebugger (DevTools/JustDodgeDebugger.cs)
+//     - #if UNITY_EDITOR 전용, 씬 배치 컴포넌트
+//     - Space 키 -> OpenAttackWindow() -> ForceJustDodge(Vector2.up) -> CloseAttackWindow()
+//     - GestureRecognizer에 ForceJustDodge(Vector2 direction) 추가 (#if UNITY_EDITOR)
 
 // -------------------------------------------------------
 // [6] 미해결 이슈
@@ -160,63 +208,35 @@
 // -------------------------------------------------------
 // [7] 다음 작업
 // -------------------------------------------------------
-// [NEXT-01] ✅ 완료 — Phase 5 부록: 공격 범위 Gizmo 시각화 + ISSUE-01 해결
-//            원인: Enemy_Template.prefab의 SpriteRenderer에 Sprite 미할당 → BoxCollider2D Size 사실상 0
-// [NEXT-02] Phase 6 — 첫 번째 캐릭터 고유 메커니즘 + 저스트 회피 슬로우
+// [NEXT-01] 완료 — Phase 5 부록: 공격 범위 Gizmo 시각화 + ISSUE-01 해결
+// [NEXT-02] 완료 — Phase 6 전투 고도화 + 저스트 회피 연출 (6-1 ~ 6-8)
+// [NEXT-03] Phase 7 — 레이피어 캐릭터 고유 메커니즘
+//   예정 순서:
+//   1. EnemyModel에 Mark 시스템 추가 (MarkCount 0~5, AddMark, ConsumeAllMarks, OnMarkChanged)
+//   2. RapierPresenter.cs 작성
+//      - OnJustDodge: 공격한 적 저장 (스킬 타겟)
+//      - OnSkillRelease(justDodgeReady=true): 타겟 적에게 대시 -> 표식 부여 + 데미지 -> 원위치 복귀
+//      - OnSkillRelease(fullyCharged=true): 표식 보유 적 전체 고속 관통 공격 (중첩 수 x 데미지)
+//   3. RapierStatData SO 생성 (표식 데미지, 차지 배율 등)
+//   4. 씬 배치: PlayerPresenter -> RapierPresenter 교체
+//   5. 표식 시각화: EnemyHpBar에 표식 개수 텍스트 표시
 
 // -------------------------------------------------------
-// [MCP-02] .md 파일 읽기/편집 불가 — 템플릿 교체 방식으로 운영
+// [8] MCP 운영 제약 및 팁
+// -------------------------------------------------------
+// [MCP-01] Assets -> Reimport All 절대 실행 금지
+//   Unity 재시작 -> MCP 연결 끊김. 재컴파일은 파일 저장으로 충분.
 //
+// [MCP-02] .md 파일 직접 편집 불가 — 템플릿 교체 방식으로 운영
 //   mcpforunity는 확장자를 무조건 .cs로 치환한다.
 //   apply_text_edits, manage_script 등 모든 MCP 도구는 .cs 외 파일에 접근 불가.
-//   URI 우회도 안 됨 — mcpforunity://path/Assets/.../foo.md 로 주어도 .cs로 치환됨 (확인됨).
-//
-//   ∴ 기획서(.md)의 실질적 원본은 DocSyncTool.cs 안의 GetDesignDocTemplate() 이다.
-//   .md 파일은 해당 템플릿으로부터 덮어쓰기 생성되는 데리바드 파일이다.
-//
-//   [읽기] 기획서 현재 내용 확인:
-//     manage_script(action=read, name=DocSyncTool, path=Assets/_Project/00_Docs/Editor)
-//     → GetDesignDocTemplate() 함수 내 템플릿 문자열을 읽으면 됨
-//
-//   [편집] 기획서 수정 워크플로우:
-//     1. DocSyncTool.cs 의 GetDesignDocTemplate() 내용을 수정
-//     2. execute_menu_item('Rapier/Docs/Create DesignDoc MD') → .md 덮어쓰기
-//     3. execute_menu_item('Rapier/Docs/Sync to DOCX') → .docx 자동 동기화
-//
-//   관리 대상:
-//     Assets/_Project/00_Docs/Rapier_Prototype_DesignDoc.md  (기획서, 데리바드)
-//     Assets/_Project/00_Docs/PROJECT_GUIDELINES.md           (지침서)
-
-// [MCP-02] .md 파일 직접 편집 불가 — 이것이 중요함
-//
-//   mcpforunity는 확장자를 무조건 .cs로 치환한다.
-//   apply_text_edits, manage_script 등 모든 MCP 편집 도구는 .cs 외 파일에 접근 불가.
-//   .md, .txt, .json 등 어떤 텍스트 파일이든 URI 우회도 안 됨 (확인됨).
-//
-//   ∴ 기획서(.md)의 실질적 원본은 Assets 파일시스템의 .md가 아니라
-//      DocSyncTool.cs 안의 GetDesignDocTemplate() 함수이다.
-//      .md 파일은 항상 이 템플릿으로부터 덮어쓰기 생성되는 데리바드 파일이다.
+//   기획서(.md)의 실질적 원본은 DocSyncTool.cs 안의 GetDesignDocTemplate() 이다.
+//   .md 파일은 해당 템플릿으로부터 덮어쓰기 생성되는 파생 파일이다.
 //
 //   기획서 수정 워크플로우:
 //     1. DocSyncTool.cs 의 GetDesignDocTemplate() 내용을 수정
-//     2. execute_menu_item('Rapier/Docs/Create DesignDoc MD') → .md 덮어쓰기
-//     3. execute_menu_item('Rapier/Docs/Sync to DOCX') → .docx 자동 동기화
-//
-//   관리 대상:
-//     Assets/_Project/00_Docs/Rapier_Prototype_DesignDoc.md  (기획서, 데리바드)
-//     Assets/_Project/00_Docs/PROJECT_GUIDELINES.md           (지침서)
-
-// [MCP-01] Assets → Reimport All 절대 실행 금지
-//   Unity 재시작 → MCP 연결 끊김. 재컴파일은 파일 저장으로 충분.
-//
-// [MCP-02] .md 파일 직접 편집 불가 — 템플릿 교체 방식으로 운영
-//   1. DocSyncTool.cs 의 GetDesignDocTemplate() 내용을 수정
-//   2. 'Rapier/Docs/Create DesignDoc MD' 메뉴로 .md 덮어쓰기
-//   3. 'Rapier/Docs/Sync to DOCX' 로 .docx 자동 동기화
-//   ※ .md 원본의 실질적 원본은 DocSyncTool.cs 의 템플릿임에 유의.
-//   관리 대상:
-//     Assets/_Project/00_Docs/Rapier_Prototype_DesignDoc.md  (기획서)
-//     Assets/_Project/00_Docs/PROJECT_GUIDELINES.md           (지침서)
+//     2. execute_menu_item('Rapier/Docs/Create DesignDoc MD') -> .md 덮어쓰기
+//     3. execute_menu_item('Rapier/Docs/Sync to DOCX') -> .docx 자동 동기화
 //
 // [MCP-03] apply_text_edits 한글 endCol 문제
 //   한글 멀티바이트로 endCol 오류 발생 가능.
@@ -229,10 +249,12 @@
 //   에디터에서 직접 확인 가능한 사항(레이어, 콜라이더, 스프라이트 할당 등)은
 //   사용자에게 먼저 질문하고, MCP 작업은 원인이 확정된 후에만 진행.
 //
-// [MCP-06] 문서 관리 워크플로우 → MCP-02 참고
+// [MCP-06] 구조적 파일은 delete -> create 전체 재생성
+//   AI_CONTEXT, HudSetup 등 전체 구조가 중요한 파일은
+//   apply_text_edits 부분 수정 대신 delete_script -> manage_script create 로 재생성.
 //
 // [MCP-07] 코드로 생성한 Canvas — CanvasScaler 기본값 주의
-//   기본값 ConstantPixelSize → Device Simulator에서 UI 작게 보임.
+//   기본값 ConstantPixelSize -> Device Simulator에서 UI 작게 보임.
 //   필요 시: uiScaleMode = ScaleWithScreenSize, referenceResolution = (1080, 1920).
 //
 // [MCP-08] 코드로 생성한 RectTransform — Pivot 기본값(0.5, 0.5) 주의
@@ -244,20 +266,18 @@
 //   종류: Square / Circle / Capsule / Triangle /
 //         9Sliced / HexagonFlatTop / HexagonPointTop / IsometricDiamond
 //   용도 권장:
-//     플레이어 → Circle  /  일반 적 → Square 또는 Capsule  /  보스 → HexagonFlatTop
+//     플레이어 -> Circle  /  일반 적 -> Square 또는 Capsule  /  보스 -> HexagonFlatTop
 //
 // [TIP-02] SpriteRenderer / UI Image 생성 시 Sprite None 여부 반드시 확인
 //   SpriteRenderer: sprite=None 이면 오브젝트가 보이지 않음.
-//   UI Image: sprite=None 이면 Image.Type이 Simple로 강제 → fillAmount 완전 무시됨.
+//   UI Image: sprite=None 이면 Image.Type이 Simple로 강제 -> fillAmount 완전 무시됨.
 //             Radial360은 Circle 없으면 사각형으로 렌더링됨.
 //   코드로 생성 시 TIP-01 스프라이트를 항상 함께 로드하여 할당.
-//     Horizontal fill → Square.png  /  Radial360 → Circle.png
-//     에디터 스크립트 → AssetDatabase.LoadAssetAtPath<Sprite>()
-//     런타임 스크립트 → Resources.Load<Sprite>() 또는 SO 레퍼런스
+//     Horizontal fill -> Square.png  /  Radial360 -> Circle.png  /  Vertical fill -> Square.png
 //
 // [TIP-03] GestureRecognizer Hold 판정 타이밍 주의
 //   Hold 이벤트는 판정 직후부터 발생. ChargeRequiredTime이 짧으면
-//   최초 이벤트 수신 시점에 이미 duration 초과 → 차지가 즉시 1로 보임.
+//   최초 이벤트 수신 시점에 이미 duration 초과 -> 차지가 즉시 1로 보임.
 //   프로토타입 단계에서는 ChargeRequiredTime >= 1.0f 권장.
 
 // -------------------------------------------------------
@@ -277,7 +297,7 @@
 //
 // [MISTAKE-02] UI Image에 Sprite 미할당으로 Filled 모드 무시됨
 //   상황: HudSetup.cs에서 ChargeGaugeFill, HpFill Image 코드 생성 시
-//   실수: Sprite=None 상태로 Image.Type.Filled 설정 → fillAmount 완전 무시됨
+//   실수: Sprite=None 상태로 Image.Type.Filled 설정 -> fillAmount 완전 무시됨
 //   교훈: Filled 모드 Image 생성 시 TIP-01 스프라이트를 반드시 동시에 할당할 것
 //
 // [MISTAKE-03] apply_text_edits로 긴 메서드 범위를 잘못 산정해 중괄호 불균형 발생
@@ -287,7 +307,7 @@
 //
 // [MISTAKE-04] ChargeRequiredTime을 짧게 설정해 차지가 즉시 1로 표시됨
 //   상황: CharacterStatData.chargeRequiredTime = 0.3f 설정 시
-//   실수: Hold 판정 직후 이미 duration이 초과 → 최초 이벤트부터 ratio = 1
+//   실수: Hold 판정 직후 이미 duration이 초과 -> 최초 이벤트부터 ratio = 1
 //   교훈: TIP-03 참고. 프로토타입 단계에서는 chargeRequiredTime >= 1.0f 권장
 //
 // [MISTAKE-05] 원인 미확정 상태에서 MCP로 코드 수정하여 토큰 낭비
@@ -298,6 +318,23 @@
 //
 // [MISTAKE-06] apply_text_edits 반복 사용으로 AI_CONTEXT 내용 오염
 //   상황: AI_CONTEXT.cs를 여러 세션에 걸쳐 apply_text_edits로 부분 수정
-//   실수: 라인 번호 오산으로 내용 중복·누락·엉뚱한 위치 삽입이 누적됨
+//   실수: 라인 번호 오산으로 내용 중복, 누락, 엉뚱한 위치 삽입이 누적됨
 //   교훈: AI_CONTEXT처럼 전체 구조가 중요한 파일은 부분 수정보다
 //         delete_script 후 manage_script create로 전체 재생성하는 방식이 안전
+//
+// [MISTAKE-07] SpriteAtlasManager.LoadAtlas() 잘못된 코드 삽입
+//   상황: CreateAttackRangeIndicator()에서 내장 스프라이트 로드 시도
+//   실수: SpriteAtlasManager.LoadAtlas()는 해당 시그니처가 존재하지 않음 -> CS0117 컴파일 오류
+//   교훈: 런타임에서 내장 스프라이트가 필요할 경우 Resources.Load 또는 SO 레퍼런스 사용.
+//         에디터 스크립트가 아닌 런타임 스크립트에서는 AssetDatabase 사용 불가.
+//
+// [MISTAKE-08] Editor 폴더에 런타임 컴포넌트 배치
+//   상황: JustDodgeDebugger.cs를 00_Docs/Editor/ 에 생성
+//   실수: Editor 폴더 내 스크립트는 씬에 부착 불가 -> MonoBehaviour 컴포넌트로 쓸 수 없음
+//   교훈: 씬에 부착하는 컴포넌트는 반드시 Editor 폴더 바깥(DevTools 등)에 배치할 것
+//
+// [MISTAKE-09] Game.Debug 네임스페이스 사용으로 UnityEngine.Debug 충돌
+//   상황: JustDodgeDebugger.cs 최초 작성 시
+//   실수: namespace Game.Debug 선언 -> UnityEngine.Debug와 이름 충돌로 컴파일 오류
+//   교훈: 네임스페이스 이름은 UnityEngine 내장 클래스명과 겹치지 않도록 주의.
+//         DevTools 계열은 Game.DevTools 네임스페이스 사용

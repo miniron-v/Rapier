@@ -7,30 +7,33 @@ namespace Game.UI
 {
     /// <summary>
     /// 플레이어 HUD를 담당한다.
-    ///   - 화면 상단: HP 바 (Slider 기반)
-    ///   - 플레이어 주변: 원형 차지 게이지 (Image Radial360 fill)
+    ///   - HP 바 (Horizontal fill)
+    ///   - 원형 차지 게이지 (Radial360 fill)
+    ///   - 회피 쿨타임 게이지 (Vertical fill, 노랑, 캐릭터 우측 세로 막대)
+    ///     → 게이지가 가득 차면(ratio == 1f) 배경째 숨김
+    ///     → 회피 사용 시(ratio == 0f) 다시 표시
     ///
     /// [연결 방식]
     ///   Start에서 ServiceLocator로 PlayerPresenter를 찾아
-    ///   Model.OnHpChanged / Model.OnChargeChanged 를 구독한다.
-    ///   PlayerPresenter가 ServiceLocator에 등록되어 있어야 한다.
+    ///   Model 이벤트를 구독한다.
     /// </summary>
     public class HudView : MonoBehaviour
     {
-        // ── Inspector ─────────────────────────────────────────────
-        // ── Inspector (자동 찾기 실패 시 수동 연결용) ────────────────
         [Header("HP 바 Fill Image")]
         [SerializeField] private Image _hpFillImage;
 
         [Header("차지 게이지 Fill Image (Radial360)")]
         [SerializeField] private Image _chargeImage;
 
-        // ── 내부 참조 ─────────────────────────────────────────────
-        private CharacterModel _playerModel;
+        [Header("회피 쿨타임 게이지 Fill Image (Vertical)")]
+        [SerializeField] private Image _dodgeCooldownImage;
 
-        // ── 라이프사이클 ──────────────────────────────────────────
-private void Start()
+        private CharacterModel _playerModel;
+        private GameObject     _dodgeCooldownBg; // 배경까지 통째로 숨김/보임
+
+        private void Start()
         {
+            // 이름으로 자동 탐색
             if (_hpFillImage == null)
             {
                 var go = FindInChildren(transform, "HpFill");
@@ -41,6 +44,16 @@ private void Start()
                 var go = FindInChildren(transform, "ChargeGaugeFill");
                 if (go != null) _chargeImage = go.GetComponent<Image>();
             }
+            if (_dodgeCooldownImage == null)
+            {
+                var go = FindInChildren(transform, "DodgeCooldownFill");
+                if (go != null)
+                {
+                    _dodgeCooldownImage = go.GetComponent<Image>();
+                    // 배경은 Fill의 부모
+                    _dodgeCooldownBg = go.transform.parent?.gameObject;
+                }
+            }
 
             var player = ServiceLocator.Get<PlayerPresenter>();
             if (player == null) { Debug.LogError("[HudView] PlayerPresenter가 ServiceLocator에 없음."); return; }
@@ -48,19 +61,24 @@ private void Start()
             _playerModel = player.PublicModel;
             if (_playerModel == null) { Debug.LogError("[HudView] PlayerPresenter.PublicModel이 null."); return; }
 
-            _playerModel.OnHpChanged     += OnHpChanged;
-            _playerModel.OnChargeChanged += OnChargeChanged;
+            _playerModel.OnHpChanged            += OnHpChanged;
+            _playerModel.OnChargeChanged        += OnChargeChanged;
+            _playerModel.OnDodgeCooldownChanged += OnDodgeCooldownChanged;
 
             SetHp(_playerModel.CurrentHp / _playerModel.StatData.maxHp);
             SetCharge(0f);
-            Debug.Log($"[HudView] 초기화 완료. HpFill={_hpFillImage != null}, ChargeImage={_chargeImage != null}");
+            SetDodgeCooldown(1f); // 시작 시 즉시 사용 가능 → 게이지 가득 → 숨김
+
+            Debug.Log($"[HudView] 초기화 완료. HpFill={_hpFillImage != null}, " +
+                      $"ChargeImage={_chargeImage != null}, DodgeCooldown={_dodgeCooldownImage != null}");
         }
 
         private void OnDestroy()
         {
             if (_playerModel == null) return;
-            _playerModel.OnHpChanged     -= OnHpChanged;
-            _playerModel.OnChargeChanged -= OnChargeChanged;
+            _playerModel.OnHpChanged            -= OnHpChanged;
+            _playerModel.OnChargeChanged        -= OnChargeChanged;
+            _playerModel.OnDodgeCooldownChanged -= OnDodgeCooldownChanged;
         }
 
         // ── 이벤트 핸들러 ─────────────────────────────────────────
@@ -70,10 +88,11 @@ private void Start()
             SetHp(currentHp / _playerModel.StatData.maxHp);
         }
 
-private void OnChargeChanged(float ratio) => SetCharge(ratio);
+        private void OnChargeChanged(float ratio)        => SetCharge(ratio);
+        private void OnDodgeCooldownChanged(float ratio) => SetDodgeCooldown(ratio);
 
         // ── UI 갱신 ───────────────────────────────────────────────
-private void SetHp(float ratio)
+        private void SetHp(float ratio)
         {
             if (_hpFillImage != null)
                 _hpFillImage.fillAmount = Mathf.Clamp01(ratio);
@@ -84,9 +103,22 @@ private void SetHp(float ratio)
             if (_chargeImage != null)
                 _chargeImage.fillAmount = Mathf.Clamp01(ratio);
         }
-    
 
-private static Transform FindInChildren(Transform parent, string targetName)
+        private void SetDodgeCooldown(float ratio)
+        {
+            if (_dodgeCooldownImage != null)
+                _dodgeCooldownImage.fillAmount = Mathf.Clamp01(ratio);
+
+            if (_dodgeCooldownBg == null) return;
+
+            if (ratio >= 1f)
+                _dodgeCooldownBg.SetActive(false); // 가득 참 → 숨김
+            else if (ratio <= 0f)
+                _dodgeCooldownBg.SetActive(true);  // 회피 사용 → 표시
+        }
+
+        // ── 유틸 ──────────────────────────────────────────────────
+        private static Transform FindInChildren(Transform parent, string targetName)
         {
             foreach (Transform child in parent)
             {
@@ -96,5 +128,5 @@ private static Transform FindInChildren(Transform parent, string targetName)
             }
             return null;
         }
-}
+    }
 }

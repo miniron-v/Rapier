@@ -25,6 +25,9 @@ namespace Game.Characters
 
         [Header("회피")]
         [Min(0)] public float dodgeInvincibleDuration = 0.2f;
+        [Tooltip("회피 쿨늤운 (초). 이 시간이 지나야 다시 회피 가능.")]
+        [Min(0)] public float dodgeCooldown = 2f;
+
 
         [Header("대시 (Swipe 회피)")]
         [Tooltip("대시 이동 거리 (월드 단위)")]
