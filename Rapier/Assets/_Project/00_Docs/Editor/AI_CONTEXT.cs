@@ -48,13 +48,15 @@
 // [2] 캐릭터 목록 및 메커니즘
 // -------------------------------------------------------
 // 공통 입력 4가지: Drag(Move) / Tap(Attack) / Swipe(Dodge) / Hold→Release(Charge→Skill)
+// 저스트 회피: 적 공격 타이밍에 정확히 Swipe 시 발동 → 게임 슬로우 + 캐릭터 고유 스킬 즉시 발동
+//
+// Warrior  : Hold 중 방패 방어 (피해 감소/무효화) 추가. Hold+Swipe = 방패 밀쳐내기. 패링 성공 시 즉시 반격.
 // Assassin : 저스트 회피 시 회피 전 위치에 잔상 생성 (피해/어그로 없음).
-//             잔상 활성 중 본체의 모든 공격(Tap, 차지 스킬)에 잔상이 동시에 동참.
-//             고유 스킬(저스트 회피 후 슬로우 중 Hold) / 차지 스킬 = 360도 광역 공격.
-// Rapier   : 저스트 회피 후 슬로우 중 Hold(고유 스킬) = 공격한 적에게 대시 → 표식 부여 + 데미지 → 원위치 복귀. 표식 최대 5중첩.
-//             차지 스킬 = 표식 있는 모든 적을 고속 관통 공격. 각 적은 보유 표식 중첩 수만큼 피해.
-// Rapier   : 회피 시 적에게 표식 부여. Hold = 표식 소모하며 연쇄 대시 타격.
-// Ranger   : 원거리 사격. 회피 시 지뢰 설치. 저스트 회피 시 즉시 강화 화살.
+//            잔상 활성 중 본체의 모든 공격(Tap, 차지 스킬)에 잔상이 동시에 동참.
+//            고유 스킬 / 차지 스킬 = 360도 광역 공격.
+// Rapier   : 저스트 회피 후 고유 스킬 = 공격한 적에게 대시 → 표식 부여 + 데미지 → 원위치 복귀. 표식 최대 5중첩.
+//            차지 스킬 = 표식 있는 모든 적을 고속 관통 공격. 각 적은 보유 표식 중첩 수만큼 피해.
+// Ranger   : 원거리 사격(Tap). 일반 회피 시 지뢰 설치. 고유 스킬 = 강화 화살 발사.
 
 // -------------------------------------------------------
 // [3] 기술 결정 사항 및 배경
@@ -80,15 +82,18 @@
 
 // -------------------------------------------------------
 // [4] 폴더 구조 스냅샷
+// -------------------------------------------------------
+// Assets/
+// ├── Rapier-Private/
+// └── _Project/
 //     ├── 00_Docs/
 //     │   ├── PROJECT_GUIDELINES.md          (팀 지침서 v0.2.1)
 //     │   ├── Rapier_Prototype_DesignDoc.md  (기획서 원본 v1.2.0)
-//     │   ├── Rapier_Prototype_DesignDoc.docx (팀원용 뷰어 파일, 자동 생성)
+//     │   ├── Rapier_Prototype_DesignDoc.docx (팀원용 뷰어, 자동 생성)
 //     │   └── Editor/
 //     │       ├── DocSyncTool.cs
 //     │       ├── ProjectFolderSetup.cs
 //     │       ├── HudSetup.cs
-//     │       └── AI_CONTEXT.cs         ← 이 파일
 //     │       └── AI_CONTEXT.cs         ← 이 파일
 //     ├── 10_Scripts/
 //     │   ├── Core/        (ServiceLocator, Interfaces, Utils)
@@ -127,10 +132,16 @@
 //   IDamageable.cs / EnemyStatData.cs / EnemyModel.cs / EnemyView.cs
 //   EnemyPresenter.cs — 추적 AI, AttackWindow 카운터
 //   WaveManager.cs    — 10초 웨이브, 오브젝트 풀, GetNearestEnemy
+//   Enemy_Template.prefab — Enemy 레이어(8번), BoxCollider2D
+//   GestureRecognizer: _attackWindowCount int 카운터 (bool→int)
+//
+// [Phase 5] UI 연결
+//   HudView.cs — Player에 부착. Start()에서 자식 Canvas 내 이름으로 자동 탐색.
 //                Model.OnHpChanged     → HpFill.fillAmount
 //                Model.OnChargeChanged → ChargeGaugeFill.fillAmount
-//     Assets/_Project/00_Docs/PROJECT_GUIDELINES.md                  (지침서 원본)
-//
+//   EnemyHpBar.cs — 적 위 World Space HP 바. EnemyModel.OnHpChanged 구독.
+//   EnemyPresenter.cs 수정 — Awake에서 GetComponentInChildren<EnemyHpBar>, Spawn()에서 Init()
+//   PlayerPresenter.cs 수정 — PublicModel 프로퍼티 추가 (HudView 접근용)
 //   HudSetup.cs — Rapier/Setup 메뉴로 씬 HUD 자동 생성
 //   씬 오브젝트 구조:
 //     Player > PlayerHudCanvas (World Space, localScale=0.01, sizeDelta=200×200)
@@ -141,56 +152,84 @@
 //       > HpBg > HpFill (Horizontal fill) + EnemyHpBar 컴포넌트
 //   프리팹 경로: Assets/_Project/20_Prefabs/Enemy_Template.prefab
 
+// -------------------------------------------------------
 // [6] 미해결 이슈
 // -------------------------------------------------------
 // 현재 미해결 이슈 없음.
 
-//   Physics2D.OverlapBoxAll이 적을 감지하지 못함.
-//   공격 범위 Gizmo 시각화 후 원인 확인 예정.
-
+// -------------------------------------------------------
+// [7] 다음 작업
 // -------------------------------------------------------
 // [NEXT-01] ✅ 완료 — Phase 5 부록: 공격 범위 Gizmo 시각화 + ISSUE-01 해결
 //            원인: Enemy_Template.prefab의 SpriteRenderer에 Sprite 미할당 → BoxCollider2D Size 사실상 0
-// [NEXT-02] Phase 6 — 첫 번째 쾐릭터 고유 메커니즘 + 저스트 회피 슬로우
-// [NEXT-01] Phase 5 부록 — 플레이어 공격 범위 시각화 + ISSUE-01 해결
 // [NEXT-02] Phase 6 — 첫 번째 캐릭터 고유 메커니즘 + 저스트 회피 슬로우
 
 // -------------------------------------------------------
-// [8] 새 세션 시작 시 AI 체크리스트
-// -------------------------------------------------------
-// □ 이 파일 읽기
-// □ read_console — 컴파일 에러 확인
-// □ find_gameobjects — 씬 현재 상태 확인
-// □ [6] 미해결 이슈 확인
-// □ [7] 오늘 진행할 항목 사용자와 협의
+// [MCP-02] .md 파일 읽기/편집 불가 — 템플릿 교체 방식으로 운영
+//
+//   mcpforunity는 확장자를 무조건 .cs로 치환한다.
+//   apply_text_edits, manage_script 등 모든 MCP 도구는 .cs 외 파일에 접근 불가.
+//   URI 우회도 안 됨 — mcpforunity://path/Assets/.../foo.md 로 주어도 .cs로 치환됨 (확인됨).
+//
+//   ∴ 기획서(.md)의 실질적 원본은 DocSyncTool.cs 안의 GetDesignDocTemplate() 이다.
+//   .md 파일은 해당 템플릿으로부터 덮어쓰기 생성되는 데리바드 파일이다.
+//
+//   [읽기] 기획서 현재 내용 확인:
+//     manage_script(action=read, name=DocSyncTool, path=Assets/_Project/00_Docs/Editor)
+//     → GetDesignDocTemplate() 함수 내 템플릿 문자열을 읽으면 됨
+//
+//   [편집] 기획서 수정 워크플로우:
+//     1. DocSyncTool.cs 의 GetDesignDocTemplate() 내용을 수정
+//     2. execute_menu_item('Rapier/Docs/Create DesignDoc MD') → .md 덮어쓰기
+//     3. execute_menu_item('Rapier/Docs/Sync to DOCX') → .docx 자동 동기화
+//
+//   관리 대상:
+//     Assets/_Project/00_Docs/Rapier_Prototype_DesignDoc.md  (기획서, 데리바드)
+//     Assets/_Project/00_Docs/PROJECT_GUIDELINES.md           (지침서)
 
-// [MCP-02] .md 파일 직접 편집 불가
-//   DocSyncTool.cs 의 'Rapier/Docs/Create DesignDoc MD' 메뉴로 덮어쓰기 실행.
-//   수정 후 'Rapier/Docs/Sync to DOCX'로 .docx 자동 동기화.
+// [MCP-02] .md 파일 직접 편집 불가 — 이것이 중요함
+//
+//   mcpforunity는 확장자를 무조건 .cs로 치환한다.
+//   apply_text_edits, manage_script 등 모든 MCP 편집 도구는 .cs 외 파일에 접근 불가.
+//   .md, .txt, .json 등 어떤 텍스트 파일이든 URI 우회도 안 됨 (확인됨).
+//
+//   ∴ 기획서(.md)의 실질적 원본은 Assets 파일시스템의 .md가 아니라
+//      DocSyncTool.cs 안의 GetDesignDocTemplate() 함수이다.
+//      .md 파일은 항상 이 템플릿으로부터 덮어쓰기 생성되는 데리바드 파일이다.
+//
+//   기획서 수정 워크플로우:
+//     1. DocSyncTool.cs 의 GetDesignDocTemplate() 내용을 수정
+//     2. execute_menu_item('Rapier/Docs/Create DesignDoc MD') → .md 덮어쓰기
+//     3. execute_menu_item('Rapier/Docs/Sync to DOCX') → .docx 자동 동기화
+//
+//   관리 대상:
+//     Assets/_Project/00_Docs/Rapier_Prototype_DesignDoc.md  (기획서, 데리바드)
+//     Assets/_Project/00_Docs/PROJECT_GUIDELINES.md           (지침서)
+
 // [MCP-01] Assets → Reimport All 절대 실행 금지
 //   Unity 재시작 → MCP 연결 끊김. 재컴파일은 파일 저장으로 충분.
 //
-// [MCP-02] .md 파일 직접 편집 불가
-//   GuidelinesEditor.cs 의 UpdateSection() / AppendChangeLog() 경유.
+// [MCP-02] .md 파일 직접 편집 불가 — 템플릿 교체 방식으로 운영
+//   1. DocSyncTool.cs 의 GetDesignDocTemplate() 내용을 수정
+//   2. 'Rapier/Docs/Create DesignDoc MD' 메뉴로 .md 덮어쓰기
+//   3. 'Rapier/Docs/Sync to DOCX' 로 .docx 자동 동기화
+//   ※ .md 원본의 실질적 원본은 DocSyncTool.cs 의 템플릿임에 유의.
+//   관리 대상:
+//     Assets/_Project/00_Docs/Rapier_Prototype_DesignDoc.md  (기획서)
+//     Assets/_Project/00_Docs/PROJECT_GUIDELINES.md           (지침서)
 //
 // [MCP-03] apply_text_edits 한글 endCol 문제
 //   한글 멀티바이트로 endCol 오류 발생 가능.
 //   대안: endLine+1, endCol=1 로 다음 줄 첫 칸까지 포함.
 //
-// [MCP-04] batch_execute 는 manage_asset 미지원
-//   폴더 대량 생성 → 에디터 스크립트 작성 후 메뉴로 실행.
+// [MCP-04] batch_execute 는 manage_asset, execute_menu_item 미지원
+//   순차 실행으로 대체.
 //
-//     Assets/_Project/00_Docs/Rapier_Prototype_DesignDoc.md  (기획서 원본)
-//     Assets/_Project/00_Docs/PROJECT_GUIDELINES.md           (지침서 원본)
-//       수동으로 Size를 지정할 것.
-//   UI Image (HpBar 등): Filled 모드에서 참조하는 Image 컴포넌트가 None이면
-//     fillAmount 갱신이 완전히 무시됨. 코드로 HpBar 생성 시 Image 참조를 반드시 null 체크할 것.
+// [MCP-05] 원인 미확정 상태에서 MCP 코드 수정 금지
+//   에디터에서 직접 확인 가능한 사항(레이어, 콜라이더, 스프라이트 할당 등)은
+//   사용자에게 먼저 질문하고, MCP 작업은 원인이 확정된 후에만 진행.
 //
-//   순수 주석 파일(AI_CONTEXT 등)은 apply_text_edits(라인 번호 기반) 사용.
-//
-// [MCP-06] Unity 내부에 바이너리 파일 직접 생성 불가
-//   Claude와 Unity는 서로 다른 파일 시스템. .docx 등은 Claude가 생성 후
-//   다운로드 링크 제공 → 사용자가 직접 드래그 앤 드롭.
+// [MCP-06] 문서 관리 워크플로우 → MCP-02 참고
 //
 // [MCP-07] 코드로 생성한 Canvas — CanvasScaler 기본값 주의
 //   기본값 ConstantPixelSize → Device Simulator에서 UI 작게 보임.
@@ -232,13 +271,6 @@
 //        교훈: 앞으로 어떻게 할 것인가
 //
 // [MISTAKE-01] execute_menu_item 미사용으로 사용자에게 수동 실행 요청
-//
-// [MISTAKE-05] 원인 미확정 상태에서 MCP로 코드 수정하여 토큰 낙비
-//   상황: OverlapBoxAll hits.Length=0 디버깅 중 레이어/콜라이더 정상 여부 확인 시
-//   실수: 에디터에서 바로 확인 가능한 사항(레이어, 콜라이더, 스프라이트 할당 등)을
-//         사용자에게 먼저 질문하지 않고 MCP로 코드를 수정함
-//   교훈: 에디터에서 직접 확인 가능한 사항은 사용자에게 먼저 질문하고,
-//         MCP 작업은 원인이 확정된 후에만 진행할 것
 //   상황: HUD 셋업 메뉴(Rapier/Setup/Rebuild HUD Canvas) 실행 시
 //   실수: execute_menu_item으로 직접 실행 가능한 메뉴를 사용자에게 넘김
 //   교훈: Unity 에디터 메뉴는 항상 execute_menu_item으로 AI가 직접 실행할 것
@@ -257,3 +289,15 @@
 //   상황: CharacterStatData.chargeRequiredTime = 0.3f 설정 시
 //   실수: Hold 판정 직후 이미 duration이 초과 → 최초 이벤트부터 ratio = 1
 //   교훈: TIP-03 참고. 프로토타입 단계에서는 chargeRequiredTime >= 1.0f 권장
+//
+// [MISTAKE-05] 원인 미확정 상태에서 MCP로 코드 수정하여 토큰 낭비
+//   상황: OverlapBoxAll hits.Length=0 디버깅 중 레이어/콜라이더 정상 여부 확인 시
+//   실수: 에디터에서 바로 확인 가능한 사항을 사용자에게 먼저 질문하지 않고 MCP로 코드를 수정함
+//   교훈: 에디터에서 직접 확인 가능한 사항은 사용자에게 먼저 질문하고,
+//         MCP 작업은 원인이 확정된 후에만 진행할 것
+//
+// [MISTAKE-06] apply_text_edits 반복 사용으로 AI_CONTEXT 내용 오염
+//   상황: AI_CONTEXT.cs를 여러 세션에 걸쳐 apply_text_edits로 부분 수정
+//   실수: 라인 번호 오산으로 내용 중복·누락·엉뚱한 위치 삽입이 누적됨
+//   교훈: AI_CONTEXT처럼 전체 구조가 중요한 파일은 부분 수정보다
+//         delete_script 후 manage_script create로 전체 재생성하는 방식이 안전
