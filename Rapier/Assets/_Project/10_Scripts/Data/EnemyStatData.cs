@@ -17,7 +17,6 @@ namespace Game.Enemies
         [Tooltip("시각적으로 표시할 스프라이트. SO에서 할당.")]
         public UnityEngine.Sprite sprite;
 
-
         [Header("전투 스탯")]
         [Min(1)] public float maxHp       = 250f;
         [Min(0)] public float attackPower = 50f;
@@ -25,13 +24,13 @@ namespace Game.Enemies
 
         [Header("공격")]
         [Tooltip("공격 범위 반경 (월드 단위)")]
-        [Min(0)] public float attackRange  = 1.2f;
-        [Tooltip("공격 주기 (초)")]
-        [Min(0)] public float attackCooldown = 1.5f;
-        [Tooltip("공격 예고 연출 시간 (초) — 이 구간 동안 색상 변화 + 범위 표시, 저스트 회피 가능")]
-        [Min(0)] public float attackWindupDuration = 0.5f;
-        [Tooltip("공격 히트박스 활성 시간 (초) — 저스트 회피 윈도우")]
-        [Min(0)] public float attackHitDuration = 0.3f;
+        [Min(0)] public float attackRange = 1.2f;
+        [Tooltip("공격 예고 연출 시간 (초) — 범위 인디케이터 알파 0.5→1.0, 저스트 회피 가능")]
+        [Min(0)] public float attackWindupDuration = 0.3f;
+        [Tooltip("공격 히트박스 활성 시간 (초)")]
+        [Min(0)] public float attackHitDuration = 0.05f;
+        [Tooltip("공격 후 정지 딜레이 (초) — 이후 다시 추적 시작")]
+        [Min(0)] public float postAttackDelay = 0.3f;
 
         [Header("AI")]
         [Tooltip("플레이어 접근 시 랜덤 오프셋 각도 범위 (도)")]

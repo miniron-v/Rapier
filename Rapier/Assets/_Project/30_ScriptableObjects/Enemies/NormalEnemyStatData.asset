@@ -18,6 +18,7 @@ MonoBehaviour:
   attackPower: 50
   moveSpeed: 2.5
   attackRange: 1.2
-  attackCooldown: 1.5
+  attackWindupDuration: 0.5
   attackHitDuration: 0.3
+  postAttackDelay: 0.3
   approachAngleVariance: 30
