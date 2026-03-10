@@ -10,17 +10,18 @@ namespace Game.Enemies
     /// 적 AI 및 전투 로직.
     ///
     /// [공격 흐름]
-    ///   Windup  → 색상 변화 + 범위 표시 (attackWindupDuration 초)
-    ///   Hit     → playerDamageable.TakeDamage() 호출
-    ///             피해 적용 여부는 PlayerPresenter.TakeDamage() 내부에서 결정
-    ///             (무적 중이면 JustDodge 트리거, 피해 없음)
+    ///   Chase      → 플레이어 추적. 범위 진입 즉시 Windup 시작.
+    ///   Windup     → 정지. 범위 인디케이터 알파 0.5→1.0 (attackWindupDuration 초)
+    ///   Hit        → TakeDamage 호출. 즉시 PostAttack 진입.
+    ///   PostAttack → 정지 (postAttackDelay 초). 이후 Chase 복귀.
     ///
-    /// [AI 흐름]
-    ///   Idle   → 플레이어 탐색
-    ///   Chase  → 플레이어 방향으로 분산 접근
-    ///   Windup → 공격 예고 연출
-    ///   Attack → 피해 적용
-    ///   Dead   → EnemyView.PlayDeath() 호출, WaveManager가 회수
+    /// [총 공격 소요 시간]
+    ///   attackWindupDuration(0.3) + attackHitDuration(0.05) + postAttackDelay(0.3) ≈ 0.65초
+    ///   ※ Inspector에서 조정 가능
+    ///
+    /// [피해 판정]
+    ///   PlayerPresenter.TakeDamage() 내부에서 무적 여부 결정.
+    ///   무적 중이면 JustDodge 트리거, 피해 없음.
     /// </summary>
     [RequireComponent(typeof(EnemyView))]
     public class EnemyPresenter : MonoBehaviour, IDamageable
@@ -37,10 +38,8 @@ namespace Game.Enemies
         private EnemyHpBar     _hpBar;
         private Vector2        _approachOffset;
 
-        private float _attackCooldownTimer;
-
         // ── 공격 단계 ─────────────────────────────────────────────
-        private enum AttackPhase { None, Windup, Hit }
+        private enum AttackPhase { Chase, Windup, Hit, PostAttack }
         private AttackPhase _attackPhase;
         private float       _phaseTimer;
 
@@ -72,9 +71,8 @@ namespace Game.Enemies
             _model    = new EnemyModel(statData);
             _model.OnDeath += HandleDeath;
 
-            transform.position   = position;
-            _attackCooldownTimer = statData.attackCooldown;
-            _attackPhase         = AttackPhase.None;
+            transform.position = position;
+            _attackPhase       = AttackPhase.Chase;
 
             if (_sr != null && statData.sprite != null)
                 _sr.sprite = statData.sprite;
@@ -116,33 +114,46 @@ namespace Game.Enemies
         {
             if (!IsAlive || _playerTransform == null) return;
 
-            float dist = Vector2.Distance(transform.position, _playerTransform.position);
-
             switch (_attackPhase)
             {
+                case AttackPhase.Chase:
+                    UpdateChase();
+                    break;
+
                 case AttackPhase.Windup:
                     _phaseTimer -= Time.deltaTime;
                     if (_phaseTimer <= 0f)
                         EnterHitPhase();
-                    return;
+                    break;
 
                 case AttackPhase.Hit:
                     _phaseTimer -= Time.deltaTime;
                     if (_phaseTimer <= 0f)
-                        EndAttack();
-                    return;
-            }
+                        EnterPostAttackPhase();
+                    break;
 
-            // 공격 범위 내: 쿨다운 감소
+                case AttackPhase.PostAttack:
+                    _phaseTimer -= Time.deltaTime;
+                    if (_phaseTimer <= 0f)
+                        EnterChasePhase();
+                    break;
+            }
+        }
+
+        // ── 상태 업데이트 ─────────────────────────────────────────
+
+        private void UpdateChase()
+        {
+            float dist = Vector2.Distance(transform.position, _playerTransform.position);
+
+            // 범위 진입 즉시 공격
             if (dist <= _statData.attackRange)
             {
-                _attackCooldownTimer -= Time.deltaTime;
-                if (_attackCooldownTimer <= 0f)
-                    EnterWindupPhase();
+                EnterWindupPhase();
                 return;
             }
 
-            // 추적
+            // 추적 이동
             var dir     = GetDirectionToPlayer() + _approachOffset;
             var nextPos = (Vector2)transform.position
                           + dir.normalized * (_statData.moveSpeed * Time.deltaTime);
@@ -151,12 +162,16 @@ namespace Game.Enemies
 
         // ── 공격 단계 전환 ────────────────────────────────────────
 
+        private void EnterChasePhase()
+        {
+            _attackPhase = AttackPhase.Chase;
+        }
+
         private void EnterWindupPhase()
         {
             _attackPhase = AttackPhase.Windup;
             _phaseTimer  = _statData.attackWindupDuration;
             _view.PlayWindup(_statData.attackWindupDuration, _statData.attackRange);
-            Debug.Log($"[EnemyPresenter] {name} Windup 시작 ({_statData.attackWindupDuration}초)");
         }
 
         private void EnterHitPhase()
@@ -165,26 +180,22 @@ namespace Game.Enemies
             _phaseTimer  = _statData.attackHitDuration;
             _view.StopWindup();
 
-            // 플레이어가 아직 범위 내에 있을 때만 피해 적용
             if (_playerTransform != null &&
                 Vector2.Distance(transform.position, _playerTransform.position) <= _statData.attackRange)
             {
                 _playerDamageable?.TakeDamage(_statData.attackPower, GetDirectionToPlayer());
             }
-
-            Debug.Log($"[EnemyPresenter] {name} Hit 발동");
         }
 
-        private void EndAttack()
+        private void EnterPostAttackPhase()
         {
-            _attackPhase         = AttackPhase.None;
-            _attackCooldownTimer = _statData.attackCooldown;
-            Debug.Log($"[EnemyPresenter] {name} 공격 종료, 쿨다운 시작");
+            _attackPhase = AttackPhase.PostAttack;
+            _phaseTimer  = _statData.postAttackDelay;
         }
 
         private void HandleDeath()
         {
-            _attackPhase = AttackPhase.None;
+            _attackPhase = AttackPhase.Chase;
             _view.PlayDeath();
         }
 

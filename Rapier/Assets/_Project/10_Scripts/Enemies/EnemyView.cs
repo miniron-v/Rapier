@@ -5,6 +5,11 @@ namespace Game.Enemies
     /// <summary>
     /// 적 시각 표현.
     /// 피격 플래시, 사망 페이드, Windup 예고 연출, 공격 범위 가시화를 담당한다.
+    ///
+    /// [Windup 연출]
+    ///   본체 색상은 변화 없음.
+    ///   범위 인디케이터: baseColor * 0.6f (어둡게) 로 고정.
+    ///   인디케이터 알파: 0.5 → 1.0 으로 보간. 완전 불투명 시 공격 발동.
     /// </summary>
     public class EnemyView : MonoBehaviour
     {
@@ -23,9 +28,6 @@ namespace Game.Enemies
         private GameObject     _rangeIndicator;
         private SpriteRenderer _rangeSr;
 
-        // ── Windup 색상 ───────────────────────────────────────────
-        private static readonly Color WindupColor = new Color(1f, 0.2f, 0.2f);
-
         private void Awake()
         {
             _sr        = GetComponent<SpriteRenderer>();
@@ -34,27 +36,30 @@ namespace Game.Enemies
 
         private void Update()
         {
-            // 피격 플래시
+            // 피격 플래시 복구
             if (_flashTimer > 0f)
             {
                 _flashTimer -= Time.deltaTime;
-                if (_flashTimer <= 0f && _sr != null && !_isWindingUp)
+                if (_flashTimer <= 0f && _sr != null)
                     _sr.color = _baseColor;
             }
 
-            // Windup 색상 보간 (baseColor → WindupColor)
-            if (_isWindingUp)
+            // Windup: 인디케이터 알파 0.5 → 1.0 보간
+            if (_isWindingUp && _rangeSr != null)
             {
                 _windupTimer += Time.deltaTime;
-                float t = Mathf.Clamp01(_windupTimer / _windupDuration);
-                if (_sr != null)
-                    _sr.color = Color.Lerp(_baseColor, WindupColor, t);
+                float t     = Mathf.Clamp01(_windupTimer / _windupDuration);
+                float alpha = Mathf.Lerp(0.5f, 1.0f, t);
+
+                var c   = _rangeSr.color;
+                c.a     = alpha;
+                _rangeSr.color = c;
             }
         }
 
         // ── 공개 API ──────────────────────────────────────────────
 
-        /// <summary>Windup 예고 시작. 색상 변화 + 범위 오브젝트 표시.</summary>
+        /// <summary>Windup 예고 시작. 범위 인디케이터를 표시하고 알파 보간 시작.</summary>
         public void PlayWindup(float duration, float attackRange)
         {
             _isWindingUp    = true;
@@ -62,13 +67,24 @@ namespace Game.Enemies
             _windupDuration = duration;
 
             ShowRangeIndicator(attackRange);
+
+            // 인디케이터 색상: baseColor * 0.6 (어둡게), 알파 0.5 에서 시작
+            if (_rangeSr != null)
+            {
+                Color dark = new Color(
+                    _baseColor.r * 0.6f,
+                    _baseColor.g * 0.6f,
+                    _baseColor.b * 0.6f,
+                    0.5f
+                );
+                _rangeSr.color = dark;
+            }
         }
 
-        /// <summary>Windup 종료. 색상 복구 + 범위 오브젝트 숨김.</summary>
+        /// <summary>Windup 종료. 범위 인디케이터 숨김.</summary>
         public void StopWindup()
         {
             _isWindingUp = false;
-            if (_sr != null) _sr.color = _baseColor;
             HideRangeIndicator();
         }
 
@@ -104,7 +120,6 @@ namespace Game.Enemies
             if (_rangeIndicator == null)
                 CreateRangeIndicator();
 
-            // attackRange는 반지름 → localScale 지름으로 변환
             float diameter = attackRange * 2f;
             _rangeIndicator.transform.localScale = new Vector3(diameter, diameter, 1f);
             _rangeIndicator.SetActive(true);
@@ -124,20 +139,19 @@ namespace Game.Enemies
 
             _rangeSr              = _rangeIndicator.AddComponent<SpriteRenderer>();
             _rangeSr.sprite       = CreateCircleSprite();
-            _rangeSr.color        = new Color(1f, 0.3f, 0.3f, 0.25f); // 반투명 빨강
-            _rangeSr.sortingOrder = -1; // 적 스프라이트 아래
+            _rangeSr.color        = new Color(1f, 1f, 1f, 0.5f); // 초기값, PlayWindup에서 덮어씀
+            _rangeSr.sortingOrder = -1;
 
             _rangeIndicator.SetActive(false);
         }
 
-        /// <summary>런타임에서 단색 원형 텍스처를 동적 생성한다.</summary>
         private Sprite CreateCircleSprite()
         {
-            const int size   = 128;
-            var tex          = new Texture2D(size, size, TextureFormat.RGBA32, false);
-            var pixels       = new Color32[size * size];
-            float center     = size / 2f;
-            float radius     = size / 2f;
+            const int size = 128;
+            var tex        = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            var pixels     = new Color32[size * size];
+            float center   = size / 2f;
+            float radius   = size / 2f;
 
             for (int y = 0; y < size; y++)
             for (int x = 0; x < size; x++)
@@ -152,11 +166,7 @@ namespace Game.Enemies
 
             tex.SetPixels32(pixels);
             tex.Apply();
-
-            return Sprite.Create(tex,
-                new Rect(0, 0, size, size),
-                new Vector2(0.5f, 0.5f),
-                size);
+            return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), size);
         }
     }
 }
