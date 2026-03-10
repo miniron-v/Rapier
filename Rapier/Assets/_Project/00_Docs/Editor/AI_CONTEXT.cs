@@ -48,9 +48,11 @@
 // [2] 캐릭터 목록 및 메커니즘
 // -------------------------------------------------------
 // 공통 입력 4가지: Drag(Move) / Tap(Attack) / Swipe(Dodge) / Hold→Release(Charge→Skill)
-//
-// Warrior  : 방패 방어(Hold) + 밀쳐내기(Hold→Swipe). 패링 성공 시 즉시 반격.
-// Assassin : 회피 시 잔상 생성. 본체 공격 시 잔상도 동시 타격. Hold = 360도 광역.
+// Assassin : 저스트 회피 시 회피 전 위치에 잔상 생성 (피해/어그로 없음).
+//             잔상 활성 중 본체의 모든 공격(Tap, 차지 스킬)에 잔상이 동시에 동참.
+//             고유 스킬(저스트 회피 후 슬로우 중 Hold) / 차지 스킬 = 360도 광역 공격.
+// Rapier   : 저스트 회피 후 슬로우 중 Hold(고유 스킬) = 공격한 적에게 대시 → 표식 부여 + 데미지 → 원위치 복귀. 표식 최대 5중첩.
+//             차지 스킬 = 표식 있는 모든 적을 고속 관통 공격. 각 적은 보유 표식 중첩 수만큼 피해.
 // Rapier   : 회피 시 적에게 표식 부여. Hold = 표식 소모하며 연쇄 대시 타격.
 // Ranger   : 원거리 사격. 회피 시 지뢰 설치. 저스트 회피 시 즉시 강화 화살.
 
@@ -78,18 +80,15 @@
 
 // -------------------------------------------------------
 // [4] 폴더 구조 스냅샷
-// -------------------------------------------------------
-// Assets/
-// ├── Rapier-Private/
-// └── _Project/
 //     ├── 00_Docs/
-//     │   ├── PROJECT_GUIDELINES.md   (팀 지침서 v0.2.1)
+//     │   ├── PROJECT_GUIDELINES.md          (팀 지침서 v0.2.1)
+//     │   ├── Rapier_Prototype_DesignDoc.md  (기획서 원본 v1.2.0)
+//     │   ├── Rapier_Prototype_DesignDoc.docx (팀원용 뷰어 파일, 자동 생성)
 //     │   └── Editor/
-//     │       ├── GuidelinesCreator.cs
-//     │       ├── GuidelinesSync.cs
-//     │       ├── GuidelinesEditor.cs
+//     │       ├── DocSyncTool.cs
 //     │       ├── ProjectFolderSetup.cs
 //     │       ├── HudSetup.cs
+//     │       └── AI_CONTEXT.cs         ← 이 파일
 //     │       └── AI_CONTEXT.cs         ← 이 파일
 //     ├── 10_Scripts/
 //     │   ├── Core/        (ServiceLocator, Interfaces, Utils)
@@ -128,20 +127,8 @@
 //   IDamageable.cs / EnemyStatData.cs / EnemyModel.cs / EnemyView.cs
 //   EnemyPresenter.cs — 추적 AI, AttackWindow 카운터
 //   WaveManager.cs    — 10초 웨이브, 오브젝트 풀, GetNearestEnemy
-//   Enemy_Template.prefab — Enemy 레이어(8번), BoxCollider2D
-//   GestureRecognizer: _attackWindowCount int 카운터 (bool→int)
-//   미해결: 플레이어 공격 Hit 0 (Phase 5 이후 범위 시각화로 확인 예정)
-//
-// [Phase 5] UI 연결
-//   HudView.cs — Player에 부착. Start()에서 자식 Canvas 내 이름으로 자동 탐색.
 //                Model.OnHpChanged     → HpFill.fillAmount
-// [MCP-06] 문서 관리 워크플로우
-//   .md 파일이 원본. Claude가 apply_text_edits로 직접 편집.
-//   편집 후 execute_menu_item("Rapier/Docs/Sync to DOCX") 호출 → Pandoc이 .docx 자동 생성.
-//   팀원은 생성된 .docx를 열람. .docx를 직접 편집하지 않는다.
-//   최초 DesignDoc MD 생성: execute_menu_item("Rapier/Docs/Create DesignDoc MD")
-//   관리 대상:
-//     Assets/_Project/00_Docs/Rapier_Prototype_DesignDoc_v1.1.0.md  (기획서 원본)
+//                Model.OnChargeChanged → ChargeGaugeFill.fillAmount
 //     Assets/_Project/00_Docs/PROJECT_GUIDELINES.md                  (지침서 원본)
 //
 //   HudSetup.cs — Rapier/Setup 메뉴로 씬 HUD 자동 생성
@@ -177,9 +164,9 @@
 // □ [6] 미해결 이슈 확인
 // □ [7] 오늘 진행할 항목 사용자와 협의
 
-// -------------------------------------------------------
-// [9] MCP 제약 및 팁
-// -------------------------------------------------------
+// [MCP-02] .md 파일 직접 편집 불가
+//   DocSyncTool.cs 의 'Rapier/Docs/Create DesignDoc MD' 메뉴로 덮어쓰기 실행.
+//   수정 후 'Rapier/Docs/Sync to DOCX'로 .docx 자동 동기화.
 // [MCP-01] Assets → Reimport All 절대 실행 금지
 //   Unity 재시작 → MCP 연결 끊김. 재컴파일은 파일 저장으로 충분.
 //
@@ -193,9 +180,8 @@
 // [MCP-04] batch_execute 는 manage_asset 미지원
 //   폴더 대량 생성 → 에디터 스크립트 작성 후 메뉴로 실행.
 //
-// [MCP-05] script_apply_edits anchor_replace 는 클래스 구조 파일에만 안정적
-//   BoxCollider2D: SpriteRenderer에 Sprite=None이면 Collider Size가 거의 0으로 자동 계산됨
-//     → Physics2D.OverlapBoxAll 감지 불가. Sprite를 먼저 할당한 뒤 Collider를 추가하거나,
+//     Assets/_Project/00_Docs/Rapier_Prototype_DesignDoc.md  (기획서 원본)
+//     Assets/_Project/00_Docs/PROJECT_GUIDELINES.md           (지침서 원본)
 //       수동으로 Size를 지정할 것.
 //   UI Image (HpBar 등): Filled 모드에서 참조하는 Image 컴포넌트가 None이면
 //     fillAmount 갱신이 완전히 무시됨. 코드로 HpBar 생성 시 Image 참조를 반드시 null 체크할 것.
