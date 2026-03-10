@@ -9,17 +9,19 @@ namespace Game.Editor
     /// Phase 5 HUD 씬 셋업 도우미.
     /// [TIP-01 준수] Image.Type.Filled 는 반드시 Sprite 를 할당해야 동작한다.
     ///   내장 Sprite 경로: Packages/com.unity.2d.sprite/.../Textures/v2/
-    ///   HP 바  → Square.png  / 차지 게이지 → Circle.png
+    ///   HP 바  → Square.png  / 차지 게이지 → Circle.png / 회피 쿨타임 → Square.png
     /// </summary>
     public static class HudSetup
     {
         private const string SPRITE_BASE =
             "Packages/com.unity.2d.sprite/Editor/ObjectMenuCreation/DefaultAssets/Textures/v2/";
 
-        private static readonly Color HP_BG_COLOR       = new Color(0.10f, 0.10f, 0.10f, 0.75f);
-        private static readonly Color HP_FILL_COLOR     = new Color(0.25f, 0.85f, 0.35f, 1.00f);
-        private static readonly Color CHARGE_BG_COLOR   = new Color(1.00f, 1.00f, 1.00f, 0.12f);
-        private static readonly Color CHARGE_FILL_COLOR = new Color(1.00f, 0.85f, 0.10f, 0.90f);
+        private static readonly Color HP_BG_COLOR           = new Color(0.10f, 0.10f, 0.10f, 0.75f);
+        private static readonly Color HP_FILL_COLOR         = new Color(0.25f, 0.85f, 0.35f, 1.00f);
+        private static readonly Color CHARGE_BG_COLOR       = new Color(1.00f, 1.00f, 1.00f, 0.12f);
+        private static readonly Color CHARGE_FILL_COLOR     = new Color(1.00f, 0.85f, 0.10f, 0.90f);
+        private static readonly Color DODGE_BG_COLOR        = new Color(0.10f, 0.10f, 0.10f, 0.75f);
+        private static readonly Color DODGE_FILL_COLOR      = new Color(1.00f, 0.90f, 0.10f, 0.90f); // 노랑
 
         // ── 메뉴 ──────────────────────────────────────────────────
         [MenuItem("Rapier/Setup/Create HUD Canvas")]
@@ -49,12 +51,11 @@ namespace Game.Editor
                 Undo.DestroyObjectImmediate(existing.gameObject);
             }
 
-            // TIP-01: Filled 모드는 Sprite 없이는 사각형으로 렌더링됨 — 반드시 할당
             var sq = AssetDatabase.LoadAssetAtPath<Sprite>(SPRITE_BASE + "Square.png");
             var ci = AssetDatabase.LoadAssetAtPath<Sprite>(SPRITE_BASE + "Circle.png");
             Debug.Log($"[HudSetup] 내장 Sprite — Square={sq != null}, Circle={ci != null}");
 
-            // World Space Canvas (Player 자식, localScale 0.01 → 논리 200px = 월드 2유닛)
+            // ── World Space Canvas ────────────────────────────────
             var cvGo = new GameObject("PlayerHudCanvas");
             Undo.RegisterCreatedObjectUndo(cvGo, "Create PlayerHudCanvas");
             cvGo.transform.SetParent(player.transform, false);
@@ -68,40 +69,48 @@ namespace Game.Editor
             cvGo.transform.localScale    = Vector3.one * 0.01f;
             cvGo.transform.localPosition = Vector3.zero;
 
-            // ── HP 바 (위쪽 60유닛 = 월드 0.6유닛) ──
-            // 배경
-            var hpBg     = Img(cvGo.transform, "HpBarBg", HP_BG_COLOR, sq);
+            // ── HP 바 (위쪽) ──────────────────────────────────────
+            var hpBg = Img(cvGo.transform, "HpBarBg", HP_BG_COLOR, sq);
             SetCenter(hpBg.GetComponent<RectTransform>(), new Vector2(140f, 14f), new Vector2(0f, 60f));
 
-            // Fill (Horizontal)
             var hpFillImg = Img(hpBg.transform, "HpFill", HP_FILL_COLOR, sq).GetComponent<Image>();
             hpFillImg.type       = Image.Type.Filled;
             hpFillImg.fillMethod = Image.FillMethod.Horizontal;
-            hpFillImg.fillOrigin = 0; // Left
+            hpFillImg.fillOrigin = 0;
             hpFillImg.fillAmount = 1f;
             Stretch(hpFillImg.GetComponent<RectTransform>(), new Vector2(0f, 0.5f));
 
-            // ── 원형 차지 게이지 (중심, 80×80유닛) ──
-            // 배경 원
+            // ── 원형 차지 게이지 (중심) ───────────────────────────
             var cgBgImg = Img(cvGo.transform, "ChargeGaugeBg", CHARGE_BG_COLOR, ci).GetComponent<Image>();
             cgBgImg.type       = Image.Type.Filled;
             cgBgImg.fillMethod = Image.FillMethod.Radial360;
             cgBgImg.fillAmount = 1f;
             SetCenter(cgBgImg.GetComponent<RectTransform>(), new Vector2(80f, 80f), Vector2.zero);
 
-            // 전경 원 (채워짐)
             var cgFillImg = Img(cvGo.transform, "ChargeGaugeFill", CHARGE_FILL_COLOR, ci).GetComponent<Image>();
             cgFillImg.type       = Image.Type.Filled;
             cgFillImg.fillMethod = Image.FillMethod.Radial360;
             cgFillImg.fillAmount = 0f;
             SetCenter(cgFillImg.GetComponent<RectTransform>(), new Vector2(80f, 80f), Vector2.zero);
 
-            // HudView (Player 루트에 부착, 자식 Canvas 에서 이름으로 자동 찾음)
+            // ── 회피 쿨타임 세로 막대 (캐릭터 우측) ──────────────
+            // Canvas 기준 우측 (+90유닛), 세로로 길쭉하게 (14×60유닛)
+            var dodgeBg = Img(cvGo.transform, "DodgeCooldownBg", DODGE_BG_COLOR, sq);
+            SetCenter(dodgeBg.GetComponent<RectTransform>(), new Vector2(14f, 60f), new Vector2(90f, 0f));
+
+            var dodgeFillImg = Img(dodgeBg.transform, "DodgeCooldownFill", DODGE_FILL_COLOR, sq).GetComponent<Image>();
+            dodgeFillImg.type        = Image.Type.Filled;
+            dodgeFillImg.fillMethod  = Image.FillMethod.Vertical;
+            dodgeFillImg.fillOrigin  = 0; // Bottom — 아래서 위로 차오름
+            dodgeFillImg.fillAmount  = 1f;
+            Stretch(dodgeFillImg.GetComponent<RectTransform>(), new Vector2(0.5f, 0f));
+
+            // ── HudView 부착 ──────────────────────────────────────
             if (player.GetComponent<Game.UI.HudView>() == null)
                 player.AddComponent<Game.UI.HudView>();
 
             Selection.activeGameObject = cvGo;
-            Debug.Log("[HudSetup] PlayerHudCanvas 생성 완료.");
+            Debug.Log("[HudSetup] PlayerHudCanvas 생성 완료 (HP바 + 차지게이지 + 회피쿨타임).");
         }
 
         // ── Enemy_Template HP 바 ──────────────────────────────────
@@ -156,12 +165,11 @@ namespace Game.Editor
         }
 
         // ── 헬퍼 ──────────────────────────────────────────────────
-        /// <summary>Image GO 생성. TIP-01: sprite 는 항상 명시적으로 전달.</summary>
         private static GameObject Img(Transform parent, string name, Color color, Sprite sprite)
         {
-            var go     = new GameObject(name);
+            var go    = new GameObject(name);
             go.transform.SetParent(parent, false);
-            var img    = go.AddComponent<Image>();
+            var img   = go.AddComponent<Image>();
             img.color  = color;
             img.sprite = sprite;
             return go;

@@ -16,7 +16,7 @@ MonoBehaviour:
   characterName: Player
   maxHp: 500
   attackPower: 50
-  moveSpeed: 500
+  moveSpeed: 300
   dodgeInvincibleDuration: 0.2
   dashDistance: 5
   dashSpeed: 10000

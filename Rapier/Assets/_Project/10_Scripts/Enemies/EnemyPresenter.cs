@@ -9,12 +9,17 @@ namespace Game.Enemies
     /// <summary>
     /// 적 AI 및 전투 로직.
     ///
+    /// [공격 흐름]
+    ///   Windup  → 색상 변화 + 범위 표시 (attackWindupDuration 초)
+    ///   Hit     → playerDamageable.TakeDamage() 호출
+    ///             피해 적용 여부는 PlayerPresenter.TakeDamage() 내부에서 결정
+    ///             (무적 중이면 JustDodge 트리거, 피해 없음)
+    ///
     /// [AI 흐름]
     ///   Idle   → 플레이어 탐색
-    ///   Chase  → 플레이어 방향으로 분산 접근 (랜덤 오프셋 각도 적용)
-    ///   Attack → 공격 범위 내 진입 시 쿨다운마다 공격
-    ///            공격 직전 플레이어가 히트박스 내에 있을 때만
-    ///            GestureRecognizer.OpenAttackWindow() + TakeDamage() 동시 처리
+    ///   Chase  → 플레이어 방향으로 분산 접근
+    ///   Windup → 공격 예고 연출
+    ///   Attack → 피해 적용
     ///   Dead   → EnemyView.PlayDeath() 호출, WaveManager가 회수
     /// </summary>
     [RequireComponent(typeof(EnemyView))]
@@ -24,34 +29,34 @@ namespace Game.Enemies
         [SerializeField] private EnemyStatData _statData;
 
         // ── 내부 상태 ────────────────────────────────────────────
-        private EnemyModel        _model;
-        private EnemyView         _view;
-        private SpriteRenderer    _sr;
-        private Transform         _playerTransform;
-        private GestureRecognizer _gesture;
-        private IDamageable       _playerDamageable;
+        private EnemyModel     _model;
+        private EnemyView      _view;
+        private SpriteRenderer _sr;
+        private Transform      _playerTransform;
+        private IDamageable    _playerDamageable;
+        private EnemyHpBar     _hpBar;
+        private Vector2        _approachOffset;
 
-        private float   _attackCooldownTimer;
-        private bool    _isAttacking;
-        private bool    _hasHitPlayer;       // 히트박스 활성 중 1회만 피해
-        private EnemyHpBar _hpBar;
-        private float   _attackHitTimer;
-        private Vector2 _approachOffset;     // 분산 접근용 고정 오프셋
+        private float _attackCooldownTimer;
+
+        // ── 공격 단계 ─────────────────────────────────────────────
+        private enum AttackPhase { None, Windup, Hit }
+        private AttackPhase _attackPhase;
+        private float       _phaseTimer;
 
         // IDamageable
         public bool IsAlive => _model != null && _model.IsAlive;
 
         // ── 초기화 ───────────────────────────────────────────────
-private void Awake()
+        private void Awake()
         {
             _view  = GetComponent<EnemyView>();
             _sr    = GetComponent<SpriteRenderer>();
             _hpBar = GetComponentInChildren<EnemyHpBar>(true);
         }
 
-private void Start()
+        private void Start()
         {
-            _gesture = ServiceLocator.Get<GestureRecognizer>();
             var player = ServiceLocator.Get<PlayerPresenter>();
             if (player != null)
             {
@@ -61,7 +66,7 @@ private void Start()
         }
 
         /// <summary>WaveManager가 풀에서 꺼낼 때 호출.</summary>
-public void Spawn(EnemyStatData statData, Vector2 position)
+        public void Spawn(EnemyStatData statData, Vector2 position)
         {
             _statData = statData;
             _model    = new EnemyModel(statData);
@@ -69,40 +74,30 @@ public void Spawn(EnemyStatData statData, Vector2 position)
 
             transform.position   = position;
             _attackCooldownTimer = statData.attackCooldown;
-            _isAttacking         = false;
+            _attackPhase         = AttackPhase.None;
 
-            // SO에서 스프라이트 할당
             if (_sr != null && statData.sprite != null)
                 _sr.sprite = statData.sprite;
 
-            // ── 레이어 강제 설정 (Physics2D OverlapBox 감지 보장) ──
             int enemyLayer = LayerMask.NameToLayer("Enemy");
             if (enemyLayer == -1)
-                Debug.LogError("[EnemyPresenter] \"Enemy\" 레이어가 존재하지 않음! Project Settings > Tags and Layers 확인 필요.");
+                Debug.LogError("[EnemyPresenter] \"Enemy\" 레이어가 존재하지 않음!");
             else
                 gameObject.layer = enemyLayer;
 
-            // ── Collider 활성화 확인 ──
             var col = GetComponent<Collider2D>();
             if (col == null)
-                Debug.LogError($"[EnemyPresenter] {name} 에 Collider2D가 없음! 프리팹에 BoxCollider2D 추가 필요.");
+                Debug.LogError($"[EnemyPresenter] {name} 에 Collider2D가 없음!");
             else if (!col.enabled)
             {
                 col.enabled = true;
-                Debug.LogWarning($"[EnemyPresenter] {name} 의 Collider2D가 비활성 상태였음. 강제 활성화.");
+                Debug.LogWarning($"[EnemyPresenter] {name} Collider2D 강제 활성화.");
             }
 
-            Debug.Log($"[EnemyPresenter] Spawn — layer={gameObject.layer}({LayerMask.LayerToName(gameObject.layer)}), collider={col != null}, enabled={col?.enabled}");
-
-            // 분산 접근 오프셋
-            float angle   = Random.Range(-statData.approachAngleVariance,
-                                          statData.approachAngleVariance);
+            float angle     = Random.Range(-statData.approachAngleVariance, statData.approachAngleVariance);
             _approachOffset = Quaternion.Euler(0f, 0f, angle) * Vector2.up * 0.3f;
 
-            var baseColor = new Color(0.9f, 0.3f, 0.3f);
-            _view.ResetVisual(baseColor);
-
-            // HP 바 초기화
+            _view.ResetVisual(new Color(0.9f, 0.3f, 0.3f));
             _hpBar?.Init(_model);
 
             gameObject.SetActive(true);
@@ -117,30 +112,25 @@ public void Spawn(EnemyStatData statData, Vector2 position)
         }
 
         // ── 루프 ─────────────────────────────────────────────────
-private void Update()
+        private void Update()
         {
             if (!IsAlive || _playerTransform == null) return;
 
             float dist = Vector2.Distance(transform.position, _playerTransform.position);
 
-            // 히트박스 활성 중
-            if (_isAttacking)
+            switch (_attackPhase)
             {
-                _attackHitTimer -= Time.deltaTime;
+                case AttackPhase.Windup:
+                    _phaseTimer -= Time.deltaTime;
+                    if (_phaseTimer <= 0f)
+                        EnterHitPhase();
+                    return;
 
-                // 1회만 피해 적용
-                if (!_hasHitPlayer && dist <= _statData.attackRange)
-                {
-                    _hasHitPlayer = true;
-                    _gesture?.OpenAttackWindow();
-                    _playerDamageable?.TakeDamage(_statData.attackPower, GetDirectionToPlayer());
-                    _gesture?.CloseAttackWindow();
-                }
-
-                if (_attackHitTimer <= 0f)
-                    _isAttacking = false;
-
-                return;
+                case AttackPhase.Hit:
+                    _phaseTimer -= Time.deltaTime;
+                    if (_phaseTimer <= 0f)
+                        EndAttack();
+                    return;
             }
 
             // 공격 범위 내: 쿨다운 감소
@@ -148,7 +138,7 @@ private void Update()
             {
                 _attackCooldownTimer -= Time.deltaTime;
                 if (_attackCooldownTimer <= 0f)
-                    StartAttack();
+                    EnterWindupPhase();
                 return;
             }
 
@@ -159,19 +149,42 @@ private void Update()
             transform.position = nextPos;
         }
 
-private void StartAttack()
+        // ── 공격 단계 전환 ────────────────────────────────────────
+
+        private void EnterWindupPhase()
         {
-            _isAttacking         = true;
-            _hasHitPlayer        = false;
-            _attackHitTimer      = _statData.attackHitDuration;
+            _attackPhase = AttackPhase.Windup;
+            _phaseTimer  = _statData.attackWindupDuration;
+            _view.PlayWindup(_statData.attackWindupDuration, _statData.attackRange);
+            Debug.Log($"[EnemyPresenter] {name} Windup 시작 ({_statData.attackWindupDuration}초)");
+        }
+
+        private void EnterHitPhase()
+        {
+            _attackPhase = AttackPhase.Hit;
+            _phaseTimer  = _statData.attackHitDuration;
+            _view.StopWindup();
+
+            // 플레이어가 아직 범위 내에 있을 때만 피해 적용
+            if (_playerTransform != null &&
+                Vector2.Distance(transform.position, _playerTransform.position) <= _statData.attackRange)
+            {
+                _playerDamageable?.TakeDamage(_statData.attackPower, GetDirectionToPlayer());
+            }
+
+            Debug.Log($"[EnemyPresenter] {name} Hit 발동");
+        }
+
+        private void EndAttack()
+        {
+            _attackPhase         = AttackPhase.None;
             _attackCooldownTimer = _statData.attackCooldown;
+            Debug.Log($"[EnemyPresenter] {name} 공격 종료, 쿨다운 시작");
         }
 
         private void HandleDeath()
         {
-            if (_isAttacking)
-                _gesture?.CloseAttackWindow();
-            _isAttacking = false;
+            _attackPhase = AttackPhase.None;
             _view.PlayDeath();
         }
 

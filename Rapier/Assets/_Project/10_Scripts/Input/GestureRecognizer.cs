@@ -117,6 +117,15 @@ namespace Game.Input
         }
 
         // ── 터치 핸들러 ──────────────────────────────────────────
+#if UNITY_EDITOR
+        /// <summary>[디버그 전용] JustDodge 이벤트를 강제 발행한다.</summary>
+        public void ForceJustDodge(Vector2 direction)
+        {
+            CurrentState = InputState.JustDodge;
+            OnJustDodge?.Invoke(direction);
+        }
+#endif
+
         private void HandleFingerDown(Finger finger)
         {
             if (_isTouching) return;
