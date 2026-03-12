@@ -4,43 +4,48 @@ namespace Game.Characters
 {
     /// <summary>
     /// 캐릭터 View 구현체.
-    /// 스프라이트 이동 및 플레이스홀더 시각 표현만 담당한다.
-    /// 로직 금지.
+    /// 시각 연출(색상 플래시, 스프라이트 설정 등)만 담당한다.
+    ///
+    /// [이동 책임]
+    ///   SetPosition()으로 transform.position을 즉시 설정한다.
+    ///   Lerp/스무딩 없음 — 부드러운 이동은 Presenter가 매 프레임 작은 delta로 SetPosition()을 호출해 구현한다.
+    ///   Update()에 이동 로직 없음.
     /// </summary>
     public class CharacterView : MonoBehaviour, ICharacterView
     {
-        // ── Inspector ─────────────────────────────────────────────
-        [Header("이동")]
-        [SerializeField] private float _moveSmoothing = 0.05f; // 위치 보간 강도
-
         // ── 내부 참조 ─────────────────────────────────────────────
         private SpriteRenderer _renderer;
-        private Vector2        _targetPosition;
         private Color          _originalColor;
 
         // ── 라이프사이클 ─────────────────────────────────────────
         private void Awake()
         {
-            _renderer      = GetComponent<SpriteRenderer>();
-            _targetPosition = transform.position;
-
+            _renderer = GetComponent<SpriteRenderer>();
             if (_renderer != null)
                 _originalColor = _renderer.color;
         }
 
-        private void Update()
+        // ── ICharacterView 구현 ───────────────────────────────────
+
+        /// <summary>
+        /// Presenter가 계산한 위치를 즉시 반영한다.
+        /// Lerp 없음 — 이동 보간은 Presenter 책임.
+        /// </summary>
+        public void SetPosition(Vector2 position)
         {
-            // 부드러운 이동 보간
-            transform.position = Vector2.Lerp(
-                transform.position,
-                _targetPosition,
-                1f - Mathf.Pow(_moveSmoothing, Time.deltaTime));
+            transform.position = new Vector3(position.x, position.y, transform.position.z);
         }
 
-        // ── ICharacterView 구현 ───────────────────────────────────
-        public void MoveTo(Vector2 position)
+        public void SetSprite(Sprite sprite)
         {
-            _targetPosition = position;
+            if (_renderer != null && sprite != null)
+                _renderer.sprite = sprite;
+        }
+
+        public void PlayAttack()
+        {
+            StopAllCoroutines();
+            StartCoroutine(FlashColor(Color.red, 0.1f));
         }
 
         public void PlayHit()
@@ -49,43 +54,25 @@ namespace Game.Characters
             StartCoroutine(FlashColor(Color.red, 0.1f));
         }
 
-public void SetSprite(UnityEngine.Sprite sprite)
-        {
-            if (_renderer != null && sprite != null)
-                _renderer.sprite = sprite;
-        }
-
-
-        public void PlayAttack()
-        {
-            // 플레이스홀더: 색상 플래시
-            StopAllCoroutines();
-            StartCoroutine(FlashColor(Color.red, 0.1f));
-        }
-
         public void PlayDodge(Vector2 direction)
         {
-            // 플레이스홀더: 색상 플래시
             StopAllCoroutines();
             StartCoroutine(FlashColor(Color.cyan, 0.15f));
         }
 
         public void UpdateChargeGauge(float ratio)
         {
-            // 플레이스홀더: 차지량에 따라 색상 변화 (흰색 → 노란색)
             if (_renderer != null)
                 _renderer.color = Color.Lerp(_originalColor, Color.yellow, ratio);
         }
 
         public void UpdateHpGauge(float ratio)
         {
-            // Phase 5 HUD 연결 전까지 로그로만 확인
-            // Debug.Log($"[CharacterView] HP: {ratio:P0}");
+            // Phase 5 HUD에서 처리. View 레벨 연출 필요 시 여기서 추가.
         }
 
         public void PlayDeath()
         {
-            // 플레이스홀더: 투명하게
             if (_renderer != null)
             {
                 var c = _renderer.color;

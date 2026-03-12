@@ -1,6 +1,6 @@
+using System;
 using UnityEngine;
 using Game.Core;
-using Game.Input;
 using Game.Combat;
 using Game.Characters;
 
@@ -15,13 +15,12 @@ namespace Game.Enemies
     ///   Hit        → TakeDamage 호출. 즉시 PostAttack 진입.
     ///   PostAttack → 정지 (postAttackDelay 초). 이후 Chase 복귀.
     ///
-    /// [총 공격 소요 시간]
-    ///   attackWindupDuration(0.3) + attackHitDuration(0.05) + postAttackDelay(0.3) ≈ 0.65초
-    ///   ※ Inspector에서 조정 가능
-    ///
     /// [피해 판정]
-    ///   PlayerPresenter.TakeDamage() 내부에서 무적 여부 결정.
+    ///   IPlayerCharacter.TakeDamage() 내부에서 무적 여부 결정.
     ///   무적 중이면 JustDodge 트리거, 피해 없음.
+    ///
+    /// [OnDeath 이벤트]
+    ///   EnemyModel.OnDeath를 래핑해 외부(RapierPresenter 등)에서 구독 가능하도록 노출.
     /// </summary>
     [RequireComponent(typeof(EnemyView))]
     public class EnemyPresenter : MonoBehaviour, IDamageable
@@ -29,14 +28,17 @@ namespace Game.Enemies
         // ── 인스펙터 ─────────────────────────────────────────────
         [SerializeField] private EnemyStatData _statData;
 
+        // ── 외부 구독용 사망 이벤트 ───────────────────────────────
+        public event Action OnDeath;
+
         // ── 내부 상태 ────────────────────────────────────────────
-        private EnemyModel     _model;
-        private EnemyView      _view;
-        private SpriteRenderer _sr;
-        private Transform      _playerTransform;
-        private IDamageable    _playerDamageable;
-        private EnemyHpBar     _hpBar;
-        private Vector2        _approachOffset;
+        private EnemyModel       _model;
+        private EnemyView        _view;
+        private SpriteRenderer   _sr;
+        private Transform        _playerTransform;
+        private IDamageable      _playerDamageable;
+        private EnemyHpBar       _hpBar;
+        private Vector2          _approachOffset;
 
         // ── 공격 단계 ─────────────────────────────────────────────
         private enum AttackPhase { Chase, Windup, Hit, PostAttack }
@@ -56,11 +58,21 @@ namespace Game.Enemies
 
         private void Start()
         {
-            var player = ServiceLocator.Get<PlayerPresenter>();
+            RefreshPlayerReference();
+        }
+
+        /// <summary>IPlayerCharacter 인터페이스로 플레이어 참조를 갱신한다.</summary>
+        private void RefreshPlayerReference()
+        {
+            var player = ServiceLocator.Get<IPlayerCharacter>();
             if (player != null)
             {
                 _playerTransform  = player.transform;
                 _playerDamageable = player as IDamageable;
+            }
+            else
+            {
+                Debug.LogWarning("[EnemyPresenter] IPlayerCharacter가 ServiceLocator에 없음.");
             }
         }
 
@@ -68,8 +80,12 @@ namespace Game.Enemies
         public void Spawn(EnemyStatData statData, Vector2 position)
         {
             _statData = statData;
-            _model    = new EnemyModel(statData);
-            _model.OnDeath += HandleDeath;
+
+            if (_model != null)
+                _model.OnDeath -= HandleModelDeath;
+
+            _model = new EnemyModel(statData);
+            _model.OnDeath += HandleModelDeath;
 
             transform.position = position;
             _attackPhase       = AttackPhase.Chase;
@@ -92,11 +108,13 @@ namespace Game.Enemies
                 Debug.LogWarning($"[EnemyPresenter] {name} Collider2D 강제 활성화.");
             }
 
-            float angle     = Random.Range(-statData.approachAngleVariance, statData.approachAngleVariance);
+            float angle     = UnityEngine.Random.Range(-statData.approachAngleVariance, statData.approachAngleVariance);
             _approachOffset = Quaternion.Euler(0f, 0f, angle) * Vector2.up * 0.3f;
 
             _view.ResetVisual(new Color(0.9f, 0.3f, 0.3f));
             _hpBar?.Init(_model);
+
+            if (_playerTransform == null) RefreshPlayerReference();
 
             gameObject.SetActive(true);
         }
@@ -146,14 +164,12 @@ namespace Game.Enemies
         {
             float dist = Vector2.Distance(transform.position, _playerTransform.position);
 
-            // 범위 진입 즉시 공격
             if (dist <= _statData.attackRange)
             {
                 EnterWindupPhase();
                 return;
             }
 
-            // 추적 이동
             var dir     = GetDirectionToPlayer() + _approachOffset;
             var nextPos = (Vector2)transform.position
                           + dir.normalized * (_statData.moveSpeed * Time.deltaTime);
@@ -162,10 +178,7 @@ namespace Game.Enemies
 
         // ── 공격 단계 전환 ────────────────────────────────────────
 
-        private void EnterChasePhase()
-        {
-            _attackPhase = AttackPhase.Chase;
-        }
+        private void EnterChasePhase()   => _attackPhase = AttackPhase.Chase;
 
         private void EnterWindupPhase()
         {
@@ -193,10 +206,11 @@ namespace Game.Enemies
             _phaseTimer  = _statData.postAttackDelay;
         }
 
-        private void HandleDeath()
+        private void HandleModelDeath()
         {
             _attackPhase = AttackPhase.Chase;
             _view.PlayDeath();
+            OnDeath?.Invoke();
         }
 
         private Vector2 GetDirectionToPlayer()

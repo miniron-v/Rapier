@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9c43aa5837e09aa4f9059dcdcd7d8592, type: 3}
+  m_Name: RapierStatData
+  m_EditorClassIdentifier: Assembly-CSharp::Game.Characters.RapierStatData
+  sprite: {fileID: -2413806693520163455, guid: a86470a33a6bf42c4b3595704624658b, type: 3}
+  characterName: Rapier
+  maxHp: 500
+  attackPower: 50
+  moveSpeed: 6
+  dodgeInvincibleDuration: 0.2
+  dodgeCooldown: 2
+  dashDistance: 4
+  dashSpeed: 18
+  chargeRequiredTime: 1
+  attackWidth: 2
+  attackHeight: 1.5
+  attackOffset: 1
+  markDamage: 5
+  markMaxStack: 5
+  skillDashSpeed: 3
+  skillReturnSpeed: 3
+  chargeMarkMultiplier: 1.5
+  skillAttackWidth: 2
+  skillAttackHeight: 1.5
+  skillAttackOffset: 1

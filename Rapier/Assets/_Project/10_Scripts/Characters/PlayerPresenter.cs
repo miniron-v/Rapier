@@ -6,15 +6,18 @@ using Game.Combat;
 namespace Game.Characters
 {
     /// <summary>
-    /// 플레이어 공통 Presenter.
+    /// 플레이어 공통 Presenter (기본 캐릭터).
     /// CharacterPresenterBase의 첫 번째 구체 구현체.
-    /// 캐릭터별 고유 메커니즘은 Phase 6에서 자식 클래스로 분리 예정.
+    ///
+    /// [ServiceLocator 등록]
+    ///   IPlayerCharacter 인터페이스로 등록하여
+    ///   HudView, EnemyPresenter 등 외부 시스템이 구체 타입 없이 참조 가능.
     ///
     /// [TakeDamage 흐름]
     ///   무적 중(회피 중) → 피해 무시 + JustDodge 트리거
     ///   그 외            → 피해 적용
     /// </summary>
-    public class PlayerPresenter : CharacterPresenterBase, IDamageable
+    public class PlayerPresenter : CharacterPresenterBase, IDamageable, IPlayerCharacter
     {
         [Header("데이터")]
         [SerializeField] private CharacterStatData _statData;
@@ -36,15 +39,15 @@ namespace Game.Characters
             if (_statData.sprite != null)
                 _view.SetSprite(_statData.sprite);
 
-            ServiceLocator.Register(this);
+            ServiceLocator.Register<IPlayerCharacter>(this);
         }
 
         private void OnDestroy()
         {
-            ServiceLocator.Unregister<PlayerPresenter>();
+            ServiceLocator.Unregister<IPlayerCharacter>();
         }
 
-        // ── IDamageable 구현 ──────────────────────────────────────
+        // ── IDamageable / IPlayerCharacter 구현 ──────────────────
         public bool IsAlive => Model != null && Model.IsAlive;
 
         public void TakeDamage(float amount, Vector2 knockbackDir)
@@ -53,7 +56,6 @@ namespace Game.Characters
 
             if (Model.IsInvincible)
             {
-                // 회피 중 피격 → JustDodge 트리거
                 Debug.Log("[PlayerPresenter] 무적 중 피격 → JustDodge 트리거!");
                 Gesture?.ForceJustDodge(knockbackDir * -1f);
                 return;
@@ -65,9 +67,5 @@ namespace Game.Characters
 
         /// <summary>HudView 등 외부에서 Model 이벤트를 구독할 수 있도록 노출.</summary>
         public CharacterModel PublicModel => Model;
-
-        // ── 입력 override (필요 시 확장) ─────────────────────────
-        // 기본 이동/공격/회피는 CharacterPresenterBase가 처리.
-        // Phase 6에서 캐릭터별 고유 메커니즘 추가 예정.
     }
 }
