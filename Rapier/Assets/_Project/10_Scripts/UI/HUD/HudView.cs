@@ -14,8 +14,8 @@ namespace Game.UI
     ///     → 회피 사용 시(ratio == 0f) 다시 표시
     ///
     /// [연결 방식]
-    ///   Start에서 ServiceLocator로 PlayerPresenter를 찾아
-    ///   Model 이벤트를 구독한다.
+    ///   Start에서 ServiceLocator로 IPlayerCharacter를 찾아 Model 이벤트를 구독한다.
+    ///   구체 캐릭터 타입(PlayerPresenter, RapierPresenter 등)에 의존하지 않는다.
     /// </summary>
     public class HudView : MonoBehaviour
     {
@@ -29,11 +29,11 @@ namespace Game.UI
         [SerializeField] private Image _dodgeCooldownImage;
 
         private CharacterModel _playerModel;
-        private GameObject     _dodgeCooldownBg; // 배경까지 통째로 숨김/보임
+        private GameObject     _dodgeCooldownBg;
 
         private void Start()
         {
-            // 이름으로 자동 탐색
+            // Inspector 미연결 시 이름으로 자동 탐색
             if (_hpFillImage == null)
             {
                 var go = FindInChildren(transform, "HpFill");
@@ -50,16 +50,24 @@ namespace Game.UI
                 if (go != null)
                 {
                     _dodgeCooldownImage = go.GetComponent<Image>();
-                    // 배경은 Fill의 부모
-                    _dodgeCooldownBg = go.transform.parent?.gameObject;
+                    _dodgeCooldownBg    = go.transform.parent?.gameObject;
                 }
             }
 
-            var player = ServiceLocator.Get<PlayerPresenter>();
-            if (player == null) { Debug.LogError("[HudView] PlayerPresenter가 ServiceLocator에 없음."); return; }
+            // IPlayerCharacter 인터페이스로 참조 — 구체 타입 무관
+            var player = ServiceLocator.Get<IPlayerCharacter>();
+            if (player == null)
+            {
+                Debug.LogError("[HudView] IPlayerCharacter가 ServiceLocator에 없음.");
+                return;
+            }
 
             _playerModel = player.PublicModel;
-            if (_playerModel == null) { Debug.LogError("[HudView] PlayerPresenter.PublicModel이 null."); return; }
+            if (_playerModel == null)
+            {
+                Debug.LogError("[HudView] IPlayerCharacter.PublicModel이 null.");
+                return;
+            }
 
             _playerModel.OnHpChanged            += OnHpChanged;
             _playerModel.OnChargeChanged        += OnChargeChanged;
@@ -67,7 +75,7 @@ namespace Game.UI
 
             SetHp(_playerModel.CurrentHp / _playerModel.StatData.maxHp);
             SetCharge(0f);
-            SetDodgeCooldown(1f); // 시작 시 즉시 사용 가능 → 게이지 가득 → 숨김
+            SetDodgeCooldown(1f);
 
             Debug.Log($"[HudView] 초기화 완료. HpFill={_hpFillImage != null}, " +
                       $"ChargeImage={_chargeImage != null}, DodgeCooldown={_dodgeCooldownImage != null}");
@@ -112,9 +120,9 @@ namespace Game.UI
             if (_dodgeCooldownBg == null) return;
 
             if (ratio >= 1f)
-                _dodgeCooldownBg.SetActive(false); // 가득 참 → 숨김
+                _dodgeCooldownBg.SetActive(false);
             else if (ratio <= 0f)
-                _dodgeCooldownBg.SetActive(true);  // 회피 사용 → 표시
+                _dodgeCooldownBg.SetActive(true);
         }
 
         // ── 유틸 ──────────────────────────────────────────────────

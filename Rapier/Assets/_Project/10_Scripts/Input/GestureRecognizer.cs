@@ -130,7 +130,7 @@ namespace Game.Input
         {
             if (_isTouching) return;
             var pos = finger.screenPosition;
-            if (pos.y > Screen.height * VALID_AREA_RATIO) return;
+        // 입력 영역 제한 없음 — 전체 화면 허용TIO) return;
 
             _isTouching       = true;
             _startPos         = pos;

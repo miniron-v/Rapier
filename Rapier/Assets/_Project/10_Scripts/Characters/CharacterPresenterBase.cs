@@ -10,17 +10,21 @@ namespace Game.Characters
     /// <summary>
     /// 모든 플레이어 캐릭터 Presenter의 추상 베이스.
     ///
-    /// [책임]
-    ///   - ServiceLocator에서 GestureRecognizer를 가져와 이벤트 구독
-    ///   - 공통 입력(Tap/Swipe/Drag/Hold/JustDodge)을 처리
-    ///   - Swipe 시 무적 0.2초 + 회피 쿨타임 (dodgeCooldown 초, unscaledTime 기반)
-    ///   - 일반 공격 0.5초 딜레이 + 연타 차단
-    ///   - 공격 범위 인게임 가시화
-    ///   - 저스트 회피 슬로우모션 + 카메라 줌 펀치
-    ///   - 캐릭터별 고유 로직은 자식 클래스에서 override
+    /// [무적 구간 — 이동 기반]
+    ///   일반 회피 : DodgeDashRoutine 시작 → SetInvincible(true)
+    ///               OnDodgeDashComplete() 호출 시 SetInvincible(false)
+    ///               (자식이 override해서 무적 해제를 늦출 수 있음)
+    ///   저스트 회피: HandleJustDodge → SetInvincible(true)
+    ///               SlowMotionRoutine 종료 → SetInvincible(false)
+    ///               (스킬 대시가 이어지면 Rapier가 복귀 완료까지 유지)
     ///
-    /// [Init 규칙]
-    ///   - 자식 클래스는 Awake에서 base.Init(statData, view)를 반드시 호출
+    /// [MoveState]
+    ///   Free   : Walk 허용
+    ///   Locked : Walk 차단
+    ///
+    /// [DodgeDest]
+    ///   Swipe 시 계산한 회피 목적지. protected 노출.
+    ///   RapierPresenter가 스킬 복귀 목적지로 활용.
     /// </summary>
     [RequireComponent(typeof(CharacterView))]
     public abstract class CharacterPresenterBase : MonoBehaviour
@@ -35,37 +39,67 @@ namespace Game.Characters
         );
         [SerializeField] private float slowDuration = 3f;
 
+        // ── 회피 대시 Ease 커브 ───────────────────────────────────
+        [Header("Dodge Dash Ease (x=진행비율 0→1, y=속도배율 0→1)")]
+        [SerializeField] private AnimationCurve dodgeDashCurve = new AnimationCurve(
+            new Keyframe(0.00f, 1.00f),
+            new Keyframe(1.00f, 0.00f)
+        );
+
         // ── 상수 ──────────────────────────────────────────────────
-        private const float INVINCIBLE_DURATION = 0.2f;
-        private const float ATTACK_DELAY        = 0.5f;
+        private const float ATTACK_DELAY     = 0.5f;
+        private const float ARRIVE_THRESHOLD = 0.05f;
 
         // ── 내부 참조 ─────────────────────────────────────────────
         protected CharacterModel    Model   { get; private set; }
         protected ICharacterView    View    { get; private set; }
         protected GestureRecognizer Gesture { get; private set; }
 
-        // ── 이동/대시 상태 ────────────────────────────────────────
-        private float   _holdDuration;
-        private bool    _isCharging;
-        private Vector2 _moveDirection;
-        private bool    _isDashing;
-        private Vector2 _dashTarget;
-        private float   _dashSpeed;
+        // ── MoveState ─────────────────────────────────────────────
+        protected enum MoveState { Free, Locked }
+        protected MoveState CurrentMoveState { get; private set; } = MoveState.Free;
 
-        // ── 공격 상태 ─────────────────────────────────────────────
+        protected void LockMovement()
+        {
+            CurrentMoveState = MoveState.Locked;
+            _moveDirection   = Vector2.zero;
+        }
+
+        protected void FreeMovement()
+        {
+            CurrentMoveState = MoveState.Free;
+            _moveDirection   = Vector2.zero;
+        }
+
+        // ── 회피 목적지 ───────────────────────────────────────────
+        protected Vector2 DodgeDest { get; private set; }
+
+        // ── 이동 ─────────────────────────────────────────────────
+        private Vector2 _moveDirection;
+
+        // ── 차지/홀드 ─────────────────────────────────────────────
+        private float _holdDuration;
+        private bool  _isCharging;
+
+        // ── 공격 ─────────────────────────────────────────────────
         private bool _isAttacking;
+        /// <summary>
+        /// 공격 가능 여부. false면 HandleTap에서 공격 차단.
+        /// 기본값 true. RapierPresenter가 스킬 대시 중 false로 설정.
+        /// </summary>
+        protected bool CanAttack = true;
 
         // ── 회피 쿨타임 ───────────────────────────────────────────
-        private float _dodgeCooldownTimer; // 0이면 사용 가능
+        private float _dodgeCooldownTimer;
 
-        // ── 슬로우모션 상태 ───────────────────────────────────────
+        // ── 슬로우모션 ────────────────────────────────────────────
         private Coroutine _slowCoroutine;
 
-        // ── 공격 범위 인게임 가시화 ───────────────────────────────
+        // ── 공격 범위 가시화 ──────────────────────────────────────
         private GameObject     _attackRangeIndicator;
         private SpriteRenderer _attackRangeSr;
 
-        // ── Gizmo 상태 (에디터 전용) ──────────────────────────────
+        // ── Gizmo ─────────────────────────────────────────────────
         private Vector2     _lastAttackCenter;
         private Vector2     _lastAttackSize;
         private float       _lastAttackAngle;
@@ -97,17 +131,14 @@ namespace Game.Characters
             Gesture.OnHold          -= HandleHold;
             Gesture.OnRelease       -= HandleRelease;
             Gesture.OnJustDodge     -= HandleJustDodge;
-
             StopSlowMotion();
         }
 
-        // ── 공통 입력 처리 ────────────────────────────────────────
-
+        // ── 입력 처리 ─────────────────────────────────────────────
         private void HandleTap(Vector2 screenPos)
         {
-            if (!Model.IsAlive) return;
-            if (_isAttacking) return;
-
+            if (Model == null || !Model.IsAlive) return;
+        if (_isAttacking || !CanAttack) return; return;
             View.PlayAttack();
             StartCoroutine(AttackRoutine());
             OnTap(screenPos);
@@ -117,9 +148,7 @@ namespace Game.Characters
         {
             _isAttacking = true;
             ShowAttackRangeIndicator();
-
             yield return new WaitForSecondsRealtime(ATTACK_DELAY);
-
             HideAttackRangeIndicator();
             if (Model.IsAlive) PerformAttack();
             _isAttacking = false;
@@ -132,15 +161,14 @@ namespace Game.Characters
 
             var stat    = Model.StatData;
             var nearest = waveManager.GetNearestEnemy(transform.position);
-
-            var dir = nearest != null
+            var dir     = nearest != null
                 ? ((Vector2)nearest.transform.position - (Vector2)transform.position).normalized
                 : Vector2.up;
 
-            var boxCenter  = (Vector2)transform.position + dir * stat.attackOffset;
-            var boxSize    = new Vector2(stat.attackWidth, stat.attackHeight);
-            float angle    = Vector2.SignedAngle(Vector2.up, dir);
-            int enemyLayer = LayerMask.GetMask("Enemy");
+            var   boxCenter  = (Vector2)transform.position + dir * stat.attackOffset;
+            var   boxSize    = new Vector2(stat.attackWidth, stat.attackHeight);
+            float angle      = Vector2.SignedAngle(Vector2.up, dir);
+            int   enemyLayer = LayerMask.GetMask("Enemy");
 
             _lastAttackCenter = boxCenter;
             _lastAttackSize   = boxSize;
@@ -155,6 +183,7 @@ namespace Game.Characters
                 var damageable = hit.GetComponent<IDamageable>();
                 if (damageable == null || !damageable.IsAlive) continue;
                 damageable.TakeDamage(stat.attackPower, dir);
+                OnHitDamageable(damageable);
                 hitCount++;
             }
             Debug.Log($"[Attack] 히트: {hitCount}명 / 범위 내 오브젝트: {hits.Length}");
@@ -162,40 +191,66 @@ namespace Game.Characters
 
         private void HandleSwipe(Vector2 direction)
         {
-            if (!Model.IsAlive) return;
-            if (_dodgeCooldownTimer > 0f) return; // 쿨타임 중 차단
+            if (Model == null || !Model.IsAlive) return;
+            if (_dodgeCooldownTimer > 0f) return;
 
-            var stat    = Model.StatData;
-            _dashTarget = (Vector2)transform.position + direction * stat.dashDistance;
-            _dashSpeed  = stat.dashSpeed;
+            var stat = Model.StatData;
+            DodgeDest = (Vector2)transform.position + direction * stat.dashDistance;
 
             var stage = ServiceLocator.Get<StageBuilder>();
-            if (stage != null) _dashTarget = stage.ClampToStage(_dashTarget);
+            if (stage != null) DodgeDest = stage.ClampToStage(DodgeDest);
 
-            _isDashing     = true;
-            _moveDirection = Vector2.zero;
+            LockMovement();
+            Model.SetInvincible(true);  // 회피 대시 시작 → 무적 ON
 
-            StartCoroutine(InvincibleRoutine());
             StartCoroutine(DodgeCooldownRoutine());
+            StartCoroutine(DodgeDashRoutine(stat.dashSpeed));
 
             View.PlayDodge(direction);
             OnSwipe(direction);
         }
 
-        /// <summary>회피 시 무적 0.2초 (unscaledTime 기반).</summary>
-        private IEnumerator InvincibleRoutine()
+        /// <summary>
+        /// 회피 대시 코루틴. DodgeDest까지 EaseOutQuad로 이동.
+        /// 완료 시 OnDodgeDashComplete() 호출 — 자식이 override해서 Free/무적 해제 타이밍 제어.
+        /// </summary>
+        private IEnumerator DodgeDashRoutine(float dashSpeed)
         {
-            Model.SetInvincible(true);
-            float elapsed = 0f;
-            while (elapsed < INVINCIBLE_DURATION)
+            float totalDist = Vector2.Distance(transform.position, DodgeDest);
+            if (totalDist < ARRIVE_THRESHOLD)
             {
-                elapsed += Time.unscaledDeltaTime;
+                OnDodgeDashComplete();
+                yield break;
+            }
+
+            float elapsed           = 0f;
+            float estimatedDuration = totalDist / (dashSpeed * 0.6f);
+
+            while (Vector2.Distance(transform.position, DodgeDest) > ARRIVE_THRESHOLD)
+            {
+                elapsed += Time.deltaTime;
+                float t          = Mathf.Clamp01(elapsed / estimatedDuration);
+                float easedSpeed = dashSpeed * dodgeDashCurve.Evaluate(t);
+                var   next       = Vector2.MoveTowards(
+                    transform.position, DodgeDest, easedSpeed * Time.deltaTime);
+                View.SetPosition(next);
                 yield return null;
             }
-            Model.SetInvincible(false);
+            View.SetPosition(DodgeDest);
+            OnDodgeDashComplete();
         }
 
-        /// <summary>회피 쿨타임 (unscaledTime 기반). 0→1로 차오르며 HUD에 비율 전달.</summary>
+        /// <summary>
+        /// 회피 대시 완료 콜백.
+        /// 기본: FreeMovement() + 무적 OFF.
+        /// RapierPresenter: 스킬 대기 중이면 둘 다 억제, 복귀 완료 시 직접 해제.
+        /// </summary>
+        protected virtual void OnDodgeDashComplete()
+        {
+            Model.SetInvincible(false);
+            FreeMovement();
+        }
+
         private IEnumerator DodgeCooldownRoutine()
         {
             float cooldown = Model.StatData.dodgeCooldown;
@@ -207,29 +262,25 @@ namespace Game.Characters
             {
                 elapsed             += Time.unscaledDeltaTime;
                 _dodgeCooldownTimer  = Mathf.Max(0f, cooldown - elapsed);
-                float ratio          = Mathf.Clamp01(elapsed / cooldown);
-                Model.SetDodgeCooldownRatio(ratio);
+                Model.SetDodgeCooldownRatio(Mathf.Clamp01(elapsed / cooldown));
                 yield return null;
             }
-
             _dodgeCooldownTimer = 0f;
             Model.SetDodgeCooldownRatio(1f);
         }
 
         private void HandleMoveDirection(Vector2 dir)
         {
-            if (!Model.IsAlive || _isDashing) return;
+            if (Model == null || !Model.IsAlive) return;
+            if (CurrentMoveState == MoveState.Locked) return;
             _moveDirection = dir;
         }
 
-        private void HandleMoveEnd()
-        {
-            _moveDirection = Vector2.zero;
-        }
+        private void HandleMoveEnd() => _moveDirection = Vector2.zero;
 
         protected virtual void Update()
         {
-            if (!Model.IsAlive) return;
+            if (Model == null || !Model.IsAlive) return;
 
             if (_showAttackGizmo)
             {
@@ -237,45 +288,33 @@ namespace Game.Characters
                 if (_gizmoTimer <= 0f) _showAttackGizmo = false;
             }
 
-            if (_isDashing)
+            // Walk — Free 상태일 때만
+            if (CurrentMoveState == MoveState.Free && _moveDirection.sqrMagnitude > 0.01f)
             {
-                var next = Vector2.MoveTowards(
-                    transform.position, _dashTarget, _dashSpeed * Time.deltaTime);
-                View.MoveTo(next);
-                if (Vector2.Distance(next, _dashTarget) < 0.05f)
-                    _isDashing = false;
-                return;
-            }
-
-            if (_moveDirection.sqrMagnitude > 0.01f)
-            {
-                var worldDelta = _moveDirection * (Model.StatData.moveSpeed * Time.deltaTime);
-                var nextPos    = (Vector2)transform.position + worldDelta;
+                var nextPos = (Vector2)transform.position
+                            + _moveDirection * (Model.StatData.moveSpeed * Time.deltaTime);
 
                 var stage = ServiceLocator.Get<StageBuilder>();
                 if (stage != null) nextPos = stage.ClampToStage(nextPos);
 
-                View.MoveTo(nextPos);
+                View.SetPosition(nextPos);
             }
         }
 
         private void HandleHold(float duration)
         {
-            if (!Model.IsAlive) return;
+            if (Model == null || !Model.IsAlive) return;
             _holdDuration = duration;
             _isCharging   = true;
-
-            float ratio = Mathf.Clamp01(duration / Model.StatData.chargeRequiredTime);
-            Model.SetChargeRatio(ratio);
+            Model.SetChargeRatio(Mathf.Clamp01(duration / Model.StatData.chargeRequiredTime));
             OnHold(duration);
         }
 
         private void HandleRelease(InputState lastState)
         {
-            if (!Model.IsAlive) return;
+            if (Model == null || !Model.IsAlive) return;
 
-            bool fullyCharged = _isCharging &&
-                                _holdDuration >= Model.StatData.chargeRequiredTime;
+            bool fullyCharged = _isCharging && _holdDuration >= Model.StatData.chargeRequiredTime;
 
             if (fullyCharged || Model.IsJustDodgeReady)
                 OnSkillRelease(fullyCharged, Model.IsJustDodgeReady);
@@ -289,15 +328,15 @@ namespace Game.Characters
 
         private void HandleJustDodge(Vector2 direction)
         {
-            if (!Model.IsAlive) return;
+            if (Model == null || !Model.IsAlive) return;
             View.PlayDodge(direction);
             Model.SetJustDodgeReady(true);
+            Model.SetInvincible(true);  // 저스트 회피 시작 → 무적 ON (슬로우 종료까지 유지)
 
             if (_slowCoroutine != null) StopCoroutine(_slowCoroutine);
             _slowCoroutine = StartCoroutine(SlowMotionRoutine());
 
             ServiceLocator.Get<CameraFollow>()?.TriggerZoomPunch();
-
             OnJustDodge(direction);
         }
 
@@ -315,12 +354,24 @@ namespace Game.Characters
             while (elapsed < slowDuration)
             {
                 elapsed += Time.unscaledDeltaTime;
-                float t = Mathf.Clamp01(elapsed / slowDuration);
-                Time.timeScale = slowCurve.Evaluate(t);
+                Time.timeScale = slowCurve.Evaluate(Mathf.Clamp01(elapsed / slowDuration));
                 yield return null;
             }
             Time.timeScale = 1f;
             _slowCoroutine = null;
+
+            // 슬로우 종료 시 무적 해제 — 단, 자식(Rapier)이 스킬 대시 중이면 유지됨
+            OnSlowMotionEnd();
+        }
+
+        /// <summary>
+        /// 슬로우모션 종료 콜백.
+        /// 기본: 무적 OFF.
+        /// RapierPresenter: 스킬 대시 중이면 억제, 복귀 완료 시 직접 해제.
+        /// </summary>
+        protected virtual void OnSlowMotionEnd()
+        {
+            Model?.SetInvincible(false);
         }
 
         private void StopSlowMotion()
@@ -333,12 +384,10 @@ namespace Game.Characters
             Time.timeScale = 1f;
         }
 
-        // ── 공격 범위 인게임 가시화 ───────────────────────────────
-
+        // ── 공격 범위 가시화 ──────────────────────────────────────
         private void ShowAttackRangeIndicator()
         {
-            if (_attackRangeIndicator == null)
-                CreateAttackRangeIndicator();
+            if (_attackRangeIndicator == null) CreateAttackRangeIndicator();
 
             var stat    = Model.StatData;
             var nearest = ServiceLocator.Get<WaveManager>()?.GetNearestEnemy(transform.position);
@@ -346,8 +395,8 @@ namespace Game.Characters
                 ? ((Vector2)nearest.transform.position - (Vector2)transform.position).normalized
                 : Vector2.up;
 
-            var boxCenter = (Vector2)transform.position + dir * stat.attackOffset;
-            float angle   = Vector2.SignedAngle(Vector2.up, dir);
+            var   boxCenter = (Vector2)transform.position + dir * stat.attackOffset;
+            float angle     = Vector2.SignedAngle(Vector2.up, dir);
 
             _attackRangeIndicator.transform.position   = new Vector3(boxCenter.x, boxCenter.y, 0f);
             _attackRangeIndicator.transform.rotation   = Quaternion.Euler(0f, 0f, angle);
@@ -374,8 +423,8 @@ namespace Game.Characters
         private Sprite CreateSquareSprite()
         {
             const int size = 32;
-            var tex        = new Texture2D(size, size, TextureFormat.RGBA32, false);
-            var pixels     = new Color32[size * size];
+            var tex    = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            var pixels = new Color32[size * size];
             for (int i = 0; i < pixels.Length; i++)
                 pixels[i] = new Color32(255, 255, 255, 255);
             tex.SetPixels32(pixels);
@@ -383,11 +432,10 @@ namespace Game.Characters
             return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), size);
         }
 
-        // ── Gizmo 시각화 (에디터 전용) ───────────────────────────
+        // ── Gizmo ─────────────────────────────────────────────────
         private void OnDrawGizmos()
         {
             if (!Application.isPlaying || !_showAttackGizmo) return;
-
             Gizmos.color  = new Color(1f, 1f, 0f, 0.4f);
             var rot       = Quaternion.Euler(0f, 0f, _lastAttackAngle);
             var oldMatrix = Gizmos.matrix;
@@ -402,13 +450,14 @@ namespace Game.Characters
         }
 
         // ── 자식 클래스 override 지점 ─────────────────────────────
-        protected virtual void OnTap(Vector2 screenPos)        { }
-        protected virtual void OnSwipe(Vector2 direction)      { }
-        protected virtual void OnDrag(Vector2 delta)           { }
-        protected virtual void OnHold(float duration)          { }
-        protected virtual void OnSkillRelease(bool fullyCharged, bool justDodgeReady) { }
-        protected virtual void OnJustDodge(Vector2 direction)  { }
-        protected virtual void OnRelease(InputState lastState) { }
+        protected virtual void OnTap(Vector2 screenPos)                                { }
+        protected virtual void OnSwipe(Vector2 direction)                              { }
+        protected virtual void OnHold(float duration)                                  { }
+        protected virtual void OnSkillRelease(bool fullyCharged, bool justDodgeReady)  { }
+        protected virtual void OnJustDodge(Vector2 direction)                          { }
+        protected virtual void OnRelease(InputState lastState)                         { }
+        protected virtual void OnHitDamageable(IDamageable target)                     { }
+        // OnSlowMotionEnd: 위 367번줄에서 virtual 구현됨(false); }
 
         protected virtual void Start()
         {
