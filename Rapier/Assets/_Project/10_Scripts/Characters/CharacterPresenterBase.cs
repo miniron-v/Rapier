@@ -138,7 +138,7 @@ namespace Game.Characters
         private void HandleTap(Vector2 screenPos)
         {
             if (Model == null || !Model.IsAlive) return;
-        if (_isAttacking || !CanAttack) return; return;
+            if (_isAttacking || !CanAttack) return;
             View.PlayAttack();
             StartCoroutine(AttackRoutine());
             OnTap(screenPos);
