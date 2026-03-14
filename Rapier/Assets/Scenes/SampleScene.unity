@@ -492,7 +492,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Game.Enemies.WaveManager
   _enemyStatData: {fileID: 11400000, guid: 7f3c34c819ea27a4eb75b5a56f61cd71, type: 2}
   _enemyPrefab: {fileID: 5040457167931817585, guid: ce21d2d8211814a4ba425ebf38dbba05, type: 3}
-  _enemiesPerWave: 5
+  _enemiesPerWave: 2
   _waveInterval: 10
   _spawnMargin: 1.5
 --- !u!4 &927681256
