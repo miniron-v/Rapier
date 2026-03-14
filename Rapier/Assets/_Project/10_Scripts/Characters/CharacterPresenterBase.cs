@@ -10,21 +10,29 @@ namespace Game.Characters
     /// <summary>
     /// 모든 플레이어 캐릭터 Presenter의 추상 베이스.
     ///
-    /// [무적 구간 — 이동 기반]
-    ///   일반 회피 : DodgeDashRoutine 시작 → SetInvincible(true)
-    ///               OnDodgeDashComplete() 호출 시 SetInvincible(false)
-    ///               (자식이 override해서 무적 해제를 늦출 수 있음)
+    /// [무적 구간]
+    ///   일반 회피 : HandleSwipe → SetInvincible(true)
+    ///               OnDodgeDashComplete() → SetInvincible(false)
     ///   저스트 회피: HandleJustDodge → SetInvincible(true)
-    ///               SlowMotionRoutine 종료 → SetInvincible(false)
-    ///               (스킬 대시가 이어지면 Rapier가 복귀 완료까지 유지)
+    ///               OnSlowMotionEnd() → SetInvincible(false)
+    ///   자식이 각 콜백을 override하여 무적 해제 타이밍을 늦출 수 있음.
+    ///
+    /// [저스트 회피 트리거]
+    ///   _justDodgeAvailable: Swipe 시 true, 발동 또는 DodgeDash 완료 시 false.
+    ///   "한 회피당 딱 한 번만" 저스트 회피 발동을 보장.
+    ///
+    /// [공격 차단]
+    ///   CanAttack: _isDodging 기반. 회피 대시 구간에서 false.
+    ///   자식이 override하여 추가 조건 부여 가능.
+    ///
+    /// [_isDodging]
+    ///   HandleSwipe → true
+    ///   OnDodgeDashComplete() → false (자식이 SetDodging(false) 호출 억제 가능)
+    ///   자식은 SetDodging(bool)으로 직접 제어.
     ///
     /// [MoveState]
     ///   Free   : Walk 허용
     ///   Locked : Walk 차단
-    ///
-    /// [DodgeDest]
-    ///   Swipe 시 계산한 회피 목적지. protected 노출.
-    ///   RapierPresenter가 스킬 복귀 목적지로 활용.
     /// </summary>
     [RequireComponent(typeof(CharacterView))]
     public abstract class CharacterPresenterBase : MonoBehaviour
@@ -47,8 +55,8 @@ namespace Game.Characters
         );
 
         // ── 상수 ──────────────────────────────────────────────────
-        private const float ATTACK_DELAY     = 0.5f;
-        private const float ARRIVE_THRESHOLD = 0.05f;
+        private const float ATTACK_INDICATOR_DURATION = 0.4f;
+        private const float ARRIVE_THRESHOLD          = 0.05f;
 
         // ── 내부 참조 ─────────────────────────────────────────────
         protected CharacterModel    Model   { get; private set; }
@@ -71,6 +79,32 @@ namespace Game.Characters
             _moveDirection   = Vector2.zero;
         }
 
+        // ── 회피/공격 차단 플래그 ─────────────────────────────────
+        private bool _isDodging;
+
+        /// <summary>
+        /// 회피 대시가 진행 중인지 여부.
+        /// HandleSwipe → true, OnDodgeDashComplete() → false.
+        /// 자식은 SetDodging()으로 직접 제어한다.
+        /// </summary>
+        protected void SetDodging(bool value) => _isDodging = value;
+
+        /// <summary>
+        /// 일반 공격 가능 여부.
+        /// 기본: 회피 대시 중(_isDodging)이면 false.
+        /// 자식이 override하여 추가 차단 조건 부여 가능.
+        /// </summary>
+        protected virtual bool CanAttack => !_isDodging;
+
+        // ── 저스트 회피 가용 플래그 ───────────────────────────────
+        /// <summary>
+        /// Swipe 시작 시 true, 저스트 회피 발동 또는 DodgeDash 완료 시 false.
+        /// 한 회피당 딱 한 번만 저스트 회피 발동을 보장.
+        /// </summary>
+        protected bool JustDodgeAvailable { get; private set; }
+
+        protected void ConsumeJustDodge() => JustDodgeAvailable = false;
+
         // ── 회피 목적지 ───────────────────────────────────────────
         protected Vector2 DodgeDest { get; private set; }
 
@@ -83,11 +117,6 @@ namespace Game.Characters
 
         // ── 공격 ─────────────────────────────────────────────────
         private bool _isAttacking;
-        /// <summary>
-        /// 공격 가능 여부. false면 HandleTap에서 공격 차단.
-        /// 기본값 true. RapierPresenter가 스킬 대시 중 false로 설정.
-        /// </summary>
-        protected bool CanAttack = true;
 
         // ── 회피 쿨타임 ───────────────────────────────────────────
         private float _dodgeCooldownTimer;
@@ -144,13 +173,18 @@ namespace Game.Characters
             OnTap(screenPos);
         }
 
+        /// <summary>
+        /// 즉시 공격 루틴.
+        /// PerformAttack()을 인디케이터 표시 직후 즉시 실행.
+        /// 인디케이터는 ATTACK_INDICATOR_DURATION 동안 유지 후 숨김.
+        /// </summary>
         private IEnumerator AttackRoutine()
         {
             _isAttacking = true;
             ShowAttackRangeIndicator();
-            yield return new WaitForSecondsRealtime(ATTACK_DELAY);
+            PerformAttack();
+            yield return new WaitForSecondsRealtime(ATTACK_INDICATOR_DURATION);
             HideAttackRangeIndicator();
-            if (Model.IsAlive) PerformAttack();
             _isAttacking = false;
         }
 
@@ -194,14 +228,16 @@ namespace Game.Characters
             if (Model == null || !Model.IsAlive) return;
             if (_dodgeCooldownTimer > 0f) return;
 
-            var stat = Model.StatData;
+            var stat  = Model.StatData;
             DodgeDest = (Vector2)transform.position + direction * stat.dashDistance;
 
             var stage = ServiceLocator.Get<StageBuilder>();
             if (stage != null) DodgeDest = stage.ClampToStage(DodgeDest);
 
+            JustDodgeAvailable = true;
+            SetDodging(true);
             LockMovement();
-            Model.SetInvincible(true);  // 회피 대시 시작 → 무적 ON
+            Model.SetInvincible(true);
 
             StartCoroutine(DodgeCooldownRoutine());
             StartCoroutine(DodgeDashRoutine(stat.dashSpeed));
@@ -210,10 +246,6 @@ namespace Game.Characters
             OnSwipe(direction);
         }
 
-        /// <summary>
-        /// 회피 대시 코루틴. DodgeDest까지 EaseOutQuad로 이동.
-        /// 완료 시 OnDodgeDashComplete() 호출 — 자식이 override해서 Free/무적 해제 타이밍 제어.
-        /// </summary>
         private IEnumerator DodgeDashRoutine(float dashSpeed)
         {
             float totalDist = Vector2.Distance(transform.position, DodgeDest);
@@ -242,11 +274,13 @@ namespace Game.Characters
 
         /// <summary>
         /// 회피 대시 완료 콜백.
-        /// 기본: FreeMovement() + 무적 OFF.
-        /// RapierPresenter: 스킬 대기 중이면 둘 다 억제, 복귀 완료 시 직접 해제.
+        /// 기본: SetDodging(false) + JustDodgeAvailable false + 무적 OFF + FreeMovement.
+        /// 자식(Rapier): 스킬 대기 중이면 SetDodging(false)와 무적 해제를 억제.
         /// </summary>
         protected virtual void OnDodgeDashComplete()
         {
+            JustDodgeAvailable = false;
+            SetDodging(false);
             Model.SetInvincible(false);
             FreeMovement();
         }
@@ -288,7 +322,6 @@ namespace Game.Characters
                 if (_gizmoTimer <= 0f) _showAttackGizmo = false;
             }
 
-            // Walk — Free 상태일 때만
             if (CurrentMoveState == MoveState.Free && _moveDirection.sqrMagnitude > 0.01f)
             {
                 var nextPos = (Vector2)transform.position
@@ -331,7 +364,7 @@ namespace Game.Characters
             if (Model == null || !Model.IsAlive) return;
             View.PlayDodge(direction);
             Model.SetJustDodgeReady(true);
-            Model.SetInvincible(true);  // 저스트 회피 시작 → 무적 ON (슬로우 종료까지 유지)
+            Model.SetInvincible(true);
 
             if (_slowCoroutine != null) StopCoroutine(_slowCoroutine);
             _slowCoroutine = StartCoroutine(SlowMotionRoutine());
@@ -359,15 +392,13 @@ namespace Game.Characters
             }
             Time.timeScale = 1f;
             _slowCoroutine = null;
-
-            // 슬로우 종료 시 무적 해제 — 단, 자식(Rapier)이 스킬 대시 중이면 유지됨
             OnSlowMotionEnd();
         }
 
         /// <summary>
         /// 슬로우모션 종료 콜백.
         /// 기본: 무적 OFF.
-        /// RapierPresenter: 스킬 대시 중이면 억제, 복귀 완료 시 직접 해제.
+        /// 자식(Rapier): 스킬 대시 중이면 억제.
         /// </summary>
         protected virtual void OnSlowMotionEnd()
         {
@@ -420,7 +451,7 @@ namespace Game.Characters
             _attackRangeIndicator.SetActive(false);
         }
 
-        private Sprite CreateSquareSprite()
+        protected Sprite CreateSquareSprite()
         {
             const int size = 32;
             var tex    = new Texture2D(size, size, TextureFormat.RGBA32, false);
@@ -457,7 +488,6 @@ namespace Game.Characters
         protected virtual void OnJustDodge(Vector2 direction)                          { }
         protected virtual void OnRelease(InputState lastState)                         { }
         protected virtual void OnHitDamageable(IDamageable target)                     { }
-        // OnSlowMotionEnd: 위 367번줄에서 virtual 구현됨(false); }
 
         protected virtual void Start()
         {

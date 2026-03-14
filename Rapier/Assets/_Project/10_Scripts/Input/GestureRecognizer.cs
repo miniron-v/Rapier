@@ -19,30 +19,31 @@ namespace Game.Input
     ///   FingerUp    → 최종 판별
     ///                 - Move 중 → MoveEnd
     ///                 - dist >= SWIPE_MIN_DISTANCE AND duration < SWIPE_MAX_DURATION
-    ///                   → Swipe (또는 JustDodge)
+    ///                   → Swipe 또는 JustDodge (AttackWindow 열려있을 때)
     ///                 - dist < TAP_MAX_DISTANCE AND duration < TAP_MAX_DURATION
     ///                   → Tap
-    ///                 - 그 외 Hold/Move → Release만
     ///
-    /// [유효 영역] 화면 하단 40%
+    /// [JustDodge 트리거]
+    ///   TriggerJustDodge(direction) : 게임 로직에서 직접 호출하는 정식 API.
+    ///   회피 중 피격 판정 등 코드에서 직접 발동할 때 사용.
     /// </summary>
     public class GestureRecognizer : MonoBehaviour
     {
         // ── 판별 기준 상수 ───────────────────────────────────────
         private const float VALID_AREA_RATIO    = 0.4f;
-        private const float TAP_MAX_DISTANCE    = 20f;   // px
-        private const float TAP_MAX_DURATION    = 0.2f;  // 초
-        private const float SWIPE_MIN_DISTANCE  = 60f;   // px  (빠른 플릭 최소 거리)
-        private const float SWIPE_MAX_DURATION  = 0.25f; // 초  (이 시간 이상 = Move)
-        private const float MOVE_START_DISTANCE = 20f;   // px  (조이스틱 활성화 거리)
-        private const float HOLD_MIN_DURATION   = 0.3f;  // 초
+        private const float TAP_MAX_DISTANCE    = 20f;
+        private const float TAP_MAX_DURATION    = 0.2f;
+        private const float SWIPE_MIN_DISTANCE  = 60f;
+        private const float SWIPE_MAX_DURATION  = 0.25f;
+        private const float MOVE_START_DISTANCE = 20f;
+        private const float HOLD_MIN_DURATION   = 0.3f;
 
         // ── 이벤트 ───────────────────────────────────────────────
         public event Action<Vector2>    OnTap;
         public event Action<Vector2>    OnSwipe;
-        public event Action<Vector2>    OnMoveDirection; // Move 중 매 프레임
+        public event Action<Vector2>    OnMoveDirection;
         public event Action             OnMoveEnd;
-        public event Action<float>      OnHold;          // Hold 중 매 프레임
+        public event Action<float>      OnHold;
         public event Action<InputState> OnRelease;
         public event Action<Vector2>    OnJustDodge;
 
@@ -57,8 +58,8 @@ namespace Game.Input
         private Vector2 _startPos;
         private Vector2 _currentPos;
         private float   _touchDuration;
-        private bool    _gestureCommitted;  // Move 또는 Hold 확정 여부
-        private int  _attackWindowCount;
+        private bool    _gestureCommitted;
+        private int     _attackWindowCount;
 
         // ── 라이프사이클 ─────────────────────────────────────────
         private void OnEnable()
@@ -86,24 +87,21 @@ namespace Game.Input
 
             if (!_gestureCommitted)
             {
-                // Move 확정: 거리 + 시간 모두 충족 (Swipe와 구분 핵심)
                 if (dist >= MOVE_START_DISTANCE && _touchDuration >= SWIPE_MAX_DURATION)
                 {
                     _gestureCommitted = true;
                     CurrentState      = InputState.Drag;
                     IsMoving          = true;
-                    UnityEngine.Debug.Log("[Input] MOVE 시작");
+                    Debug.Log("[Input] MOVE 시작");
                 }
-                // Hold 확정: 정지 + 시간 충족
                 else if (dist < TAP_MAX_DISTANCE && _touchDuration >= HOLD_MIN_DURATION)
                 {
                     _gestureCommitted = true;
                     CurrentState      = InputState.Hold;
-                    UnityEngine.Debug.Log("[Input] HOLD 시작");
+                    Debug.Log("[Input] HOLD 시작");
                 }
             }
 
-            // Move: 조이스틱 방향 매 프레임 발행
             if (CurrentState == InputState.Drag)
             {
                 JoystickOrigin  = _startPos;
@@ -111,26 +109,16 @@ namespace Game.Input
                 OnMoveDirection?.Invoke((_currentPos - _startPos).normalized);
             }
 
-            // Hold: 지속시간 매 프레임 발행
             if (CurrentState == InputState.Hold)
                 OnHold?.Invoke(_touchDuration);
         }
 
         // ── 터치 핸들러 ──────────────────────────────────────────
-#if UNITY_EDITOR
-        /// <summary>[디버그 전용] JustDodge 이벤트를 강제 발행한다.</summary>
-        public void ForceJustDodge(Vector2 direction)
-        {
-            CurrentState = InputState.JustDodge;
-            OnJustDodge?.Invoke(direction);
-        }
-#endif
-
         private void HandleFingerDown(Finger finger)
         {
             if (_isTouching) return;
             var pos = finger.screenPosition;
-        // 입력 영역 제한 없음 — 전체 화면 허용TIO) return;
+            // 입력 영역 제한 없음 — 전체 화면 허용
 
             _isTouching       = true;
             _startPos         = pos;
@@ -147,14 +135,14 @@ namespace Game.Input
             _currentPos = finger.screenPosition;
         }
 
-private void HandleFingerUp(Finger finger)
+        private void HandleFingerUp(Finger finger)
         {
             if (!_isTouching) return;
 
-            var endPos = finger.screenPosition;
-            float dist = Vector2.Distance(endPos, _startPos);
-            var dir    = dist > 0.01f ? (endPos - _startPos).normalized : Vector2.up;
-            var last   = CurrentState;
+            var   endPos = finger.screenPosition;
+            float dist   = Vector2.Distance(endPos, _startPos);
+            var   dir    = dist > 0.01f ? (endPos - _startPos).normalized : Vector2.up;
+            var   last   = CurrentState;
 
             if (IsMoving)
             {
@@ -166,7 +154,7 @@ private void HandleFingerUp(Finger finger)
                 if (_attackWindowCount > 0)
                 {
                     CurrentState = InputState.JustDodge;
-                    Debug.Log($"[Input] JUST DODGE 판정");
+                    Debug.Log("[Input] JUST DODGE 판정");
                     OnJustDodge?.Invoke(dir);
                 }
                 else
@@ -191,6 +179,17 @@ private void HandleFingerUp(Finger finger)
         }
 
         // ── 외부 API ─────────────────────────────────────────────
+
+        /// <summary>
+        /// 게임 로직에서 저스트 회피를 직접 발동할 때 호출하는 정식 API.
+        /// 회피 중 피격 등 코드 기반 트리거에서 사용.
+        /// </summary>
+        public void TriggerJustDodge(Vector2 direction)
+        {
+            CurrentState = InputState.JustDodge;
+            OnJustDodge?.Invoke(direction);
+        }
+
         public void OpenAttackWindow()  => _attackWindowCount++;
         public void CloseAttackWindow() => _attackWindowCount = Mathf.Max(0, _attackWindowCount - 1);
         public bool IsAttackWindowOpen  => _attackWindowCount > 0;
