@@ -48,14 +48,15 @@
 // [2] 캐릭터 목록 및 메커니즘
 // -------------------------------------------------------
 // 공통 입력 4가지: Drag(Move) / Tap(Attack) / Swipe(Dodge) / Hold→Release(Charge→Skill)
-// 저스트 회피: 적 공격 타이밍에 정확히 Swipe 시 발동 → 게임 슬로우 + 캐릭터 고유 스킬 즉시 발동
+// 저스트 회피: 적 공격 타이밍에 회피 중 피격 시 발동 → 게임 슬로우 + 캐릭터 고유 스킬 즉시 발동
 //
 // Warrior  : Hold 중 방패 방어 (피해 감소/무효화) 추가. Hold+Swipe = 방패 밀쳐내기. 패링 성공 시 즉시 반격.
 // Assassin : 저스트 회피 시 회피 전 위치에 잔상 생성 (피해/어그로 없음).
 //            잔상 활성 중 본체의 모든 공격(Tap, 차지 스킬)에 잔상이 동시에 동참.
 //            고유 스킬 / 차지 스킬 = 360도 광역 공격.
-// Rapier   : 저스트 회피 후 고유 스킬 = 공격한 적에게 대시 → 표식 부여 + 데미지 → 원위치 복귀. 표식 최대 5중첩.
-//            차지 스킬 = 표식 있는 모든 적을 고속 관통 공격. 각 적은 보유 표식 중첩 수만큼 피해.
+// Rapier   : 저스트 회피 후 고유 스킬 = 가장 가까운 적에게 대시 → 사각형 범위 내 전체 적에게
+//            표식 부여 + 데미지 → 회피 목적지(DodgeDest)로 복귀. 표식 최대 5중첩.
+//            차지 스킬 = 표식 있는 모든 적을 중첩 수 × (attackPower × chargeMarkMultiplier) 데미지.
 // Ranger   : 원거리 사격(Tap). 일반 회피 시 지뢰 설치. 고유 스킬 = 강화 화살 발사.
 
 // -------------------------------------------------------
@@ -87,8 +88,8 @@
 // ├── Rapier-Private/
 // └── _Project/
 //     ├── 00_Docs/
-//     │   ├── PROJECT_GUIDELINES.md          (팀 지침서 v0.2.1)
-//     │   ├── Rapier_Prototype_DesignDoc.md  (기획서 원본 v1.3.0)
+//     │   ├── PROJECT_GUIDELINES.md          (팀 지침서)
+//     │   ├── Rapier_Prototype_DesignDoc.md  (기획서 원본)
 //     │   ├── Rapier_Prototype_DesignDoc.docx (팀원용 뷰어, 자동 생성)
 //     │   └── Editor/
 //     │       ├── DocSyncTool.cs
@@ -96,16 +97,17 @@
 //     │       ├── HudSetup.cs
 //     │       └── AI_CONTEXT.cs         <- 이 파일
 //     ├── 10_Scripts/
-//     │   ├── Core/        (ServiceLocator, Interfaces, Utils, CameraFollow)
+//     │   ├── Core/        (ServiceLocator, ICharacterView, IPlayerCharacter, Interfaces, Utils, CameraFollow)
 //     │   ├── Input/       (GestureRecognizer, InputSystemInitializer)
 //     │   ├── Combat/      (IDamageable)
-//     │   ├── Characters/  (Base, Warrior, Assassin, Rapier, Ranger)
+//     │   ├── Characters/  (CharacterPresenterBase, CharacterView, CharacterModel, CharacterStatData
+//     │   │                  Rapier/RapierPresenter, Rapier/RapierStatData)
 //     │   ├── Enemies/     (EnemyModel, EnemyView, EnemyPresenter, WaveManager, EnemyHpBar)
 //     │   ├── UI/HUD/      (HudView)
-//     │   ├── DevTools/    (JustDodgeDebugger — #if UNITY_EDITOR 전용)
-//     │   └── Data/        (CharacterStatData, EnemyStatData, NormalEnemyStatData.asset)
-//     ├── 20_Prefabs/      (Enemy_Template.prefab)
+//     │   └── Data/        (EnemyStatData, NormalEnemyStatData.asset)
+//     ├── 20_Prefabs/      (Enemy_Template.prefab, Rapier_Player.prefab)
 //     ├── 30_ScriptableObjects/
+//     │   └── Characters/  (RapierStatData.asset)
 //     └── 40_Scenes/
 
 // -------------------------------------------------------
@@ -113,92 +115,97 @@
 // -------------------------------------------------------
 // [Phase 1] 입력 시스템
 //   InputState.cs / ServiceLocator.cs
-//   GestureRecognizer.cs — 하단 40% 유효영역, Move/Tap/Swipe/Hold/JustDodge
+//   GestureRecognizer.cs — Move/Tap/Swipe/Hold/JustDodge 판별
 //   InputSystemInitializer.cs — ServiceLocator 등록
 //
 // [Phase 2] 캐릭터 베이스
-//   ICharacterView.cs — PlayAttack/PlayHit/PlayDodge/PlayDeath/UpdateHpGauge/UpdateChargeGauge
+//   ICharacterView.cs — SetPosition/PlayAttack/PlayHit/PlayDodge/PlayDeath/
+//                        UpdateHpGauge/UpdateChargeGauge/SetSprite
 //   CharacterStatData.cs (SO) / CharacterModel.cs / CharacterPresenterBase.cs / CharacterView.cs
-//   ※ CharacterView.UpdateHpGauge/UpdateChargeGauge 는 캐릭터 오브젝트 고유 시각 연출용 훅.
-//     HudView와 역할이 다르므로 제거하지 않는다 (Phase 6에서 캐릭터별 연출로 구현 예정).
 //
 // [Phase 3] 플레이어 / 씬 기반
-//   PlayerPresenter.cs / CameraFollow.cs / StageBuilder.cs / VirtualJoystick.cs
+//   CameraFollow.cs / StageBuilder.cs / VirtualJoystick.cs
 //   GestureRecognizer 재설계:
 //     Move  — dist >= 20px AND duration >= 0.25초
 //     Swipe — dist >= 60px AND duration < 0.25초 (FingerUp 시)
-//     이벤트 연결은 모두 Start()에서 수행 (Awake 순서 문제 해결)
 //
 // [Phase 4] 적 시스템
 //   IDamageable.cs / EnemyStatData.cs / EnemyModel.cs / EnemyView.cs
 //   EnemyPresenter.cs — 추적 AI, AttackWindow 카운터
 //   WaveManager.cs    — 10초 웨이브, 오브젝트 풀, GetNearestEnemy
 //   Enemy_Template.prefab — Enemy 레이어(8번), BoxCollider2D
-//   GestureRecognizer: _attackWindowCount int 카운터 (bool→int)
 //
 // [Phase 5] UI 연결
-//   HudView.cs — Player에 부착. Start()에서 자식 Canvas 내 이름으로 자동 탐색.
-//                Model.OnHpChanged     → HpFill.fillAmount
-//                Model.OnChargeChanged → ChargeGaugeFill.fillAmount
-//   EnemyHpBar.cs — 적 위 World Space HP 바. EnemyModel.OnHpChanged 구독.
-//   EnemyPresenter.cs 수정 — Awake에서 GetComponentInChildren<EnemyHpBar>, Spawn()에서 Init()
-//   PlayerPresenter.cs 수정 — PublicModel 프로퍼티 추가 (HudView 접근용)
-//   HudSetup.cs — Rapier/Setup 메뉴로 씬 HUD 자동 생성
-//   씬 오브젝트 구조:
-//     Player > PlayerHudCanvas (World Space, localScale=0.01, sizeDelta=200x200)
-//       > HpBarBg      (Square 스프라이트) > HpFill (Horizontal fill, fillAmount=1)
-//       > ChargeGaugeBg  (Circle 스프라이트, Radial360, fillAmount=1)
-//       > ChargeGaugeFill (Circle 스프라이트, Radial360, fillAmount=0->1)
-//       > DodgeCooldownBg (Square 스프라이트, 14x60유닛, 우측 +90)
-//           > DodgeCooldownFill (Vertical fill, Bottom origin, 노랑, fillAmount=0->1)
-//     Enemy_Template.prefab > EnemyHpBarCanvas (World Space)
-//       > HpBg > HpFill (Horizontal fill) + EnemyHpBar 컴포넌트
-//   프리팹 경로: Assets/_Project/20_Prefabs/Enemy_Template.prefab
+//   HudView.cs — IPlayerCharacter 인터페이스로 플레이어 참조
+//   EnemyHpBar.cs — 적 위 World Space HP 바 + 레이피어 표식 수(MarkText TMP) 표시
+//                   Inspector 미연결 시 Awake에서 자식 "MarkText" 자동 탐색
 //
 // [Phase 6] 전투 고도화 + 저스트 회피 연출
-//   [6-1] 저스트 회피 슬로우모션 (CharacterPresenterBase)
-//     - AnimationCurve slowCurve (Inspector 조정, 기본: 0->1.0, 0.5->0.15, 0.75->0.05, 1.0->1.0)
-//     - slowDuration = 3f (unscaledTime 기반)
-//     - SlowMotionRoutine(): 중복 발동 시 재시작, 사망/비활성 시 timeScale 복구
+//   [6-1] 저스트 회피 슬로우모션 — AnimationCurve slowCurve, slowDuration = 3f (unscaledTime)
+//   [6-2] 공격 범위 가시화 — 반투명 노란 사각형 인디케이터 (동적 생성)
+//   [6-3] 적 공격 예고 시스템 — EnemyView.PlayWindup(duration, range)
+//   [6-4] 무적 구간 — 이동 기반 (회피 대시 전 구간, 저스트 회피 슬로우 구간)
+//   [6-5] 카메라 줌 펀치 — CameraFollow.TriggerZoomPunch()
+//   [6-6] 회피 쿨타임 — DodgeCooldownRoutine, unscaledTime 기반
+//   [6-7] 회피 쿨타임 HUD
 //
-//   [6-2] 무적 프레임 + 공격 딜레이 + 범위 가시화 (CharacterPresenterBase)
-//     - Swipe 시 InvincibleRoutine(): 0.2초 무적 (unscaledTime)
-//     - AttackRoutine(): WaitForSecondsRealtime(0.5초) 딜레이, 슬로우 영향 없음
-//     - _isAttacking 플래그: 딜레이 중 연타 차단
-//     - 공격 범위 인게임 가시화: 반투명 노란 사각형 스프라이트 (동적 생성)
-//     - Gizmo 시각화 유지 (에디터 전용)
+// [Phase 7] 레이피어 캐릭터 고유 메커니즘 + 이동 시스템 리팩토링
 //
-//   [6-3] 적 공격 예고 시스템 (EnemyView, EnemyPresenter, EnemyStatData)
-//     - EnemyStatData: attackWindupDuration = 0.5f 추가
-//     - EnemyView.PlayWindup(duration, attackRange): 색상 빨강 보간 + 원형 범위 스프라이트
-//     - EnemyView.StopWindup(): 색상 복구 + 범위 스프라이트 숨김
-//     - EnemyPresenter 공격 흐름: Windup -> Hit -> None
+//   [7-1] 이동 시스템 리팩토링
+//     - CharacterView에서 이동 로직(_targetPosition, Lerp Update) 완전 제거
+//     - ICharacterView.MoveTo() → SetPosition(Vector2) 교체
+//       SetPosition은 transform.position을 즉시 설정 (Lerp 없음)
+//     - Presenter가 위치를 계산하고 View.SetPosition()으로 전달하는 구조 확립
+//     - Walk: Presenter Update()에서 delta 계산 → View.SetPosition()
+//     - DodgeDash: Base 코루틴에서 MoveTowards → View.SetPosition()
+//     - SkillDash/Return: Rapier 코루틴에서 MoveTowards → View.SetPosition()
+//       (Time.unscaledDeltaTime 사용 — 슬로우모션 영향 없음)
+//     - DodgeDash에 EaseOutQuad(AnimationCurve) 적용 (Inspector 조정 가능)
 //
-//   [6-4] PlayerPresenter TakeDamage 재설계
-//     - IsInvincible == true  -> 피해 무시 + ForceJustDodge(knockbackDir * -1f)
-//     - IsInvincible == false -> Model.TakeDamage() + View.PlayHit()
+//   [7-2] MoveState / CanAttack / _isDodging 설계
+//     - MoveState { Free, Locked }: Walk 차단 전용 (회피와 무관)
+//     - _isDodging (Base protected): HandleSwipe → true, OnDodgeDashComplete → false
+//       자식은 SetDodging(bool)으로 직접 제어
+//     - CanAttack (Base virtual): !_isDodging 기반
+//       RapierPresenter override: base.CanAttack && !_isSkillSequenceActive
 //
-//   [6-5] 카메라 줌 펀치 (CameraFollow)
-//     - ServiceLocator 등록/해제
-//     - TriggerZoomPunch(): zoomCurve(Inspector) 기반 orthographicSize 변화
-//     - unscaledTime 기반, 중복 발동 시 재시작
-//     - HandleJustDodge()에서 호출
+//   [7-3] 무적 구간 재설계 (이동 기반)
+//     - 일반 회피: HandleSwipe → SetInvincible(true), OnDodgeDashComplete → SetInvincible(false)
+//     - 저스트 회피: HandleJustDodge → SetInvincible(true), OnSlowMotionEnd → SetInvincible(false)
+//     - OnDodgeDashComplete / OnSlowMotionEnd 모두 virtual — 자식이 override하여 해제 억제 가능
 //
-//   [6-6] 회피 쿨타임 (CharacterPresenterBase, CharacterStatData, CharacterModel)
-//     - CharacterStatData: dodgeCooldown = 2f 추가
-//     - CharacterModel: DodgeCooldownRatio 프로퍼티 + OnDodgeCooldownChanged 이벤트 추가
-//     - DodgeCooldownRoutine(): unscaledTime 기반 0->1 비율 전달
-//     - 쿨타임 중 HandleSwipe() 차단
+//   [7-4] 저스트 회피 트리거 재설계
+//     - ForceJustDodge(#if UNITY_EDITOR) 제거
+//     - GestureRecognizer.TriggerJustDodge(Vector2) 추가 — 게임 로직용 정식 API
+//     - JustDodgeAvailable (Base protected): Swipe 시 true, 발동 또는 DodgeDash 완료 시 false
+//       "한 회피당 딱 한 번만" 저스트 회피 발동 보장
+//     - RapierPresenter.TakeDamage: JustDodgeAvailable == true → ConsumeJustDodge() → TriggerJustDodge()
+//     - 이후 IsInvincible이면 피해 무시 (슬로우/스킬 대시 중)
 //
-//   [6-7] 회피 쿨타임 HUD (HudView, HudSetup)
-//     - DodgeCooldownFill: Vertical fill, Bottom origin, 노랑
-//     - DodgeCooldownBg: ratio >= 1f -> SetActive(false), ratio <= 0f -> SetActive(true)
-//     - 시작 시 즉시 숨김 (사용 가능 상태)
+//   [7-5] 레이피어 고유 스킬 시퀀스
+//     - _isSkillSequenceActive: OnJustDodge 타겟 확보 시 true, 복귀 완료/조건 불충족 시 false
+//       (기존 _skillPending + _isDashSkillActive 통합)
+//     - OnDodgeDashComplete override: _isSkillSequenceActive이면 SetDodging/무적 해제 억제
+//     - OnSlowMotionEnd override: _isSkillSequenceActive이면 무적 해제 억제
+//     - DashSkillRoutine: 대시 → PerformSkillAttack() → DodgeDest 복귀
+//       복귀 완료 시 SetDodging(false) + SetInvincible(false) + FreeMovement()
 //
-//   [6-8] JustDodgeDebugger (DevTools/JustDodgeDebugger.cs)
-//     - #if UNITY_EDITOR 전용, 씬 배치 컴포넌트
-//     - Space 키 -> OpenAttackWindow() -> ForceJustDodge(Vector2.up) -> CloseAttackWindow()
-//     - GestureRecognizer에 ForceJustDodge(Vector2 direction) 추가 (#if UNITY_EDITOR)
+//   [7-6] 스킬 공격 범위 독립화
+//     - RapierStatData에 skillAttackWidth/Height/Offset 전용 필드 추가
+//     - PerformSkillAttack(): 레이피어 전용 OverlapBox, 일반 공격과 완전 독립
+//     - 빨간 사각형 인디케이터 (0.35초 표시 후 숨김)
+//
+//   [7-7] 공격 즉시 발동
+//     - AttackRoutine: PerformAttack() 즉시 실행 → 인디케이터 0.4초 표시 → 숨김
+//       (기존: 인디케이터 표시 → 0.5초 딜레이 → PerformAttack)
+//
+//   [7-8] 입력 영역 제한 제거
+//     - GestureRecognizer 하단 40% 제한 제거 → 전체 화면 허용
+//
+//   [7-9] 정리/제거
+//     - JustDodgeDebugger.cs 삭제 (디버그 전용 도구)
+//     - PlayerPresenter.cs 삭제 (RapierPresenter가 IPlayerCharacter 구현으로 대체)
+//     - GestureRecognizer AttackWindow API 제거 (OpenAttackWindow/CloseAttackWindow/IsAttackWindowOpen)
 
 // -------------------------------------------------------
 // [6] 미해결 이슈
@@ -208,18 +215,11 @@
 // -------------------------------------------------------
 // [7] 다음 작업
 // -------------------------------------------------------
-// [NEXT-01] 완료 — Phase 5 부록: 공격 범위 Gizmo 시각화 + ISSUE-01 해결
-// [NEXT-02] 완료 — Phase 6 전투 고도화 + 저스트 회피 연출 (6-1 ~ 6-8)
-// [NEXT-03] Phase 7 — 레이피어 캐릭터 고유 메커니즘
-//   예정 순서:
-//   1. EnemyModel에 Mark 시스템 추가 (MarkCount 0~5, AddMark, ConsumeAllMarks, OnMarkChanged)
-//   2. RapierPresenter.cs 작성
-//      - OnJustDodge: 공격한 적 저장 (스킬 타겟)
-//      - OnSkillRelease(justDodgeReady=true): 타겟 적에게 대시 -> 표식 부여 + 데미지 -> 원위치 복귀
-//      - OnSkillRelease(fullyCharged=true): 표식 보유 적 전체 고속 관통 공격 (중첩 수 x 데미지)
-//   3. RapierStatData SO 생성 (표식 데미지, 차지 배율 등)
-//   4. 씬 배치: PlayerPresenter -> RapierPresenter 교체
-//   5. 표식 시각화: EnemyHpBar에 표식 개수 텍스트 표시
+// [NEXT-01] ~ [NEXT-02] 완료
+// [NEXT-03] Phase 7 완료 — 레이피어 캐릭터 고유 메커니즘 + 이동 시스템 리팩토링
+// [NEXT-04] Phase 8 계획 수립 필요
+//   후보: 다른 캐릭터(Warrior/Assassin/Ranger) 구현,
+//         씬 전환/Bootstrap 구조, 스테이지 시스템, 아트 교체 등
 
 // -------------------------------------------------------
 // [8] MCP 운영 제약 및 팁
@@ -338,3 +338,21 @@
 //   실수: namespace Game.Debug 선언 -> UnityEngine.Debug와 이름 충돌로 컴파일 오류
 //   교훈: 네임스페이스 이름은 UnityEngine 내장 클래스명과 겹치지 않도록 주의.
 //         DevTools 계열은 Game.DevTools 네임스페이스 사용
+//
+// [MISTAKE-10] 승인 없이 작업 착수 시도
+//   상황: Phase 7 작업 중 분석 완료 후
+//   실수: 사용자 승인을 받지 않고 MCP 코드 수정을 시작하려 함
+//   교훈: 설계/분석이 완료되더라도 반드시 채팅으로 보고 후 승인을 받은 뒤 착수할 것.
+//         가이드라인 "설계 → 보고 → 합의 → 착수" 순서를 항상 준수
+//
+// [MISTAKE-11] SOLID 원칙 위배 코드 작성
+//   상황: 스킬 발동 중 일반 공격 차단 로직 설계 시
+//   실수: 자식(RapierPresenter)의 내부 상태(_isDashSkillActive)를
+//         Base의 OnHitDamageable에서 간접 참조하는 구조 제안 → OCP/DIP 위반
+//   교훈: 자식 고유 상태에 의존하는 로직은 반드시 자식 안에서만 처리.
+//         Base와의 결합은 virtual/override 계약(CanAttack 등)으로만 수행할 것
+//
+// [MISTAKE-12] 컴파일 에러 잔존 상태에서 작업 완료 알림
+//   상황: validate_script 에러 0건이나 콘솔에 이전 캐시 에러가 남아있던 상황
+//   실수: read_console로 실제 에러 잔존 여부를 재확인하지 않고 완료 보고
+//   교훈: 작업 완료 보고 전 반드시 read_console clear 후 재확인까지 완료할 것

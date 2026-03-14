@@ -12,21 +12,27 @@ namespace Game.Characters
     /// 레이피어 캐릭터 Presenter.
     ///
     /// [고유 메커니즘]
-    ///   1. 고유 스킬 (저스트 회피 → 스킬 발동):
-    ///      타겟 방향으로 skillDashSpeed 이동 → 사각형 범위 내 모든 적에게 데미지 + 표식
+    ///   1. 고유 스킬 (저스트 회피 → Hold → Release):
+    ///      타겟 적 방향으로 skillDashSpeed 이동
+    ///      → 사각형 범위(skillAttack*) 내 모든 적에게 데미지 + 표식 부여
     ///      → DodgeDest로 skillReturnSpeed 복귀
     ///   2. 차지 스킬:
-    ///      표식 보유 적 전체를 중첩 수 × (attackPower × chargeMarkMultiplier) 데미지 → 표식 소비
+    ///      표식 보유 적 전체를 중첩 × (attackPower × chargeMarkMultiplier) 데미지 → 표식 소비
     ///
-    /// [CanAttack 사용]
-    ///   Base의 protected bool CanAttack.
-    ///   스킬 대시 시작 시 false → 복귀 완료 시 true.
-    ///   HandleTap에서 CanAttack == false면 일반 공격 차단.
-    ///   동시에 무적 억제 조건으로도 사용 (OnDodgeDashComplete / OnSlowMotionEnd override).
+    /// [플래그 구조]
+    ///   _isSkillSequenceActive:
+    ///     OnJustDodge에서 타겟 확보 시 true
+    ///     스킬 복귀 완료 또는 조건 불충족 시 false
+    ///     → _skillPending과 _isDashSkillActive를 하나로 통합
     ///
-    /// [스킬 공격 범위]
-    ///   RapierStatData.skillAttackWidth/Height/Offset — 일반 공격 범위와 완전 독립.
-    ///   스킬 발동 시 빨간 사각형 인디케이터 표시.
+    /// [CanAttack]
+    ///   base.CanAttack (!_isDodging) AND !_isSkillSequenceActive
+    ///   → 회피 대시 중, 스킬 대기/대시/복귀 중 모두 공격 차단
+    ///
+    /// [_isDodging 제어]
+    ///   OnDodgeDashComplete() override:
+    ///     _isSkillSequenceActive이면 SetDodging(false) 억제 (공격 차단 유지)
+    ///     스킬 복귀 완료 시 SetDodging(false) 직접 호출
     /// </summary>
     public class RapierPresenter : CharacterPresenterBase, IDamageable, IPlayerCharacter
     {
@@ -40,15 +46,20 @@ namespace Game.Characters
         private readonly Dictionary<EnemyPresenter, int> _markTable
             = new Dictionary<EnemyPresenter, int>();
 
-        /// <summary>표식 변경 시 발행. (적 Presenter, 현재 중첩 수) — 0이면 제거.</summary>
         public event Action<EnemyPresenter, int> OnMarkChanged;
 
         // ── 스킬 상태 ─────────────────────────────────────────────
         private EnemyPresenter _skillTarget;
-        private bool           _skillPending;  // DodgeDash 완료 후 스킬 발동 대기 중
-        // CanAttack (Base) == false : 스킬 대시~복귀 구간. 일반 공격 차단 + 무적 억제.
 
-        // ── 스킬 범위 인디케이터 (빨간, 레이피어 전용) ────────────
+        /// <summary>
+        /// 저스트 회피 연계 스킬 진행 중 플래그.
+        /// OnJustDodge에서 타겟 확보 시 true.
+        /// 스킬 복귀 완료 또는 조건 불충족 시 false.
+        /// (기존 _skillPending + _isDashSkillActive 통합)
+        /// </summary>
+        private bool _isSkillSequenceActive;
+
+        // ── 스킬 공격 범위 인디케이터 (빨간색) ────────────────────
         private GameObject     _skillRangeIndicator;
         private SpriteRenderer _skillRangeSr;
 
@@ -77,8 +88,6 @@ namespace Game.Characters
             ServiceLocator.Unregister<IPlayerCharacter>();
             ServiceLocator.Unregister<RapierPresenter>();
             ClearAllMarks();
-            if (_skillRangeIndicator != null)
-                Destroy(_skillRangeIndicator);
         }
 
         // ── IDamageable / IPlayerCharacter ────────────────────────
@@ -87,35 +96,50 @@ namespace Game.Characters
         public void TakeDamage(float amount, Vector2 knockbackDir)
         {
             if (!IsAlive) return;
-            if (Model.IsInvincible)
+
+            if (JustDodgeAvailable)
             {
-                Debug.Log("[RapierPresenter] 무적 중 피격 → JustDodge 트리거!");
-                Gesture?.ForceJustDodge(knockbackDir * -1f);
+                // 회피 대시 중 피격 → 저스트 회피 발동 (한 회피당 한 번만)
+                ConsumeJustDodge();
+                Debug.Log("[RapierPresenter] 회피 중 피격 → 저스트 회피 발동!");
+                Gesture?.TriggerJustDodge(knockbackDir * -1f);
                 return;
             }
+
+            if (Model.IsInvincible) return; // 무적 구간(슬로우/스킬 대시 중) → 피해 무시
+
             Model.TakeDamage(amount);
             View.PlayHit();
         }
 
         public CharacterModel PublicModel => Model;
 
-        // ── DodgeDash 완료 콜백 override ─────────────────────────
+        // ── CanAttack override ────────────────────────────────────
+        /// <summary>
+        /// 회피 대시 중(_isDodging) 또는 스킬 시퀀스 진행 중이면 공격 차단.
+        /// </summary>
+        protected override bool CanAttack => base.CanAttack && !_isSkillSequenceActive;
+
+        // ── DodgeDash 완료 콜백 ───────────────────────────────────
         protected override void OnDodgeDashComplete()
         {
-            if (_skillPending)
+            ConsumeJustDodge();
+
+            if (_isSkillSequenceActive)
             {
-                // 스킬 대기 중 → Locked + 무적 유지
+                // 스킬 시퀀스 진행 예정 → _isDodging 유지 (공격 차단 유지), 무적 유지
                 return;
             }
+
+            SetDodging(false);
             Model.SetInvincible(false);
             FreeMovement();
         }
 
-        // ── 슬로우 종료 콜백 override ─────────────────────────────
+        // ── 슬로우 종료 콜백 ──────────────────────────────────────
         protected override void OnSlowMotionEnd()
         {
-            // 스킬 대시 중(CanAttack == false)이면 무적 유지
-            if (!CanAttack) return;
+            if (_isSkillSequenceActive) return; // 스킬 대시 중 → 무적 유지
             Model?.SetInvincible(false);
         }
 
@@ -123,11 +147,13 @@ namespace Game.Characters
         protected override void OnJustDodge(Vector2 direction)
         {
             var waveManager = ServiceLocator.Get<WaveManager>();
-            _skillTarget  = waveManager?.GetNearestEnemy(transform.position);
-            _skillPending = _skillTarget != null;
+            _skillTarget = waveManager?.GetNearestEnemy(transform.position);
 
-            if (_skillPending)
-                Debug.Log($"[RapierPresenter] 스킬 대기: {_skillTarget.name}");
+            if (_skillTarget != null)
+            {
+                _isSkillSequenceActive = true;
+                Debug.Log($"[RapierPresenter] 스킬 시퀀스 시작: {_skillTarget.name}");
+            }
         }
 
         // ── 스킬 발동 훅 ──────────────────────────────────────────
@@ -135,19 +161,20 @@ namespace Game.Characters
         {
             if (justDodgeReady && _skillTarget != null && _skillTarget.IsAlive)
             {
-                _skillPending = false;
                 StartCoroutine(DashSkillRoutine(_skillTarget));
             }
             else if (fullyCharged)
             {
-                _skillPending = false;
+                _isSkillSequenceActive = false;
+                SetDodging(false);
                 Model.SetInvincible(false);
                 FreeMovement();
                 ExecuteChargeSkill();
             }
             else
             {
-                _skillPending = false;
+                _isSkillSequenceActive = false;
+                SetDodging(false);
                 Model.SetInvincible(false);
                 FreeMovement();
             }
@@ -158,30 +185,22 @@ namespace Game.Characters
         // ── 고유 스킬: 대시 → 범위 공격 + 표식 → DodgeDest 복귀 ─
         private IEnumerator DashSkillRoutine(EnemyPresenter target)
         {
-            CanAttack = false;  // 일반 공격 차단 시작
-
-            // 1. 타겟 위치로 skillDashSpeed 이동
             yield return StartCoroutine(DashTo((Vector2)target.transform.position, _statData.skillDashSpeed));
 
-            // 2. 범위 공격 + 표식 + 빨간 인디케이터
-            ShowSkillRangeIndicator();
             PerformSkillAttack();
-            yield return new WaitForSeconds(0.15f);  // 인디케이터 잠깐 표시
-            HideSkillRangeIndicator();
 
-            // 3. DodgeDest로 복귀
             yield return StartCoroutine(DashTo(DodgeDest, _statData.skillReturnSpeed));
 
-            // 4. 완료 → 무적 해제 + Free + 공격 재허용
-            CanAttack = true;
+            // 스킬 시퀀스 완료 → 모든 차단 해제
+            _isSkillSequenceActive = false;
+            SetDodging(false);
             Model.SetInvincible(false);
             FreeMovement();
         }
 
         /// <summary>
-        /// 스킬 공격 — 레이피어 전용 사각형 범위(skillAttackWidth/Height/Offset) 내 모든 적에게
-        /// attackPower 데미지 + 표식 1중첩 부여.
-        /// 일반 공격(attackWidth/Height/Offset)과 완전히 독립.
+        /// 스킬 공격 — 레이피어 전용 사각형 범위 내 모든 적에게 데미지 + 표식.
+        /// 일반 공격 범위(attackWidth/Height/Offset)와 완전히 독립.
         /// </summary>
         private void PerformSkillAttack()
         {
@@ -196,6 +215,9 @@ namespace Game.Characters
             float angle      = Vector2.SignedAngle(Vector2.up, dir);
             int   enemyLayer = LayerMask.GetMask("Enemy");
 
+            ShowSkillRangeIndicator(boxCenter, boxSize, angle);
+            StartCoroutine(HideSkillIndicatorAfterDelay(0.35f));
+
             var hits     = Physics2D.OverlapBoxAll(boxCenter, boxSize, angle, enemyLayer);
             int hitCount = 0;
             foreach (var hit in hits)
@@ -209,10 +231,32 @@ namespace Game.Characters
             Debug.Log($"[RapierPresenter] 스킬 공격 히트: {hitCount}명");
         }
 
-        /// <summary>
-        /// 대시 이동 코루틴.
-        /// Time.unscaledDeltaTime 사용 — 슬로우모션에 영향받지 않음.
-        /// </summary>
+        private void ShowSkillRangeIndicator(Vector2 center, Vector2 size, float angle)
+        {
+            if (_skillRangeIndicator == null)
+            {
+                _skillRangeIndicator       = new GameObject("SkillRangeIndicator");
+                _skillRangeSr              = _skillRangeIndicator.AddComponent<SpriteRenderer>();
+                _skillRangeSr.sprite       = CreateSquareSprite();
+                _skillRangeSr.color        = new Color(1f, 0f, 0f, 0.35f);
+                _skillRangeSr.sortingOrder = 11;
+                _skillRangeIndicator.SetActive(false);
+            }
+
+            _skillRangeIndicator.transform.position   = new Vector3(center.x, center.y, 0f);
+            _skillRangeIndicator.transform.rotation   = Quaternion.Euler(0f, 0f, angle);
+            _skillRangeIndicator.transform.localScale = new Vector3(size.x, size.y, 1f);
+            _skillRangeIndicator.SetActive(true);
+        }
+
+        private IEnumerator HideSkillIndicatorAfterDelay(float delay)
+        {
+            yield return new WaitForSecondsRealtime(delay);
+            if (_skillRangeIndicator != null)
+                _skillRangeIndicator.SetActive(false);
+        }
+
+        /// <summary>대시 이동. Time.unscaledDeltaTime — 슬로우모션 영향 없음.</summary>
         private IEnumerator DashTo(Vector2 destination, float speed)
         {
             while (Vector2.Distance(transform.position, destination) > 0.05f)
@@ -223,54 +267,6 @@ namespace Game.Characters
                 yield return null;
             }
             View.SetPosition(destination);
-        }
-
-        // ── 스킬 범위 인디케이터 (빨간, 레이피어 전용) ────────────
-        private void ShowSkillRangeIndicator()
-        {
-            if (_skillRangeIndicator == null) CreateSkillRangeIndicator();
-
-            var nearest = ServiceLocator.Get<WaveManager>()?.GetNearestEnemy(transform.position);
-            var dir     = nearest != null
-                ? ((Vector2)nearest.transform.position - (Vector2)transform.position).normalized
-                : Vector2.up;
-
-            var   boxCenter = (Vector2)transform.position + dir * _statData.skillAttackOffset;
-            float angle     = Vector2.SignedAngle(Vector2.up, dir);
-
-            _skillRangeIndicator.transform.position   = new Vector3(boxCenter.x, boxCenter.y, 0f);
-            _skillRangeIndicator.transform.rotation   = Quaternion.Euler(0f, 0f, angle);
-            _skillRangeIndicator.transform.localScale = new Vector3(
-                _statData.skillAttackWidth, _statData.skillAttackHeight, 1f);
-            _skillRangeIndicator.SetActive(true);
-        }
-
-        private void HideSkillRangeIndicator()
-        {
-            if (_skillRangeIndicator != null)
-                _skillRangeIndicator.SetActive(false);
-        }
-
-        private void CreateSkillRangeIndicator()
-        {
-            _skillRangeIndicator       = new GameObject("SkillRangeIndicator");
-            _skillRangeSr              = _skillRangeIndicator.AddComponent<SpriteRenderer>();
-            _skillRangeSr.sprite       = CreateSquareSprite();
-            _skillRangeSr.color        = new Color(1f, 0.1f, 0.1f, 0.35f);  // 빨간
-            _skillRangeSr.sortingOrder = 10;
-            _skillRangeIndicator.SetActive(false);
-        }
-
-        private Sprite CreateSquareSprite()
-        {
-            const int size = 32;
-            var tex    = new Texture2D(size, size, TextureFormat.RGBA32, false);
-            var pixels = new Color32[size * size];
-            for (int i = 0; i < pixels.Length; i++)
-                pixels[i] = new Color32(255, 255, 255, 255);
-            tex.SetPixels32(pixels);
-            tex.Apply();
-            return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), size);
         }
 
         // ── 차지 스킬 ─────────────────────────────────────────────
