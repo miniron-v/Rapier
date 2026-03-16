@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ffacc54a7c872044bb035941dd2a5dd3, type: 3}
+  m_Name: SpecterStatData
+  m_EditorClassIdentifier: Assembly-CSharp::Game.Enemies.BossStatData
+  enemyName: Specter
+  sprite: {fileID: -2413806693520163455, guid: a86470a33a6bf42c4b3595704624658b, type: 3}
+  maxHp: 600
+  attackPower: 50
+  moveSpeed: 5.5
+  attackRange: 1.4
+  attackWindupDuration: 0.25
+  attackHitDuration: 0.05
+  postAttackDelay: 0.2
+  approachAngleVariance: 30
+  bossScale: 1.8
+  phase1Color: {r: 0.5, g: 0.1, b: 0.9, a: 1}
+  phase2Color: {r: 0.8, g: 0, b: 1, a: 1}
+  phase2SpeedMultiplier: 1.6
+  phase2AttackMultiplier: 1.2
+  phaseTransitionDuration: 0.8
