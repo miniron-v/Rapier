@@ -1,6 +1,6 @@
 ﻿# 프로젝트 개발 지침서 (Project Guidelines)
 
-> **버전**: v0.5.0
+> **버전**: v0.6.0
 > **최초 작성일**: 2026-03-05
 > **목적**: 본 문서는 프로젝트 전반의 아키텍처, 코딩 컨벤션, 폴더 구조, 협업 규칙을 정의합니다.
 > 모든 개발자(인간 및 AI)는 코드 작성 전 반드시 이 문서를 숙지하고, 작업 시 지침으로 삼아야 합니다.
@@ -64,7 +64,6 @@
 ### 테스트 전략
 
 - 단위 테스트 대상: MonoBehaviour 의존성 없는 순수 로직.
-  예) GestureRecognizer 판별 로직, 데미지 계산, SO 데이터 유효성 검사.
 - 수동 테스트 대상: Presenter ↔ View 통합 동작, 플레이어 조작감.
 - 테스트 ROI가 낮은 곳에 테스트 코드 강제 금지.
 
@@ -72,7 +71,28 @@
 
 - 캐릭터 스탯, 스킬 수치 등 순수 데이터는 ScriptableObject로 분리.
 - 전투 상태(HP, 쿨타임 등) 런타임 데이터는 순수 C# 클래스 또는 구조체로 관리.
+- SO 값은 기획자가 런타임 전 설정하는 고정값. 런타임 가변값은 [NonSerialized] 필드에 캐싱.
 - Model은 MonoBehaviour를 상속하지 않으며 Unity 라이프사이클에 의존하지 않음.
+
+### 적 공격 시스템 (AttackAction 패턴)
+
+모든 적의 공격은 EnemyAttackAction 파생 클래스로 정의하고,
+EnemyStatData.attackSequence ([SerializeReference] 리스트)에 직렬화한다.
+
+```
+EnterWindupPhase()
+  → action.PrepareWindup(ctx)   // 가변 범위 확정 (ChargeAttackAction 등이 override)
+  → AttackIndicator.Play()      // 인디케이터 표시
+EnterHitPhase()
+  → action.Execute(ctx, cb)     // 실제 공격 판정. 완료 시 cb() 호출
+  → EnterPostAttackPhase()
+```
+
+- 인디케이터 범위와 히트 판정 범위는 동일한 데이터를 사용해야 한다.
+- 인디케이터 루트에 lossyScale 역수를 적용해 부모 스케일 상속을 취소할 것.
+- 방향 계산은 x축 기준(Atan2 / Cos·Sin 순서)으로 통일한다.
+- SO의 가변 범위(wallDist 등)는 PrepareWindup에서 계산 후 [NonSerialized] 필드에 캐싱.
+  Execute()에서 캐시 값을 사용. SO 원본 불변.
 
 ### SOLID 원칙
 
@@ -113,8 +133,11 @@ Assets/
     │   ├── Combat/               # IDamageable
     │   ├── Characters/           # Base, Warrior, Assassin, Rapier, Ranger
     │   ├── Enemies/              # EnemyModel, EnemyView, EnemyPresenter, WaveManager, EnemyHpBar
+    │   │                         # AttackIndicatorData, AttackIndicator
+    │   │                         # EnemyAttackAction, EnemyAttackContext, EnemyAttackSequencer
+    │   │                         # MeleeAttackAction, AoeAttackAction, ChargeAttackAction, TeleportAttackAction
     │   ├── UI/                   # HUD, Common
-    │   └── Data/                 # EnemyStatData
+    │   └── Data/                 # EnemyStatData, BossStatData
     ├── 20_Prefabs/               # Characters, Enemies, Skills, UI
     ├── 30_ScriptableObjects/     # Characters, Skills
     └── 40_Scenes/                # SampleScene, _Test/
@@ -198,6 +221,7 @@ Assets/
 - 캐릭터 스탯, 스킬 설정값은 SO로 분리
 - menuName 형식: 'Game/Data/[카테고리]/[이름]'
 - 외부에는 읽기 전용 프로퍼티(=>)만 노출. setter 금지.
+- SO 값은 런타임에 변경 금지. 가변 계산값은 [NonSerialized] 필드에 캐싱.
 
 ---
 
@@ -260,6 +284,7 @@ New Input System → GestureRecognizer → InputState Enum → C# event → Char
 - 설계 완료 후 채팅으로 보고 → 승인 후 착수. 승인 없이 MCP 작업 시작 금지.
 - 작업 완료 보고 전: read_console clear 후 재확인까지 완료.
 - SOLID 원칙 준수: 자식 고유 상태는 자식 안에서만 처리. Base는 virtual/override 계약으로만 결합.
+- 버그 수정 시: 디버그 로그로 원인을 먼저 확정한 뒤 수정 방향 결정. 기획 의도에 반하는 수정은 사용자 확인 후 진행.
 
 ### 코드 리뷰 체크리스트
 
@@ -273,6 +298,8 @@ New Input System → GestureRecognizer → InputState Enum → C# event → Char
 - [ ] SO 데이터는 읽기 전용 프로퍼티로만 외부에 노출하는가?
 - [ ] 새 캐릭터 추가 시 기존 코드를 수정하지 않아도 되는가? (OCP)
 - [ ] 자식 고유 상태가 Base에 노출되지 않는가? (DIP/OCP)
+- [ ] 인디케이터 범위와 히트 판정 범위가 동일한 데이터를 사용하는가?
+- [ ] 런타임 가변값이 [NonSerialized] 필드에 캐싱되어 있는가? (SO 불변 원칙)
 
 ---
 
@@ -284,7 +311,8 @@ New Input System → GestureRecognizer → InputState Enum → C# event → Char
 | v0.2.1 | 2026-03-05 | GuidelinesEditor.cs 추가. md 직접 수정 유틸 도입으로 cs 재생성 방식 제거 |
 | v0.3.0 | 2026-03-05 | DI 전략, 테스트 전략, 데이터 설계 원칙 추가. 이벤트 통신 표에 ServiceLocator 항목 추가 |
 | v0.4.0 | 2026-03-07 | 클리어 조건 추가. 조작 조건 수치 명세화 (Tap/Swipe/Drag/Hold 기준값 확정) |
-| v0.5.0 | 2026-03-16 | 입력 유효 영역 전체 화면으로 변경. View 이동 로직 금지 명시(Presenter가 SetPosition 호출). 저스트 회피 트리거 API 갱신(TriggerJustDodge). AI 협업 규칙 추가. 코드 리뷰 체크리스트 갱신. 중복 섹션 정리. |
+| v0.5.0 | 2026-03-16 | 입력 유효 영역 전체 화면으로 변경. View 이동 로직 금지 명시. 저스트 회피 트리거 API 갱신. AI 협업 규칙 추가. 코드 리뷰 체크리스트 갱신. |
+| v0.6.0 | 2026-03-16 | 적 공격 시스템(AttackAction 패턴) 섹션 추가. SO 불변 원칙 명시. 인디케이터 설계 원칙 추가. 코드 리뷰 체크리스트 갱신. AI 버그 수정 프로세스 추가. |
 
 ---
 
