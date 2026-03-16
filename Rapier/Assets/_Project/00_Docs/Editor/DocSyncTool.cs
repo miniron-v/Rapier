@@ -170,7 +170,7 @@ public class DocSyncTool : EditorWindow
     {
         return
 @"# RAPIER 프로토타입 기획서
-**Prototype Design Document v1.4.0**
+**Prototype Design Document v1.5.0**
 2026-03-16
 
 ---
@@ -203,11 +203,36 @@ public class DocSyncTool : EditorWindow
 
 ### 2-2. 보스 패턴
 
-| 패턴 | 횟수/주기 | 설명 |
-|------|-----------|------|
-| 일반 공격 | 3회 연속 (주기 2초) | 전방 근거리 단일 타격 |
-| 광역 스킬 | 3회 일반 공격 후 1회 | 주변 360도 범위 광역 피해 |
-| 패턴 루프 | 무한 반복 | 일반 3회 → 광역 1회 → 반복 |
+모든 보스의 공격은 **시퀀셜 구조**로 정의된다. 공격 패턴은 순서대로 반복되며,
+페이즈 전환(HP 50% 이하) 시 별도로 정의된 2페이즈 시퀀스로 교체된다.
+
+#### 타이탄 보스
+
+| 패턴 | 시퀀스 | 설명 |
+|------|--------|------|
+| 1페이즈 | Melee → Melee → Melee → 반복 | 전방 부채꼴 근접 공격 |
+| 2페이즈 | Melee → Melee → Melee → Charge → 반복 | 3회 근접 후 직선 돌진 |
+
+#### 스펙터 보스
+
+| 패턴 | 시퀀스 | 설명 |
+|------|--------|------|
+| 1페이즈 | Melee → 반복 | 빠른 근접 공격 |
+| 2페이즈 | Teleport → Melee → 반복 | 순간이동 후 근접 공격 |
+
+### 2-3. 공격 예고 인디케이터
+
+Windup 구간 동안 아웃라인(범위 경계 고정) + 스캔라인(중심→경계 확장)이 표시된다.
+스캔라인이 경계에 닿는 순간 = 공격 발동.
+
+| 모양 | 용도 |
+|------|------|
+| 부채꼴 (Sector) | 근접 광역 공격 |
+| 사각형 (Rectangle) | 돌진 등 직선 범위 공격 |
+
+- `angleOffset` 필드로 여러 방향 인디케이터 동시 표시 가능 (예: 120도 간격 3개).
+- `lockIndicatorDirection`: true 시 Windup 시작 방향 고정. false 시 플레이어 실시간 추적.
+- 인디케이터 범위 = 히트 판정 범위 (동일한 데이터 사용).
 
 ---
 
@@ -297,18 +322,16 @@ public class DocSyncTool : EditorWindow
 | 공격력 | 50 | 플레이어 10회 피격 사망 기준 |
 | 이동속도 | 2.5 | 플레이어의 절반 속도 |
 | 공격 주기 | 1.5초 | 타이밍 학습 가능한 주기 |
-| 공격 예고 | 0.5초 Windup | 색상 변화 + 원형 범위 스프라이트로 시각 예고 |
+| 공격 예고 | 0.5초 Windup | 아웃라인 + 스캔라인 인디케이터로 시각 예고 |
 | 접근 방식 | 분산 접근 | 각자 다른 각도에서 접근. 뭉치기 방지 |
 
-### 5-2. 보스
+### 5-2. 보스 (공통)
 
 | 항목 | 수치 | 비고 |
 |------|------|------|
 | 최대 HP | 2000 | 플레이어 40타 처치. 약 2분 보스전 상정 |
 | 일반 공격력 | 80 | 플레이어 약 6회 피격 사망 |
 | 광역 스킬 데미지 | 120 | 피격 시 HP 약 24% 감소. 회피 필수 |
-| 일반 공격 주기 | 2초 (3회) | 패턴 학습 가능한 주기 |
-| 광역 스킬 주기 | 3회 일반 후 1회 | 예측 가능한 고정 패턴 |
 | 이동속도 | 1.5 | 느리고 무거운 움직임 |
 
 ---
@@ -319,8 +342,7 @@ public class DocSyncTool : EditorWindow
 |------|----|--------|----------|------|
 | 플레이어 | 500 | 50 (사각형 범위 광역) | 5.0 | 회피 대시 전 구간 무적, 쿨다운 2초 |
 | 일반 적 | 250 | 50 / 주기 1.5초 | 2.5 | 분산 접근 AI, 0.5초 Windup 예고 |
-| 보스 (일반) | 2000 | 80 / 주기 2초 | 1.5 | 3회 후 광역 |
-| 보스 (광역 스킬) | - | 120 | - | 3회 일반 후 1회 |
+| 보스 (일반) | 2000 | 80 / 주기 2초 | 1.5 | 시퀀셜 패턴 (3회 근접 → 특수) |
 | 레이피어 차지 스킬 | - | 중첩 수 × (공격력 × 배율) | - | 각 적마다 보유 표식 중첩 수만큼 피해 |
 
 ---
@@ -336,6 +358,8 @@ public class DocSyncTool : EditorWindow
 | Phase 5 | UI 연결 (HP바, 차지 게이지, Debug 패널) | 전체 루프 플레이 가능 |
 | Phase 6 | 전투 고도화 + 저스트 회피 연출 | 슬로우, 무적, 쿨다운, 카메라 줌, HUD 피드백 확인 |
 | Phase 7 | 이동 시스템 리팩토링 + 레이피어 고유 메커니즘 | 표식 시스템 + 대시 스킬 + 차지 스킬 동작 확인 |
+| Phase 8 | 보스 러시 데모 | 타이탄/스펙터 보스전 플레이 가능 |
+| Phase 9 | 공격 인디케이터 + 공격 시퀀서 시스템 | 인디케이터 범위 = 판정 범위 일치. 시퀀셜 패턴 동작 확인 |
 
 ---
 
@@ -347,7 +371,8 @@ public class DocSyncTool : EditorWindow
 | v1.1.0 | 2026-03-07 | 저스트 회피 시스템 명세 추가. 강화 스킬 발동 조건 명확화. 웨이브 전환 방식 수정 (10초 자동 추가 등장) |
 | v1.2.0 | 2026-03-10 | 저스트 회피 슬로우 중 Hold를 캐릭터 고유 스킬로 분리. 암살자 잔상 발동 조건 변경. 레이피어/차지 스킬 전면 재기술. |
 | v1.3.0 | 2026-03-10 | Swipe(Dodge) 쿨다운 2초 추가. 공격 딜레이 0.5초 및 연타 차단 명세 추가. 저스트 회피 카메라 줌 연출 추가. 적 공격 예고(Windup 0.5초) 추가. Phase 6/7 구현 항목 갱신. |
-| v1.4.0 | 2026-03-16 | 입력 유효 영역 하단 40% → 전체 화면으로 변경. 공격 즉시 히트 판정 + 인디케이터 0.4초 표시로 변경. 저스트 회피 발동 조건 명확화(회피 대시 중 피격, 한 회피당 1회). 레이피어 고유 스킬 상세 기술 갱신(사각형 범위 전체 적, DodgeDest 복귀, 무적 구간 명세). Phase 7 완료 처리. |
+| v1.4.0 | 2026-03-16 | 입력 유효 영역 하단 40% → 전체 화면으로 변경. 공격 즉시 히트 판정 + 인디케이터 0.4초 표시로 변경. 저스트 회피 발동 조건 명확화. 레이피어 고유 스킬 상세 기술 갱신. Phase 7 완료 처리. |
+| v1.5.0 | 2026-03-16 | 보스 패턴을 시퀀셜 구조로 명세. 공격 예고 인디케이터 방식 변경(아웃라인+스캔라인). Phase 8/9 완료 처리. |
 ";
     }
 
@@ -357,7 +382,7 @@ public class DocSyncTool : EditorWindow
         return
 @"# 프로젝트 개발 지침서 (Project Guidelines)
 
-> **버전**: v0.5.0
+> **버전**: v0.6.0
 > **최초 작성일**: 2026-03-05
 > **목적**: 본 문서는 프로젝트 전반의 아키텍처, 코딩 컨벤션, 폴더 구조, 협업 규칙을 정의합니다.
 > 모든 개발자(인간 및 AI)는 코드 작성 전 반드시 이 문서를 숙지하고, 작업 시 지침으로 삼아야 합니다.
@@ -421,7 +446,6 @@ public class DocSyncTool : EditorWindow
 ### 테스트 전략
 
 - 단위 테스트 대상: MonoBehaviour 의존성 없는 순수 로직.
-  예) GestureRecognizer 판별 로직, 데미지 계산, SO 데이터 유효성 검사.
 - 수동 테스트 대상: Presenter ↔ View 통합 동작, 플레이어 조작감.
 - 테스트 ROI가 낮은 곳에 테스트 코드 강제 금지.
 
@@ -429,7 +453,28 @@ public class DocSyncTool : EditorWindow
 
 - 캐릭터 스탯, 스킬 수치 등 순수 데이터는 ScriptableObject로 분리.
 - 전투 상태(HP, 쿨타임 등) 런타임 데이터는 순수 C# 클래스 또는 구조체로 관리.
+- SO 값은 기획자가 런타임 전 설정하는 고정값. 런타임 가변값은 [NonSerialized] 필드에 캐싱.
 - Model은 MonoBehaviour를 상속하지 않으며 Unity 라이프사이클에 의존하지 않음.
+
+### 적 공격 시스템 (AttackAction 패턴)
+
+모든 적의 공격은 EnemyAttackAction 파생 클래스로 정의하고,
+EnemyStatData.attackSequence ([SerializeReference] 리스트)에 직렬화한다.
+
+```
+EnterWindupPhase()
+  → action.PrepareWindup(ctx)   // 가변 범위 확정 (ChargeAttackAction 등이 override)
+  → AttackIndicator.Play()      // 인디케이터 표시
+EnterHitPhase()
+  → action.Execute(ctx, cb)     // 실제 공격 판정. 완료 시 cb() 호출
+  → EnterPostAttackPhase()
+```
+
+- 인디케이터 범위와 히트 판정 범위는 동일한 데이터를 사용해야 한다.
+- 인디케이터 루트에 lossyScale 역수를 적용해 부모 스케일 상속을 취소할 것.
+- 방향 계산은 x축 기준(Atan2 / Cos·Sin 순서)으로 통일한다.
+- SO의 가변 범위(wallDist 등)는 PrepareWindup에서 계산 후 [NonSerialized] 필드에 캐싱.
+  Execute()에서 캐시 값을 사용. SO 원본 불변.
 
 ### SOLID 원칙
 
@@ -470,8 +515,11 @@ Assets/
     │   ├── Combat/               # IDamageable
     │   ├── Characters/           # Base, Warrior, Assassin, Rapier, Ranger
     │   ├── Enemies/              # EnemyModel, EnemyView, EnemyPresenter, WaveManager, EnemyHpBar
+    │   │                         # AttackIndicatorData, AttackIndicator
+    │   │                         # EnemyAttackAction, EnemyAttackContext, EnemyAttackSequencer
+    │   │                         # MeleeAttackAction, AoeAttackAction, ChargeAttackAction, TeleportAttackAction
     │   ├── UI/                   # HUD, Common
-    │   └── Data/                 # EnemyStatData
+    │   └── Data/                 # EnemyStatData, BossStatData
     ├── 20_Prefabs/               # Characters, Enemies, Skills, UI
     ├── 30_ScriptableObjects/     # Characters, Skills
     └── 40_Scenes/                # SampleScene, _Test/
@@ -555,6 +603,7 @@ Assets/
 - 캐릭터 스탯, 스킬 설정값은 SO로 분리
 - menuName 형식: 'Game/Data/[카테고리]/[이름]'
 - 외부에는 읽기 전용 프로퍼티(=>)만 노출. setter 금지.
+- SO 값은 런타임에 변경 금지. 가변 계산값은 [NonSerialized] 필드에 캐싱.
 
 ---
 
@@ -617,6 +666,7 @@ New Input System → GestureRecognizer → InputState Enum → C# event → Char
 - 설계 완료 후 채팅으로 보고 → 승인 후 착수. 승인 없이 MCP 작업 시작 금지.
 - 작업 완료 보고 전: read_console clear 후 재확인까지 완료.
 - SOLID 원칙 준수: 자식 고유 상태는 자식 안에서만 처리. Base는 virtual/override 계약으로만 결합.
+- 버그 수정 시: 디버그 로그로 원인을 먼저 확정한 뒤 수정 방향 결정. 기획 의도에 반하는 수정은 사용자 확인 후 진행.
 
 ### 코드 리뷰 체크리스트
 
@@ -630,6 +680,8 @@ New Input System → GestureRecognizer → InputState Enum → C# event → Char
 - [ ] SO 데이터는 읽기 전용 프로퍼티로만 외부에 노출하는가?
 - [ ] 새 캐릭터 추가 시 기존 코드를 수정하지 않아도 되는가? (OCP)
 - [ ] 자식 고유 상태가 Base에 노출되지 않는가? (DIP/OCP)
+- [ ] 인디케이터 범위와 히트 판정 범위가 동일한 데이터를 사용하는가?
+- [ ] 런타임 가변값이 [NonSerialized] 필드에 캐싱되어 있는가? (SO 불변 원칙)
 
 ---
 
@@ -641,7 +693,8 @@ New Input System → GestureRecognizer → InputState Enum → C# event → Char
 | v0.2.1 | 2026-03-05 | GuidelinesEditor.cs 추가. md 직접 수정 유틸 도입으로 cs 재생성 방식 제거 |
 | v0.3.0 | 2026-03-05 | DI 전략, 테스트 전략, 데이터 설계 원칙 추가. 이벤트 통신 표에 ServiceLocator 항목 추가 |
 | v0.4.0 | 2026-03-07 | 클리어 조건 추가. 조작 조건 수치 명세화 (Tap/Swipe/Drag/Hold 기준값 확정) |
-| v0.5.0 | 2026-03-16 | 입력 유효 영역 전체 화면으로 변경. View 이동 로직 금지 명시(Presenter가 SetPosition 호출). 저스트 회피 트리거 API 갱신(TriggerJustDodge). AI 협업 규칙 추가. 코드 리뷰 체크리스트 갱신. 중복 섹션 정리. |
+| v0.5.0 | 2026-03-16 | 입력 유효 영역 전체 화면으로 변경. View 이동 로직 금지 명시. 저스트 회피 트리거 API 갱신. AI 협업 규칙 추가. 코드 리뷰 체크리스트 갱신. |
+| v0.6.0 | 2026-03-16 | 적 공격 시스템(AttackAction 패턴) 섹션 추가. SO 불변 원칙 명시. 인디케이터 설계 원칙 추가. 코드 리뷰 체크리스트 갱신. AI 버그 수정 프로세스 추가. |
 
 ---
 

@@ -73,11 +73,43 @@
 //   씬 경계 글로벌 이벤트 : SO 이벤트 채널 (추후 씬 분리 시 도입)
 //
 // [적 계층 구조]
-//   EnemyPresenterBase (abstract) ← 모든 적의 공통 베이스 (Chase/Windup/Hit/PostAttack)
+//   EnemyPresenterBase (abstract) ← 모든 적의 공통 베이스 (Chase/Windup/Hit/PostAttack + 시퀀서)
 //   ├── NormalEnemyPresenter       ← 일반 적 (WaveManager 오브젝트 풀)
-//   └── BossPresenterBase (abstract) ← 2페이즈 시스템, OnPhaseChanged 이벤트
-//       ├── TitanBossPresenter     ← 직선 돌진 + 그로기
-//       └── SpecterBossPresenter   ← 2페이즈 순간이동
+//   └── BossPresenterBase (abstract) ← 2페이즈 시스템, 페이즈별 시퀀스 교체
+//       ├── TitanBossPresenter     ← 공격 로직 없음. ChargeAttackAction SO에 위임.
+//       └── SpecterBossPresenter   ← 공격 로직 없음. TeleportAttackAction SO에 위임.
+//
+// [적 공격 시스템 — AttackAction 구조]
+//   모든 적의 공격은 EnemyAttackAction 파생 클래스로 정의된다.
+//   EnemyStatData.attackSequence (List<EnemyAttackAction>, [SerializeReference]) 에 직렬화.
+//   BossStatData.phase2Sequence 로 페이즈 전환 시 시퀀서가 자동 교체됨.
+//
+//   [흐름]
+//     EnterWindupPhase() → PrepareWindup(ctx) 호출 (가변 범위 확정 + 인디케이터 목록 반환)
+//                        → AttackIndicator.Play() (인디케이터 표시)
+//     EnterHitPhase()   → Execute(ctx, onComplete) 코루틴 호출 (실제 공격 판정)
+//                        → onComplete() → EnterPostAttackPhase()
+//
+//   [파생 클래스]
+//     MeleeAttackAction    : 인디케이터 모양(Sector/Rectangle)에 맞는 히트 판정.
+//                            Execute() 시점 실시간 위치로 판정 (Windup 중 회피 가능).
+//     AoeAttackAction      : 범위 내 전체 히트 판정.
+//     ChargeAttackAction   : PrepareWindup에서 RaycastToWall로 실제 wallDist 확정,
+//                            인디케이터 range를 런타임 캐시(_resolvedWallDist)로 덮어씀.
+//                            SO의 chargeMaxDistance는 기획 상한값으로만 사용.
+//     TeleportAttackAction : 히트 판정 없음. 페이드아웃 → 순간이동 → 페이드인.
+//
+//   [인디케이터]
+//     AttackIndicatorEntry: shape(Sector/Rectangle) + angleOffset + sectorData/rectData
+//     angleOffset: 플레이어 방향 기준 회전 오프셋 (도). 여러 방향 동시 표시 가능.
+//     방향 계산 기준: x축 기준 (Atan2 / Cos·Sin 순서). AttackIndicator와 MeleeAttackAction 통일.
+//     인디케이터 루트 localScale: lossyScale 역수 적용 → 보스 bossScale 상속 취소.
+//                                 메시 좌표 = 월드 단위와 항상 일치.
+//     lockIndicatorDirection: true 시 Windup 시작 방향 고정.
+//
+//   [SO 데이터 원칙]
+//     SO 값은 기획자가 런타임 전 설정하는 고정값.
+//     런타임 가변값(wallDist 등)은 [NonSerialized] 필드에 캐싱. SO 원본 불변.
 //
 // [폴더 인덱싱]
 //   10 단위 숫자 접두사로 ABC 정렬 혼용 방지. Scripts 내부는 기능명만 사용.
@@ -102,40 +134,49 @@
 //     │       ├── DocSyncTool.cs
 //     │       ├── ProjectFolderSetup.cs
 //     │       ├── HudSetup.cs
-//     │       ├── BossRushHudSetup.cs        ← 보스 러시 HUD Canvas 자동 생성
-//     │       ├── BossStatDataCreator.cs     ← SO 에셋 + 씬 자동 조립
-//     │       ├── PrefabMissingScriptCleaner.cs ← MissingScript 정리 유틸
-//     │       └── AI_CONTEXT.cs              ← 이 파일
+//     │       ├── BossRushHudSetup.cs
+//     │       ├── BossStatDataCreator.cs
+//     │       ├── TitanDataSetup.cs          ← 타이탄 공격 시퀀스 초기값 설정
+//     │       ├── EnemyDataSetup.cs          ← 일반 적 / 스펙터 공격 시퀀스 초기값 설정
+//     │       ├── PrefabMissingScriptCleaner.cs
+//     │       └── AI_CONTEXT.cs
 //     ├── 10_Scripts/
-//     │   ├── Core/        (ServiceLocator, ICharacterView, IPlayerCharacter, Interfaces,
-//     │   │                  Utils, CameraFollow, StageBuilder, VirtualJoystick,
-//     │   │                  InputSystemInitializer)
-//     │   ├── Input/       (GestureRecognizer)           ← UI 터치 필터링 포함
+//     │   ├── Core/
+//     │   ├── Input/       (GestureRecognizer)
 //     │   ├── Combat/      (IDamageable)
 //     │   ├── Characters/  (CharacterPresenterBase, CharacterView, CharacterModel,
-//     │   │                  CharacterStatData
-//     │   │                  Rapier/RapierPresenter, Rapier/RapierStatData)
+//     │   │                  CharacterStatData, Rapier/RapierPresenter, Rapier/RapierStatData)
 //     │   ├── Enemies/
-//     │   │   ├── EnemyPresenterBase.cs      ← 모든 적 공통 베이스 (GetModel() 포함)
-//     │   │   ├── NormalEnemyPresenter.cs    ← 일반 적 (기존 EnemyPresenter 대체)
+//     │   │   ├── EnemyPresenterBase.cs      ← 시퀀서 통합, PrepareWindup/Execute 위임
+//     │   │   ├── NormalEnemyPresenter.cs
 //     │   │   ├── EnemyModel.cs
-//     │   │   ├── EnemyView.cs
+//     │   │   ├── EnemyView.cs               ← AttackIndicator에 위임
 //     │   │   ├── EnemyHpBar.cs
-//     │   │   ├── WaveManager.cs             ← NormalEnemyPresenter 풀 관리
-//     │   │   ├── BossRushManager.cs         ← 보스 순서·사망 감지·스테이지 전환
+//     │   │   ├── AttackIndicatorData.cs     ← AttackIndicatorShape / SectorIndicatorData /
+//     │   │   │                                 RectIndicatorData / AttackIndicatorEntry
+//     │   │   ├── AttackIndicator.cs         ← 메시 기반 인디케이터 (채우기/아웃라인/스캔라인)
+//     │   │   ├── EnemyAttackAction.cs       ← abstract base (PrepareWindup + Execute)
+//     │   │   ├── EnemyAttackContext.cs      ← 런타임 컨텍스트 (LockedForward 포함)
+//     │   │   ├── EnemyAttackSequencer.cs    ← 순서 관리 + SetSequence()
+//     │   │   ├── MeleeAttackAction.cs       ← Sector/Rectangle 모양별 히트 판정
+//     │   │   ├── AoeAttackAction.cs
+//     │   │   ├── ChargeAttackAction.cs      ← PrepareWindup에서 wallDist 확정
+//     │   │   ├── TeleportAttackAction.cs    ← 페이드아웃/인 + 순간이동
+//     │   │   ├── WaveManager.cs
+//     │   │   ├── BossRushManager.cs
 //     │   │   └── Boss/
-//     │   │       ├── BossPresenterBase.cs   ← 2페이즈 시스템, OnPhaseChanged
-//     │   │       ├── TitanBossPresenter.cs  ← 직선 돌진·예고 인디케이터·그로기·벽 감지
-//     │   │       └── SpecterBossPresenter.cs ← 순간이동
+//     │   │       ├── BossPresenterBase.cs   ← 페이즈 전환 시 SetSequence() 호출
+//     │   │       ├── TitanBossPresenter.cs  ← 거의 빈 클래스. 공격은 AttackAction에 위임.
+//     │   │       └── SpecterBossPresenter.cs ← 거의 빈 클래스. 공격은 AttackAction에 위임.
 //     │   ├── UI/
 //     │   │   ├── HUD/     (HudView, BossRushHudView)
 //     │   │   └── VirtualJoystick.cs
-//     │   └── Data/        (EnemyStatData, BossStatData, NormalEnemyStatData.asset)
+//     │   └── Data/        (EnemyStatData, BossStatData)
 //     ├── 20_Prefabs/
-//     │   ├── Enemy_Template.prefab          ← NormalEnemyPresenter
+//     │   ├── Enemy_Template.prefab
 //     │   ├── Rapier_Player.prefab
-//     │   ├── Titan_Boss.prefab              ← TitanBossPresenter
-//     │   └── Specter_Boss.prefab            ← SpecterBossPresenter
+//     │   ├── Titan_Boss.prefab
+//     │   └── Specter_Boss.prefab
 //     ├── 30_ScriptableObjects/
 //     │   ├── Characters/  (RapierStatData.asset)
 //     │   └── Enemies/
@@ -144,97 +185,62 @@
 //     │           ├── TitanStatData.asset
 //     │           └── SpecterStatData.asset
 //     └── 40_Scenes/
-//         ├── SampleScene.unity              ← 기존 웨이브 프로토타입
-//         └── BossRushDemo.unity             ← 보스 러시 데모 (독립 씬)
+//         ├── SampleScene.unity
+//         └── BossRushDemo.unity
 
 // -------------------------------------------------------
 // [5] 완료된 작업
 // -------------------------------------------------------
-// [Phase 1] 입력 시스템
-//   InputState.cs / ServiceLocator.cs
-//   GestureRecognizer.cs — Move/Tap/Swipe/Hold/JustDodge 판별
-//   InputSystemInitializer.cs — ServiceLocator 등록
+// [Phase 1~8] 이전 세션 참고 (생략)
 //
-// [Phase 2] 캐릭터 베이스
-//   ICharacterView.cs / CharacterStatData.cs / CharacterModel.cs
-//   CharacterPresenterBase.cs / CharacterView.cs
+// [Phase 9] 적 공격 인디케이터 + 공격 시퀀서 시스템
 //
-// [Phase 3] 플레이어 / 씬 기반
-//   CameraFollow.cs / StageBuilder.cs / VirtualJoystick.cs
-//   GestureRecognizer 재설계 (Move/Swipe 판별 기준)
+//   [9-1] 공격 인디케이터 시스템
+//     기존 원형 알파 보간 인디케이터 → 아웃라인(범위 고정) + 스캔라인(중심→경계 확장) 방식으로 교체.
+//     스캔라인이 경계에 닿는 순간 = 공격 발동.
+//     모양: Sector(부채꼴) / Rectangle(사각형).
+//     angleOffset으로 여러 방향 인디케이터 동시 표시 가능 (예: 120도 간격 3개).
+//     방향 계산 기준 통일: x축 기준 Atan2 / Cos·Sin 순서. AttackIndicator ↔ MeleeAttackAction 동일.
+//     인디케이터 루트에 lossyScale 역수 적용 → 보스 bossScale 스케일 상속 취소.
 //
-// [Phase 4] 적 시스템
-//   IDamageable.cs / EnemyStatData.cs / EnemyModel.cs / EnemyView.cs
-//   EnemyPresenter.cs / WaveManager.cs / Enemy_Template.prefab
+//   [9-2] 공격 시퀀서 시스템
+//     EnemyStatData에 [SerializeReference] List<EnemyAttackAction> attackSequence 추가.
+//     BossStatData에 phase2Sequence 추가. HP 50% 이하 시 시퀀서 자동 교체.
+//     상태머신(Chase→Windup→Hit→PostAttack) 유지.
+//     EnterWindupPhase()에서 PrepareWindup() 호출 후 인디케이터 표시.
+//     EnterHitPhase()에서 Execute() 코루틴 호출.
+//     ChargeAttackAction: PrepareWindup에서 wallDist 계산, 인디케이터 range 확정.
+//     TeleportAttackAction: 인디케이터 없음. 순간이동 자체가 연출.
+//     TitanBossPresenter / SpecterBossPresenter: 공격 로직 전부 AttackAction으로 이전.
 //
-// [Phase 5] UI 연결
-//   HudView.cs / EnemyHpBar.cs (레이피어 표식 수 표시 포함)
-//
-// [Phase 6] 전투 고도화 + 저스트 회피 연출
-//   저스트 회피 슬로우모션 / 공격 범위 인디케이터 / 적 공격 예고
-//   무적 구간 / 카메라 줌 펀치 / 회피 쿨타임 HUD
-//
-// [Phase 7] 레이피어 캐릭터 고유 메커니즘 + 이동 시스템 리팩토링
-//   이동 시스템 Presenter 주도 / MoveState / CanAttack / 무적 구간 재설계
-//   저스트 회피 트리거 재설계 / 레이피어 스킬 시퀀스 / 스킬 공격 범위 독립화
-//   공격 즉시 발동 / 입력 영역 제한 제거
-//
-// [Phase 8] 보스 러시 데모
-//
-//   [8-1] 적 계층 리팩토링
-//     EnemyPresenter → EnemyPresenterBase(abstract) + NormalEnemyPresenter 로 분리.
-//     RapierPresenter, EnemyHpBar, WaveManager 모두 EnemyPresenterBase 기반으로 수정.
-//     RapierPresenter의 OnMarkChanged, 표식 테이블, 스킬 타겟이 EnemyPresenterBase 타입으로 통일.
-//     PerformAttack/ShowAttackRangeIndicator — WaveManager 없을 시 BossRushManager 폴백 추가.
-//
-//   [8-2] 보스 시스템
-//     BossStatData(SO) — EnemyStatData 상속, 2페이즈 스탯 배율·색상·스케일·전환 연출 시간.
-//     BossPresenterBase — HP 50% 이하 진입 시 2페이즈 전환 루틴, OnPhaseChanged 이벤트.
-//                         GetMoveSpeed/GetAttackPower override로 페이즈별 배율 자동 적용.
-//     TitanBossPresenter:
-//       1페이즈: 느린 근접 공격 (베이스 AI)
-//       2페이즈: 일반 AI와 완전 교대로 직선 돌진 시퀀스 수행
-//               ① 예고(WindupCharge): StageBuilder.RaycastToWall()로 벽까지 거리 계산,
-//                  주황 선형 인디케이터를 벽까지 표시 (_chargeWindupDuration 초)
-//               ② 직선 돌진: 고정 방향·고정 거리(벽까지). 플레이어 히트 시 데미지.
-//               ③ 그로기: _grogyDuration(2.5초) 완전 정지
-//               _isChargeSequence=true 동안 base.Update() 차단 → 일반 AI 중단
-//     SpecterBossPresenter:
-//       1페이즈: 빠른 추적
-//       2페이즈: OnEnterWindup() override → 페이드 아웃/인 + 플레이어 주변 순간이동
-//
-//   [8-3] 보스 러시 매니저 & UI
-//     BossRushManager — ServiceLocator 등록, 보스 배열 순서대로 Instantiate+Spawn,
-//                       OnDeath → 승리 패널 or AllClear 패널 표시.
-//                       GetCurrentBoss() — RapierPresenter의 스킬 타겟 폴백용.
-//     BossRushHudView — 화면 상단 대형 HP바, 보스명·페이즈 텍스트, 스테이지 텍스트,
-//                       승리 패널("다음 스테이지" 버튼), AllClear 패널.
-//     BossRushHudSetup(Editor) — Screen Space Overlay Canvas 자동 생성 메뉴.
-//
-//   [8-4] BossRushDemo 씬
-//     SampleScene과 독립. WaveManager 없이 BossRushManager 단독 운영.
-//     EventSystem + InputSystemUIInputModule 포함 (UI 터치 필터링 필수).
-//
-//   [8-5] 버그 수정 목록
-//     DodgeDashRoutine — MinSpeed(dashSpeed*0.05f) 보증 + 타임아웃으로 영구 잠금 방지.
-//     DodgeDashCurve   — 끝값 0.00f → 0.50f (회피 후 즉시 이동 연결).
-//     RapierPresenter  — _dashSkillStarted 플래그 분리:
-//                         OnDodgeDashComplete는 _dashSkillStarted=true일 때만 억제.
-//                         OnSlowMotionEnd에서 _isSkillSequenceActive도 함께 초기화
-//                         (Hold 없이 슬로우 종료 시 영구 잠금 방지).
-//     GestureRecognizer — IsPointerOverUI() 추가, HandleFingerDown에서 UI 위 터치 차단.
-//     StageBuilder.RaycastToWall() — 타이탄 돌진 벽 감지용 AABB 교차 계산.
+//   [9-3] 에디터 유틸
+//     TitanDataSetup.cs: 메뉴 Rapier/Dev/Setup Titan Attack Sequence
+//     EnemyDataSetup.cs: 메뉴 Rapier/Dev/Setup Normal Enemy Sequence
+//                              Rapier/Dev/Setup Specter Sequence
+//     [SerializeReference] 리스트 갱신 시:
+//       null 초기화 → SetDirty → SaveAssets → ImportAsset → 재할당 순서 필수.
 
 // -------------------------------------------------------
 // [6] 미해결 이슈
 // -------------------------------------------------------
-// 현재 미해결 이슈 없음.
+// [ISSUE-01] [SerializeReference] 리스트 인스펙터 NullReferenceException
+//   null 초기화 → 재할당 과정에서 인스펙터 UI가 SerializedObjectList 참조를 잃어버림.
+//   런타임 동작에는 영향 없음. 인스펙터를 닫았다 열면 사라짐.
+//   CustomEditor 작업 시 함께 해결 예정.
+//
+// [ISSUE-02] EnemyStatData CustomEditor 미구현
+//   [SerializeReference] 리스트에 + 버튼을 누를 때 타입 선택 드롭다운이 나오지 않음.
+//   현재는 에디터 스크립트(TitanDataSetup 등)로 초기값 주입.
+//   CustomEditor + 인디케이터 미리보기 패널 작업 시 함께 해결 예정.
 
 // -------------------------------------------------------
 // [7] 다음 작업
 // -------------------------------------------------------
-// Phase 8 완료 (보스 러시 데모).
-// Phase 9 후보:
+// Phase 9 완료 (인디케이터 + 시퀀서 시스템).
+// Phase 10 후보:
+//   - EnemyStatData CustomEditor
+//       [SerializeReference] 타입 선택 드롭다운
+//       공격 패턴별 인디케이터 미리보기 패널 (SO 하단 탭 형식)
 //   - Warrior / Assassin / Ranger 캐릭터 구현
 //   - 씬 전환 / Bootstrap 구조
 //   - 스테이지 시스템 (웨이브 or 보스 러시 선택)
@@ -265,7 +271,7 @@
 //   한글 멀티바이트로 endCol 오류 발생 가능.
 //   대안: endLine+1, endCol=1 로 다음 줄 첫 칸까지 포함.
 //
-// [MCP-04] batch_execute 는 manage_asset, execute_menu_item 미지원
+// [MCP-04] batch_execute 는 manage_asset, execute_menu_item, validate_script 미지원
 //   순차 실행으로 대체.
 //
 // [MCP-05] 원인 미확정 상태에서 MCP 코드 수정 금지
@@ -312,6 +318,11 @@
 //   BossRushDemo 씬에는 WaveManager가 없다.
 //   RapierPresenter/CharacterPresenterBase의 적 탐색 로직은
 //   WaveManager 우선 → null이면 BossRushManager 폴백 구조로 작성되어 있음.
+//
+// [TIP-05] [SerializeReference] 리스트 에디터 스크립트 갱신 순서
+//   기존 직렬화 데이터가 남아있으면 단순 재할당으로는 반영 안 됨.
+//   null 초기화 → EditorUtility.SetDirty → AssetDatabase.SaveAssets
+//   → AssetDatabase.ImportAsset → 재할당 → SetDirty → SaveAssets 순서 필수.
 
 // -------------------------------------------------------
 // [10] AI 실수 기록
@@ -405,3 +416,26 @@
 //         UnityEngine.Input.get_mousePosition() 런타임 에러 연속 발생
 //   교훈: MCP-09 참고. New Input System 프로젝트에서 EventSystem 생성 시
 //         반드시 InputSystemUIInputModule을 사용할 것.
+//
+// [MISTAKE-16] 인디케이터 방향 계산 기준 불일치
+//   상황: AttackIndicator(사각형)와 MeleeAttackAction 히트 판정 간 방향이 달라 범위 불일치
+//   실수: 부채꼴은 Cos/Sin(x축 기준), 사각형은 Sin/Cos(y축 기준)으로 혼용.
+//         -90f 보정을 추가했으나 혼란 가중.
+//   교훈: 모든 방향 계산은 x축 기준(Atan2 / Cos·Sin 순서)으로 통일.
+//         AttackIndicator와 MeleeAttackAction이 동일한 forward 계산식을 사용해야 함.
+//
+// [MISTAKE-17] 보스 bossScale 상속으로 인디케이터 크기 불일치
+//   상황: 인디케이터가 시각적으로 크게 표시되나 실제 판정 범위는 작아 불일치
+//   실수: AttackIndicator 루트가 보스 자식으로 lossyScale(2.5)을 상속받아
+//         메시 range=2.0이 월드에서 5.0으로 렌더링됨.
+//         히트 판정은 월드 단위 2.0 기준이라 범위가 완전히 달랐음.
+//   교훈: 인디케이터 루트 localScale에 lossyScale 역수를 항상 적용할 것.
+//         메시 좌표 = 월드 단위가 되어야 히트 판정과 일치.
+//
+// [MISTAKE-18] 버그 원인 미확정 상태에서 잘못된 방향으로 수정
+//   상황: MeleeAttackAction 히트 판정이 잘 안 되는 버그 디버깅 중
+//   실수: 증상(움직이면 안 맞음)을 보고 LockedPlayerPosition(Windup 시작 위치)을 추가.
+//         이는 "Windup 중 회피해도 항상 피격"되는 기획 역행 로직임.
+//         실제 원인(bossScale 스케일 상속으로 인디케이터 크기 불일치)과 무관했음.
+//   교훈: 버그 원인을 디버그 로그로 먼저 확정한 뒤 수정 방향을 결정할 것.
+//         기획 의도에 반하는 수정은 사용자에게 먼저 확인 후 진행할 것.
