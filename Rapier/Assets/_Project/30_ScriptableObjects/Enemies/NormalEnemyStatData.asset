@@ -18,7 +18,25 @@ MonoBehaviour:
   attackPower: 50
   moveSpeed: 2.5
   attackRange: 1.2
-  attackWindupDuration: 0.5
-  attackHitDuration: 0.3
   postAttackDelay: 0.3
+  attackSequence:
+  - rid: 7513602140748120210
   approachAngleVariance: 60
+  references:
+    version: 2
+    RefIds:
+    - rid: 7513602140748120210
+      type: {class: MeleeAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
+      data:
+        windupDuration: 0.5
+        lockIndicatorDirection: 0
+        indicators:
+        - shape: 0
+          angleOffset: 0
+          sectorData:
+            range: 1.2
+            angle: 90
+          rectData:
+            range: 0
+            width: 0
+        hitRange: 1.2

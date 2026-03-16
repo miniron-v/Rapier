@@ -8,17 +8,16 @@ namespace Game.Enemies
     /// 보스 공통 베이스. EnemyPresenterBase를 상속하고 2페이즈 시스템을 추가한다.
     ///
     /// [페이즈 시스템]
-    ///   Phase 1: 일반 AI
-    ///   Phase 2: HP 50% 이하 진입 → OnEnterPhase2() 호출 → 색상 변화 + 스탯 배율 적용
+    ///   Phase 1: attackSequence 사용
+    ///   Phase 2: HP 50% 이하 진입 → phase2Sequence로 교체 (비어있으면 유지)
     ///
     /// [자식 override 포인트]
-    ///   OnEnterPhase2() : 2페이즈 고유 행동 시작 (돌진, 텔레포트 등)
-    ///   GetMoveSpeed()  : base 구현이 페이즈별 배율을 자동 적용
-    ///   GetAttackPower(): base 구현이 페이즈별 배율을 자동 적용
+    ///   OnEnterPhase2() : 2페이즈 진입 시 추가 처리
+    ///   GetMoveSpeed()  : 페이즈별 배율 자동 적용
+    ///   GetAttackPower(): 페이즈별 배율 자동 적용
     /// </summary>
     public abstract class BossPresenterBase : EnemyPresenterBase
     {
-        // ── 페이즈 ────────────────────────────────────────────────
         public enum BossPhase { Phase1, Phase2 }
         public BossPhase CurrentPhase { get; private set; } = BossPhase.Phase1;
 
@@ -62,21 +61,26 @@ namespace Game.Enemies
 
             float duration = BossData != null ? BossData.phaseTransitionDuration : 1f;
 
-            // 색상 플래시 연출
             if (BossData != null && _sr != null)
             {
                 float elapsed = 0f;
                 while (elapsed < duration)
                 {
                     elapsed += Time.deltaTime;
-                    float t = elapsed / duration;
-                    // 흰색 → phase2Color 로 전환
-                    _sr.color = Color.Lerp(Color.white, BossData.phase2Color, t);
+                    _sr.color = Color.Lerp(Color.white, BossData.phase2Color, elapsed / duration);
                     yield return null;
                 }
                 _sr.color = BossData.phase2Color;
                 _view.ResetVisual(BossData.phase2Color);
                 if (_sr != null) _sr.color = BossData.phase2Color;
+            }
+
+            // phase2Sequence가 있으면 시퀀서 교체
+            if (BossData != null &&
+                BossData.phase2Sequence != null &&
+                BossData.phase2Sequence.Count > 0)
+            {
+                SetSequence(BossData.phase2Sequence);
             }
 
             Debug.Log($"[{name}] ★ Phase 2 진입!");
@@ -91,17 +95,17 @@ namespace Game.Enemies
         protected override float GetMoveSpeed()
         {
             float base_ = base.GetMoveSpeed();
-            if (CurrentPhase == BossPhase.Phase2 && BossData != null)
-                return base_ * BossData.phase2SpeedMultiplier;
-            return base_;
+            return (CurrentPhase == BossPhase.Phase2 && BossData != null)
+                ? base_ * BossData.phase2SpeedMultiplier
+                : base_;
         }
 
         protected override float GetAttackPower()
         {
             float base_ = base.GetAttackPower();
-            if (CurrentPhase == BossPhase.Phase2 && BossData != null)
-                return base_ * BossData.phase2AttackMultiplier;
-            return base_;
+            return (CurrentPhase == BossPhase.Phase2 && BossData != null)
+                ? base_ * BossData.phase2AttackMultiplier
+                : base_;
         }
     }
 }

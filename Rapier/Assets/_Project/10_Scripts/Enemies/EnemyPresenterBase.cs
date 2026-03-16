@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using UnityEngine;
 using Game.Core;
 using Game.Combat;
@@ -9,37 +10,46 @@ namespace Game.Enemies
     /// 모든 적(일반 적, 보스)의 공통 베이스.
     ///
     /// [공격 흐름]
-    ///   Chase → Windup → Hit → PostAttack → Chase ...
+    ///   Chase → Windup → Hit(AttackAction.Execute) → PostAttack → Chase ...
+    ///
+    /// [시퀀서]
+    ///   EnterWindupPhase() 진입 시 시퀀서에서 다음 AttackAction을 꺼낸다.
+    ///   각 AttackAction이 자신의 windupDuration, indicators, Execute() 를 소유한다.
     ///
     /// [확장 포인트]
-    ///   OnEnterChase / OnEnterWindup / OnEnterHit / OnEnterPostAttack
-    ///   OnDeath, GetMoveSpeed, GetAttackPower, GetAttackRange
+    ///   OnEnterChase / OnEnterWindup / OnEnterHit / OnEnterPostAttack / OnDeath
+    ///   GetMoveSpeed / GetAttackPower / GetAttackRange
+    ///   SetSequence() : BossPresenterBase가 페이즈 전환 시 호출
     /// </summary>
     [RequireComponent(typeof(EnemyView))]
     public abstract class EnemyPresenterBase : MonoBehaviour, IDamageable
     {
-        // ── 외부 구독용 사망 이벤트 ───────────────────────────────
         public event Action OnDeath;
 
-        // ── 내부 상태 ────────────────────────────────────────────
-        protected EnemyModel       _model;
-        protected EnemyView        _view;
-        protected SpriteRenderer   _sr;
-        protected Transform        _playerTransform;
-        protected IDamageable      _playerDamageable;
-        protected EnemyHpBar       _hpBar;
-        protected Vector2          _approachOffset;
-        protected EnemyStatData    _statData;
+        // ── 내부 참조 ────────────────────────────────────────────
+        protected EnemyModel      _model;
+        protected EnemyView       _view;
+        protected SpriteRenderer  _sr;
+        protected Transform       _playerTransform;
+        protected IDamageable     _playerDamageable;
+        protected EnemyHpBar      _hpBar;
+        protected Vector2         _approachOffset;
+        protected EnemyStatData   _statData;
 
-        // ── 공격 단계 ─────────────────────────────────────────────
+        // ── 공격 상태머신 ─────────────────────────────────────────
         protected enum AttackPhase { Chase, Windup, Hit, PostAttack }
         protected AttackPhase _attackPhase;
         protected float       _phaseTimer;
 
-        // ── 외부 접근 ─────────────────────────────────────────────
-        public bool IsAlive => _model != null && _model.IsAlive;
+        // ── 시퀀서 + 현재 액션 ────────────────────────────────────
+        private   EnemyAttackSequencer _sequencer = new EnemyAttackSequencer();
+        protected EnemyAttackAction    _currentAction;
+        private   Coroutine            _actionCoroutine;
 
-        /// <summary>HUD 등 외부에서 EnemyModel에 접근할 때 사용.</summary>
+        // ── 컨텍스트 ─────────────────────────────────────────────
+        private EnemyAttackContext _ctx;
+
+        public bool IsAlive => _model != null && _model.IsAlive;
         public EnemyModel GetModel() => _model;
 
         // ── 초기화 ───────────────────────────────────────────────
@@ -74,9 +84,7 @@ namespace Game.Enemies
         {
             _statData = statData;
 
-            if (_model != null)
-                _model.OnDeath -= HandleModelDeath;
-
+            if (_model != null) _model.OnDeath -= HandleModelDeath;
             _model = new EnemyModel(statData);
             _model.OnDeath += HandleModelDeath;
 
@@ -93,13 +101,7 @@ namespace Game.Enemies
                 gameObject.layer = enemyLayer;
 
             var col = GetComponent<Collider2D>();
-            if (col == null)
-                Debug.LogError($"[EnemyPresenterBase] {name} 에 Collider2D가 없음!");
-            else if (!col.enabled)
-            {
-                col.enabled = true;
-                Debug.LogWarning($"[EnemyPresenterBase] {name} Collider2D 강제 활성화.");
-            }
+            if (col != null && !col.enabled) col.enabled = true;
 
             float angle     = UnityEngine.Random.Range(-statData.approachAngleVariance, statData.approachAngleVariance);
             _approachOffset = Quaternion.Euler(0f, 0f, angle) * Vector2.up * 0.3f;
@@ -108,6 +110,9 @@ namespace Game.Enemies
             _hpBar?.Init(_model);
 
             if (_playerTransform == null) RefreshPlayerReference();
+
+            _sequencer.SetSequence(statData.attackSequence);
+            _ctx = BuildContext();
 
             gameObject.SetActive(true);
         }
@@ -120,7 +125,7 @@ namespace Game.Enemies
             _view.PlayHit();
         }
 
-        // ── 루프 ─────────────────────────────────────────────────
+        // ── Update ───────────────────────────────────────────────
         protected virtual void Update()
         {
             if (!IsAlive || _playerTransform == null) return;
@@ -135,8 +140,6 @@ namespace Game.Enemies
                     if (_phaseTimer <= 0f) EnterHitPhase();
                     break;
                 case AttackPhase.Hit:
-                    _phaseTimer -= Time.deltaTime;
-                    if (_phaseTimer <= 0f) EnterPostAttackPhase();
                     break;
                 case AttackPhase.PostAttack:
                     _phaseTimer -= Time.deltaTime;
@@ -145,7 +148,7 @@ namespace Game.Enemies
             }
         }
 
-        // ── Chase 업데이트 ────────────────────────────────────────
+        // ── Chase ─────────────────────────────────────────────────
         protected virtual void UpdateChase()
         {
             float dist = Vector2.Distance(transform.position, _playerTransform.position);
@@ -154,11 +157,9 @@ namespace Game.Enemies
                 EnterWindupPhase();
                 return;
             }
-
-            var dir     = GetDirectionToPlayer() + _approachOffset;
-            var nextPos = (Vector2)transform.position
-                          + dir.normalized * (GetMoveSpeed() * Time.deltaTime);
-            transform.position = nextPos;
+            var dir = GetDirectionToPlayer() + _approachOffset;
+            transform.position = (Vector2)transform.position
+                                 + dir.normalized * (GetMoveSpeed() * Time.deltaTime);
         }
 
         // ── 페이즈 전환 ───────────────────────────────────────────
@@ -170,23 +171,43 @@ namespace Game.Enemies
 
         protected void EnterWindupPhase()
         {
-            _attackPhase = AttackPhase.Windup;
-            _phaseTimer  = _statData.attackWindupDuration;
-            _view.PlayWindup(_statData.attackWindupDuration, GetAttackRange());
-            OnEnterWindup();
+            if (!_sequencer.HasSequence)
+            {
+                Debug.LogWarning($"[EnemyPresenterBase] {name}: attackSequence가 비어있음. Chase 유지.");
+                return;
+            }
+
+            _currentAction     = _sequencer.Next();
+            _attackPhase       = AttackPhase.Windup;
+            _phaseTimer        = _currentAction.windupDuration;
+            _ctx.LockedForward = GetDirectionToPlayer();
+
+            var finalIndicators = _currentAction.PrepareWindup(_ctx);
+
+            _view.PlayWindup(
+                _currentAction.windupDuration,
+                finalIndicators,
+                _currentAction.lockIndicatorDirection,
+                GetDirectionToPlayer);
+
+                        OnEnterWindup();
         }
 
         protected void EnterHitPhase()
         {
             _attackPhase = AttackPhase.Hit;
-            _phaseTimer  = _statData.attackHitDuration;
             _view.StopWindup();
 
-            if (_playerTransform != null &&
-                Vector2.Distance(transform.position, _playerTransform.position) <= GetAttackRange())
+            if (_currentAction == null)
             {
-                _playerDamageable?.TakeDamage(GetAttackPower(), GetDirectionToPlayer());
+                EnterPostAttackPhase();
+                return;
             }
+
+            if (_actionCoroutine != null) StopCoroutine(_actionCoroutine);
+            _actionCoroutine = StartCoroutine(
+                _currentAction.Execute(_ctx, OnActionComplete));
+
             OnEnterHit();
         }
 
@@ -195,6 +216,18 @@ namespace Game.Enemies
             _attackPhase = AttackPhase.PostAttack;
             _phaseTimer  = _statData.postAttackDelay;
             OnEnterPostAttack();
+        }
+
+        private void OnActionComplete()
+        {
+            _actionCoroutine = null;
+            EnterPostAttackPhase();
+        }
+
+        // ── 시퀀서 교체 (BossPresenterBase용) ────────────────────
+        protected void SetSequence(System.Collections.Generic.List<EnemyAttackAction> sequence)
+        {
+            _sequencer.SetSequence(sequence);
         }
 
         // ── 자식 override 포인트 ──────────────────────────────────
@@ -206,6 +239,11 @@ namespace Game.Enemies
         protected virtual void HandleModelDeath()
         {
             _attackPhase = AttackPhase.Chase;
+            if (_actionCoroutine != null)
+            {
+                StopCoroutine(_actionCoroutine);
+                _actionCoroutine = null;
+            }
             _view.PlayDeath();
             OnDeath?.Invoke();
         }
@@ -215,10 +253,25 @@ namespace Game.Enemies
         protected virtual float GetAttackPower() => _statData != null ? _statData.attackPower : 0f;
         protected virtual float GetAttackRange() => _statData != null ? _statData.attackRange : 1f;
 
-        // ── 유틸 ──────────────────────────────────────────────────
+        // ── 유틸 ─────────────────────────────────────────────────
         protected Vector2 GetDirectionToPlayer()
         {
+            if (_playerTransform == null) return Vector2.up;
             return ((Vector2)_playerTransform.position - (Vector2)transform.position).normalized;
+        }
+
+        private EnemyAttackContext BuildContext()
+        {
+            return new EnemyAttackContext
+            {
+                SelfTransform    = transform,
+                PlayerTransform  = _playerTransform,
+                PlayerDamageable = _playerDamageable,
+                SpriteRenderer   = _sr,
+                Stage            = ServiceLocator.Get<StageBuilder>(),
+                GetAttackPower   = GetAttackPower,
+                GetForward       = GetDirectionToPlayer,
+            };
         }
     }
 }

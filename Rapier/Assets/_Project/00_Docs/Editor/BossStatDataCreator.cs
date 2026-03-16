@@ -7,6 +7,11 @@ namespace Game.Editor
 {
     /// <summary>
     /// 보스 SO 에셋 및 BossRushDemo 씬 자동 조립 도우미.
+    ///
+    /// [변경 이력]
+    ///   attackWindupDuration, attackHitDuration 필드 제거.
+    ///   해당 값은 각 EnemyAttackAction(MeleeAttackAction 등)의
+    ///   windupDuration 필드로 이전됨.
     /// </summary>
     public static class BossStatDataCreator
     {
@@ -41,8 +46,6 @@ namespace Game.Editor
             data.attackPower             = 80f;
             data.moveSpeed               = 1.8f;
             data.attackRange             = 2.0f;
-            data.attackWindupDuration    = 0.6f;
-            data.attackHitDuration       = 0.05f;
             data.postAttackDelay         = 0.8f;
             data.approachAngleVariance   = 10f;
             data.bossScale               = 2.5f;
@@ -53,6 +56,7 @@ namespace Game.Editor
             data.phaseTransitionDuration = 1.2f;
             if (hexSprite != null) data.sprite = hexSprite;
 
+            // attackSequence / phase2Sequence 는 인스펙터에서 직접 설정
             AssetDatabase.CreateAsset(data, path);
         }
 
@@ -73,8 +77,6 @@ namespace Game.Editor
             data.attackPower             = 50f;
             data.moveSpeed               = 5.5f;
             data.attackRange             = 1.4f;
-            data.attackWindupDuration    = 0.25f;
-            data.attackHitDuration       = 0.05f;
             data.postAttackDelay         = 0.2f;
             data.approachAngleVariance   = 30f;
             data.bossScale               = 1.8f;
@@ -85,6 +87,7 @@ namespace Game.Editor
             data.phaseTransitionDuration = 0.8f;
             if (circleSprite != null) data.sprite = circleSprite;
 
+            // attackSequence / phase2Sequence 는 인스펙터에서 직접 설정
             AssetDatabase.CreateAsset(data, path);
         }
 
@@ -92,7 +95,6 @@ namespace Game.Editor
         [MenuItem("Rapier/BossRush/Setup BossRushDemo Scene")]
         public static void SetupBossRushScene()
         {
-            // 현재 씬이 BossRushDemo인지 확인
             var activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
             if (!activeScene.name.Contains("BossRushDemo"))
             {
@@ -132,8 +134,6 @@ namespace Game.Editor
             stageGo.AddComponent<Game.Core.StageBuilder>();
 
             // ── VirtualJoystick ───────────────────────────────────
-            var vjPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Project/20_Prefabs/Rapier_Player.prefab");
-            // VirtualJoystick은 씬에 직접 GameObject로 생성
             var vjGo = new GameObject("VirtualJoystick");
             Undo.RegisterCreatedObjectUndo(vjGo, "Create VirtualJoystick");
             vjGo.AddComponent<Game.UI.VirtualJoystick>();
@@ -159,14 +159,13 @@ namespace Game.Editor
             Undo.RegisterCreatedObjectUndo(bossManagerGo, "Create BossRushManager");
             var bossManager = bossManagerGo.AddComponent<Game.Enemies.BossRushManager>();
 
-            // 보스 프리팹/SO 연결
             var titanPrefab   = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Project/20_Prefabs/Titan_Boss.prefab");
             var specterPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Project/20_Prefabs/Specter_Boss.prefab");
             var titanData     = AssetDatabase.LoadAssetAtPath<BossStatData>("Assets/_Project/30_ScriptableObjects/Enemies/Boss/TitanStatData.asset");
             var specterData   = AssetDatabase.LoadAssetAtPath<BossStatData>("Assets/_Project/30_ScriptableObjects/Enemies/Boss/SpecterStatData.asset");
 
-            var bmType  = typeof(Game.Enemies.BossRushManager);
-            var flags   = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+            var bmType = typeof(Game.Enemies.BossRushManager);
+            var flags  = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
 
             if (titanPrefab != null && specterPrefab != null)
                 bmType.GetField("_bossPrefabs", flags)?.SetValue(bossManager,

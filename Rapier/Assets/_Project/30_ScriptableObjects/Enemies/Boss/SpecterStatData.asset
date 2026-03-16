@@ -18,9 +18,9 @@ MonoBehaviour:
   attackPower: 50
   moveSpeed: 5.5
   attackRange: 1.4
-  attackWindupDuration: 0.25
-  attackHitDuration: 0.05
   postAttackDelay: 0.2
+  attackSequence:
+  - rid: 7513602140748120211
   approachAngleVariance: 30
   bossScale: 1.8
   phase1Color: {r: 0.5, g: 0.1, b: 0.9, a: 1}
@@ -28,3 +28,47 @@ MonoBehaviour:
   phase2SpeedMultiplier: 1.6
   phase2AttackMultiplier: 1.2
   phaseTransitionDuration: 0.8
+  phase2Sequence:
+  - rid: 7513602140748120212
+  - rid: 7513602140748120213
+  references:
+    version: 2
+    RefIds:
+    - rid: 7513602140748120211
+      type: {class: MeleeAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
+      data:
+        windupDuration: 0.25
+        lockIndicatorDirection: 0
+        indicators:
+        - shape: 0
+          angleOffset: 0
+          sectorData:
+            range: 1.4
+            angle: 80
+          rectData:
+            range: 0
+            width: 0
+        hitRange: 1.4
+    - rid: 7513602140748120212
+      type: {class: TeleportAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
+      data:
+        windupDuration: 0.15
+        lockIndicatorDirection: 0
+        indicators: []
+        teleportOffset: 1.2
+        fadeTime: 0.15
+    - rid: 7513602140748120213
+      type: {class: MeleeAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
+      data:
+        windupDuration: 0.25
+        lockIndicatorDirection: 0
+        indicators:
+        - shape: 0
+          angleOffset: 0
+          sectorData:
+            range: 1.4
+            angle: 80
+          rectData:
+            range: 0
+            width: 0
+        hitRange: 1.4
