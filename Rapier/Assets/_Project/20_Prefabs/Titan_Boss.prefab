@@ -344,9 +344,9 @@ GameObject:
   - component: {fileID: 1096745076576197238}
   - component: {fileID: 6687993022170144766}
   - component: {fileID: 4977146812950422105}
-  - component: {fileID: 5662372700394848327}
+  - component: {fileID: 6425801851455532364}
   m_Layer: 8
-  m_Name: Enemy_Template
+  m_Name: Titan_Boss
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -485,7 +485,7 @@ BoxCollider2D:
   m_AutoTiling: 0
   m_Size: {x: 1, y: 1}
   m_EdgeRadius: 0
---- !u!114 &5662372700394848327
+--- !u!114 &6425801851455532364
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -494,9 +494,13 @@ MonoBehaviour:
   m_GameObject: {fileID: 5040457167931817585}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6c0f62a3d28bbba49b47398e83c8e711, type: 3}
+  m_Script: {fileID: 11500000, guid: c23d21a8bdcb74f4f95a008dcfa14725, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Game.Enemies.NormalEnemyPresenter
+  m_EditorClassIdentifier: Assembly-CSharp::Game.Enemies.TitanBossPresenter
+  _chargeCooldown: 4
+  _chargeSpeed: 12
+  _chargeRange: 2.5
+  _chargeDamageMultiplier: 2
 --- !u!1 &6655585184315075707
 GameObject:
   m_ObjectHideFlags: 0

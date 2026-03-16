@@ -7,23 +7,10 @@ namespace Game.Enemies
 {
     /// <summary>
     /// 적 오브젝트 위에 따라다니는 월드 스페이스 HP 바 + 레이피어 표식 수 표시.
-    ///
-    /// [연결 방식]
-    ///   EnemyPresenter.Spawn() 호출 시 Init(model)을 함께 호출한다.
-    ///   EnemyModel.OnHpChanged (0~1 비율) 을 구독해 fillAmount 갱신.
-    ///   EnemyModel.OnDeath 시 자기 자신을 숨긴다.
-    ///
-    /// [표식 표시]
-    ///   RapierPresenter.OnMarkChanged 이벤트를 Init 시점에 구독.
-    ///   자신의 EnemyPresenter와 일치하는 이벤트만 처리해 HP바 위 숫자로 표시.
-    ///   표식 0이면 텍스트 숨김.
-    ///
-    /// [_markText 연결 규칙]
-    ///   Inspector에서 직접 연결하거나, 없으면 Awake에서 자식 "MarkText" 오브젝트를 자동 탐색.
+    /// EnemyPresenterBase를 참조하므로 일반 적/보스 모두 호환.
     /// </summary>
     public class EnemyHpBar : MonoBehaviour
     {
-        // ── Inspector ─────────────────────────────────────────────
         [Header("바 이미지 (Image - Filled)")]
         [SerializeField] private Image _fillImage;
 
@@ -34,18 +21,17 @@ namespace Game.Enemies
         [SerializeField] private bool _faceCameraAlways = true;
 
         // ── 내부 참조 ─────────────────────────────────────────────
-        private EnemyModel      _model;
-        private EnemyPresenter  _owner;
-        private Camera          _mainCam;
-        private RapierPresenter _rapierPresenter;
+        private EnemyModel          _model;
+        private EnemyPresenterBase  _owner;
+        private Camera              _mainCam;
+        private RapierPresenter     _rapierPresenter;
 
         // ── 초기화 ────────────────────────────────────────────────
         private void Awake()
         {
             _mainCam = Camera.main;
-            _owner   = GetComponentInParent<EnemyPresenter>();
+            _owner   = GetComponentInParent<EnemyPresenterBase>();
 
-            // _markText Inspector 미연결 시 자식에서 이름으로 자동 탐색
             if (_markText == null)
             {
                 var found = FindInChildren(transform, "MarkText");
@@ -53,14 +39,13 @@ namespace Game.Enemies
                     _markText = found.GetComponent<TextMeshProUGUI>();
 
                 if (_markText == null)
-                    Debug.LogWarning("[EnemyHpBar] MarkText를 찾지 못했습니다. Inspector에서 직접 연결하거나 자식에 'MarkText' 오브젝트를 추가하세요.");
+                    Debug.LogWarning("[EnemyHpBar] MarkText를 찾지 못했습니다.");
             }
         }
 
-        /// <summary>EnemyPresenter.Spawn()에서 호출.</summary>
+        /// <summary>EnemyPresenterBase.Spawn()에서 호출.</summary>
         public void Init(EnemyModel model)
         {
-            // 이전 구독 해제
             if (_model != null)
             {
                 _model.OnHpChanged -= OnHpChanged;
@@ -72,7 +57,6 @@ namespace Game.Enemies
             _model.OnHpChanged += OnHpChanged;
             _model.OnDeath     += OnDeath;
 
-            // 레이피어 표식 구독 (씬에 RapierPresenter가 있으면)
             _rapierPresenter = Game.Core.ServiceLocator.Get<RapierPresenter>();
             if (_rapierPresenter != null)
                 _rapierPresenter.OnMarkChanged += OnMarkChanged;
@@ -103,7 +87,7 @@ namespace Game.Enemies
             UnsubscribeRapier();
         }
 
-        private void OnMarkChanged(EnemyPresenter target, int count)
+        private void OnMarkChanged(EnemyPresenterBase target, int count)
         {
             if (target != _owner) return;
             SetMarkCount(count);
@@ -149,7 +133,6 @@ namespace Game.Enemies
             }
         }
 
-        // ── 유틸 ──────────────────────────────────────────────────
         private static Transform FindInChildren(Transform parent, string targetName)
         {
             foreach (Transform child in parent)

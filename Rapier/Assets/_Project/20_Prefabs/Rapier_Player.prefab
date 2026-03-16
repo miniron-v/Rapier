@@ -259,7 +259,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6f030f9bf8f7c5e45ad4ea385fab5f76, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Game.Characters.CharacterView
-  _moveSmoothing: 0.05
 --- !u!114 &5344430933183985379
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -330,6 +329,30 @@ MonoBehaviour:
     m_PostInfinity: 2
     m_RotationOrder: 4
   slowDuration: 3
+  dodgeDashCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 0.5
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
   _statData: {fileID: 11400000, guid: 23b41adc050ecb94da29725ff4a2fff4, type: 2}
 --- !u!1 &4484335044478966843
 GameObject:

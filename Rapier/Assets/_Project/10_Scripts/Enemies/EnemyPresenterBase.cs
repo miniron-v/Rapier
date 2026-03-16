@@ -2,67 +2,60 @@ using System;
 using UnityEngine;
 using Game.Core;
 using Game.Combat;
-using Game.Characters;
 
 namespace Game.Enemies
 {
     /// <summary>
-    /// 적 AI 및 전투 로직.
+    /// 모든 적(일반 적, 보스)의 공통 베이스.
     ///
     /// [공격 흐름]
-    ///   Chase      → 플레이어 추적. 범위 진입 즉시 Windup 시작.
-    ///   Windup     → 정지. 범위 인디케이터 알파 0.5→1.0 (attackWindupDuration 초)
-    ///   Hit        → TakeDamage 호출. 즉시 PostAttack 진입.
-    ///   PostAttack → 정지 (postAttackDelay 초). 이후 Chase 복귀.
+    ///   Chase → Windup → Hit → PostAttack → Chase ...
     ///
-    /// [피해 판정]
-    ///   IPlayerCharacter.TakeDamage() 내부에서 무적 여부 결정.
-    ///   무적 중이면 JustDodge 트리거, 피해 없음.
-    ///
-    /// [OnDeath 이벤트]
-    ///   EnemyModel.OnDeath를 래핑해 외부(RapierPresenter 등)에서 구독 가능하도록 노출.
+    /// [확장 포인트]
+    ///   OnEnterChase / OnEnterWindup / OnEnterHit / OnEnterPostAttack
+    ///   OnDeath, GetMoveSpeed, GetAttackPower, GetAttackRange
     /// </summary>
     [RequireComponent(typeof(EnemyView))]
-    public class EnemyPresenter : MonoBehaviour, IDamageable
+    public abstract class EnemyPresenterBase : MonoBehaviour, IDamageable
     {
-        // ── 인스펙터 ─────────────────────────────────────────────
-        [SerializeField] private EnemyStatData _statData;
-
         // ── 외부 구독용 사망 이벤트 ───────────────────────────────
         public event Action OnDeath;
 
         // ── 내부 상태 ────────────────────────────────────────────
-        private EnemyModel       _model;
-        private EnemyView        _view;
-        private SpriteRenderer   _sr;
-        private Transform        _playerTransform;
-        private IDamageable      _playerDamageable;
-        private EnemyHpBar       _hpBar;
-        private Vector2          _approachOffset;
+        protected EnemyModel       _model;
+        protected EnemyView        _view;
+        protected SpriteRenderer   _sr;
+        protected Transform        _playerTransform;
+        protected IDamageable      _playerDamageable;
+        protected EnemyHpBar       _hpBar;
+        protected Vector2          _approachOffset;
+        protected EnemyStatData    _statData;
 
         // ── 공격 단계 ─────────────────────────────────────────────
-        private enum AttackPhase { Chase, Windup, Hit, PostAttack }
-        private AttackPhase _attackPhase;
-        private float       _phaseTimer;
+        protected enum AttackPhase { Chase, Windup, Hit, PostAttack }
+        protected AttackPhase _attackPhase;
+        protected float       _phaseTimer;
 
-        // IDamageable
+        // ── 외부 접근 ─────────────────────────────────────────────
         public bool IsAlive => _model != null && _model.IsAlive;
 
+        /// <summary>HUD 등 외부에서 EnemyModel에 접근할 때 사용.</summary>
+        public EnemyModel GetModel() => _model;
+
         // ── 초기화 ───────────────────────────────────────────────
-        private void Awake()
+        protected virtual void Awake()
         {
             _view  = GetComponent<EnemyView>();
             _sr    = GetComponent<SpriteRenderer>();
             _hpBar = GetComponentInChildren<EnemyHpBar>(true);
         }
 
-        private void Start()
+        protected virtual void Start()
         {
             RefreshPlayerReference();
         }
 
-        /// <summary>IPlayerCharacter 인터페이스로 플레이어 참조를 갱신한다.</summary>
-        private void RefreshPlayerReference()
+        protected void RefreshPlayerReference()
         {
             var player = ServiceLocator.Get<IPlayerCharacter>();
             if (player != null)
@@ -72,12 +65,12 @@ namespace Game.Enemies
             }
             else
             {
-                Debug.LogWarning("[EnemyPresenter] IPlayerCharacter가 ServiceLocator에 없음.");
+                Debug.LogWarning("[EnemyPresenterBase] IPlayerCharacter가 ServiceLocator에 없음.");
             }
         }
 
-        /// <summary>WaveManager가 풀에서 꺼낼 때 호출.</summary>
-        public void Spawn(EnemyStatData statData, Vector2 position)
+        // ── Spawn ─────────────────────────────────────────────────
+        public virtual void Spawn(EnemyStatData statData, Vector2 position)
         {
             _statData = statData;
 
@@ -95,17 +88,17 @@ namespace Game.Enemies
 
             int enemyLayer = LayerMask.NameToLayer("Enemy");
             if (enemyLayer == -1)
-                Debug.LogError("[EnemyPresenter] \"Enemy\" 레이어가 존재하지 않음!");
+                Debug.LogError("[EnemyPresenterBase] \"Enemy\" 레이어가 존재하지 않음!");
             else
                 gameObject.layer = enemyLayer;
 
             var col = GetComponent<Collider2D>();
             if (col == null)
-                Debug.LogError($"[EnemyPresenter] {name} 에 Collider2D가 없음!");
+                Debug.LogError($"[EnemyPresenterBase] {name} 에 Collider2D가 없음!");
             else if (!col.enabled)
             {
                 col.enabled = true;
-                Debug.LogWarning($"[EnemyPresenter] {name} Collider2D 강제 활성화.");
+                Debug.LogWarning($"[EnemyPresenterBase] {name} Collider2D 강제 활성화.");
             }
 
             float angle     = UnityEngine.Random.Range(-statData.approachAngleVariance, statData.approachAngleVariance);
@@ -120,7 +113,7 @@ namespace Game.Enemies
         }
 
         // ── IDamageable ──────────────────────────────────────────
-        public void TakeDamage(float amount, Vector2 knockbackDir)
+        public virtual void TakeDamage(float amount, Vector2 knockbackDir)
         {
             if (!IsAlive) return;
             _model.TakeDamage(amount);
@@ -128,7 +121,7 @@ namespace Game.Enemies
         }
 
         // ── 루프 ─────────────────────────────────────────────────
-        private void Update()
+        protected virtual void Update()
         {
             if (!IsAlive || _playerTransform == null) return;
 
@@ -137,34 +130,26 @@ namespace Game.Enemies
                 case AttackPhase.Chase:
                     UpdateChase();
                     break;
-
                 case AttackPhase.Windup:
                     _phaseTimer -= Time.deltaTime;
-                    if (_phaseTimer <= 0f)
-                        EnterHitPhase();
+                    if (_phaseTimer <= 0f) EnterHitPhase();
                     break;
-
                 case AttackPhase.Hit:
                     _phaseTimer -= Time.deltaTime;
-                    if (_phaseTimer <= 0f)
-                        EnterPostAttackPhase();
+                    if (_phaseTimer <= 0f) EnterPostAttackPhase();
                     break;
-
                 case AttackPhase.PostAttack:
                     _phaseTimer -= Time.deltaTime;
-                    if (_phaseTimer <= 0f)
-                        EnterChasePhase();
+                    if (_phaseTimer <= 0f) EnterChasePhase();
                     break;
             }
         }
 
-        // ── 상태 업데이트 ─────────────────────────────────────────
-
-        private void UpdateChase()
+        // ── Chase 업데이트 ────────────────────────────────────────
+        protected virtual void UpdateChase()
         {
             float dist = Vector2.Distance(transform.position, _playerTransform.position);
-
-            if (dist <= _statData.attackRange)
+            if (dist <= GetAttackRange())
             {
                 EnterWindupPhase();
                 return;
@@ -172,48 +157,66 @@ namespace Game.Enemies
 
             var dir     = GetDirectionToPlayer() + _approachOffset;
             var nextPos = (Vector2)transform.position
-                          + dir.normalized * (_statData.moveSpeed * Time.deltaTime);
+                          + dir.normalized * (GetMoveSpeed() * Time.deltaTime);
             transform.position = nextPos;
         }
 
-        // ── 공격 단계 전환 ────────────────────────────────────────
+        // ── 페이즈 전환 ───────────────────────────────────────────
+        protected void EnterChasePhase()
+        {
+            _attackPhase = AttackPhase.Chase;
+            OnEnterChase();
+        }
 
-        private void EnterChasePhase()   => _attackPhase = AttackPhase.Chase;
-
-        private void EnterWindupPhase()
+        protected void EnterWindupPhase()
         {
             _attackPhase = AttackPhase.Windup;
             _phaseTimer  = _statData.attackWindupDuration;
-            _view.PlayWindup(_statData.attackWindupDuration, _statData.attackRange);
+            _view.PlayWindup(_statData.attackWindupDuration, GetAttackRange());
+            OnEnterWindup();
         }
 
-        private void EnterHitPhase()
+        protected void EnterHitPhase()
         {
             _attackPhase = AttackPhase.Hit;
             _phaseTimer  = _statData.attackHitDuration;
             _view.StopWindup();
 
             if (_playerTransform != null &&
-                Vector2.Distance(transform.position, _playerTransform.position) <= _statData.attackRange)
+                Vector2.Distance(transform.position, _playerTransform.position) <= GetAttackRange())
             {
-                _playerDamageable?.TakeDamage(_statData.attackPower, GetDirectionToPlayer());
+                _playerDamageable?.TakeDamage(GetAttackPower(), GetDirectionToPlayer());
             }
+            OnEnterHit();
         }
 
-        private void EnterPostAttackPhase()
+        protected void EnterPostAttackPhase()
         {
             _attackPhase = AttackPhase.PostAttack;
             _phaseTimer  = _statData.postAttackDelay;
+            OnEnterPostAttack();
         }
 
-        private void HandleModelDeath()
+        // ── 자식 override 포인트 ──────────────────────────────────
+        protected virtual void OnEnterChase()      { }
+        protected virtual void OnEnterWindup()     { }
+        protected virtual void OnEnterHit()        { }
+        protected virtual void OnEnterPostAttack() { }
+
+        protected virtual void HandleModelDeath()
         {
             _attackPhase = AttackPhase.Chase;
             _view.PlayDeath();
             OnDeath?.Invoke();
         }
 
-        private Vector2 GetDirectionToPlayer()
+        // ── 스탯 override 포인트 ──────────────────────────────────
+        protected virtual float GetMoveSpeed()   => _statData != null ? _statData.moveSpeed   : 0f;
+        protected virtual float GetAttackPower() => _statData != null ? _statData.attackPower : 0f;
+        protected virtual float GetAttackRange() => _statData != null ? _statData.attackRange : 1f;
+
+        // ── 유틸 ──────────────────────────────────────────────────
+        protected Vector2 GetDirectionToPlayer()
         {
             return ((Vector2)_playerTransform.position - (Vector2)transform.position).normalized;
         }

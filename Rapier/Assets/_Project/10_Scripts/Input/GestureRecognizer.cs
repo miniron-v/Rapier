@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem.EnhancedTouch;
 using Touch = UnityEngine.InputSystem.EnhancedTouch.Touch;
 
@@ -114,11 +115,14 @@ namespace Game.Input
         }
 
         // ── 터치 핸들러 ──────────────────────────────────────────
-        private void HandleFingerDown(Finger finger)
+private void HandleFingerDown(Finger finger)
         {
             if (_isTouching) return;
+
+            // UI 위 터치는 게임 입력으로 처리하지 않음
+            if (IsPointerOverUI(finger.screenPosition)) return;
+
             var pos = finger.screenPosition;
-            // 입력 영역 제한 없음 — 전체 화면 허용
 
             _isTouching       = true;
             _startPos         = pos;
@@ -195,7 +199,27 @@ namespace Game.Input
         public bool IsAttackWindowOpen  => _attackWindowCount > 0;
 
         // ── 내부 초기화 ──────────────────────────────────────────
-        private void ResetState()
+        // ── UI 필터링 ──────────────────────────────────────────
+        /// <summary>
+        /// 터치 위치가 UI 위인지 확인. UI 위면 게임 입력 무시.
+        /// New Input System + EventSystem 환경에서 동작.
+        /// </summary>
+        private static bool IsPointerOverUI(Vector2 screenPos)
+        {
+            if (EventSystem.current == null) return false;
+
+            // New Input System: PointerEventData로 레이캐스트
+            var eventData = new UnityEngine.EventSystems.PointerEventData(EventSystem.current)
+            {
+                position = screenPos
+            };
+            var results = new System.Collections.Generic.List<UnityEngine.EventSystems.RaycastResult>();
+            EventSystem.current.RaycastAll(eventData, results);
+            return results.Count > 0;
+        }
+
+        
+private void ResetState()
         {
             _isTouching       = false;
             _touchDuration    = 0f;

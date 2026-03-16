@@ -121,7 +121,40 @@ private void Awake()
 
         // ── 플레이어 이동 제한 (경계 클램프) ─────────────────────
         /// <summary>월드 좌표를 스테이지 안으로 클램프한다.</summary>
-        public Vector2 ClampToStage(Vector2 pos, float radius = 0.5f)
+        /// <summary>
+        /// 시작점에서 방향으로 발사한 레이가 스테이지 경계와 만나는 지점까지의 거리를 반환한다.
+        /// 벽 두께는 제외하고 스테이지 내부 경계 기준.
+        /// </summary>
+        public float RaycastToWall(Vector2 origin, Vector2 direction, float maxDistance = 100f)
+        {
+            float halfW = stageWidth  * 0.5f;
+            float halfH = stageHeight * 0.5f;
+
+            float tMin = maxDistance;
+
+            // X축 경계
+            if (Mathf.Abs(direction.x) > 0.0001f)
+            {
+                float tX = direction.x > 0
+                    ? ( halfW - origin.x) / direction.x
+                    : (-halfW - origin.x) / direction.x;
+                if (tX > 0f && tX < tMin) tMin = tX;
+            }
+
+            // Y축 경계
+            if (Mathf.Abs(direction.y) > 0.0001f)
+            {
+                float tY = direction.y > 0
+                    ? ( halfH - origin.y) / direction.y
+                    : (-halfH - origin.y) / direction.y;
+                if (tY > 0f && tY < tMin) tMin = tY;
+            }
+
+            return Mathf.Max(0f, tMin);
+        }
+
+        
+public Vector2 ClampToStage(Vector2 pos, float radius = 0.5f)
         {
             float halfW = stageWidth  * 0.5f - radius;
             float halfH = stageHeight * 0.5f - radius;

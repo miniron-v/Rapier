@@ -51,7 +51,7 @@ namespace Game.Characters
         [Header("Dodge Dash Ease (x=진행비율 0→1, y=속도배율 0→1)")]
         [SerializeField] private AnimationCurve dodgeDashCurve = new AnimationCurve(
             new Keyframe(0.00f, 1.00f),
-            new Keyframe(1.00f, 0.00f)
+            new Keyframe(1.00f, 0.50f)
         );
 
         // ── 상수 ──────────────────────────────────────────────────
@@ -190,13 +190,17 @@ namespace Game.Characters
 
         private void PerformAttack()
         {
+            // WaveManager 우선, 없으면 BossRushManager 폴백
+            EnemyPresenterBase nearestEnemy = null;
             var waveManager = ServiceLocator.Get<WaveManager>();
-            if (waveManager == null) return;
+            if (waveManager != null)
+                nearestEnemy = waveManager.GetNearestEnemy(transform.position);
+            if (nearestEnemy == null)
+                nearestEnemy = ServiceLocator.Get<BossRushManager>()?.GetCurrentBoss();
 
-            var stat    = Model.StatData;
-            var nearest = waveManager.GetNearestEnemy(transform.position);
-            var dir     = nearest != null
-                ? ((Vector2)nearest.transform.position - (Vector2)transform.position).normalized
+            var stat = Model.StatData;
+            var dir  = nearestEnemy != null
+                ? ((Vector2)nearestEnemy.transform.position - (Vector2)transform.position).normalized
                 : Vector2.up;
 
             var   boxCenter  = (Vector2)transform.position + dir * stat.attackOffset;
@@ -246,28 +250,41 @@ namespace Game.Characters
             OnSwipe(direction);
         }
 
-        private IEnumerator DodgeDashRoutine(float dashSpeed)
+private IEnumerator DodgeDashRoutine(float dashSpeed)
         {
             float totalDist = Vector2.Distance(transform.position, DodgeDest);
             if (totalDist < ARRIVE_THRESHOLD)
             {
+                View.SetPosition(DodgeDest);
                 OnDodgeDashComplete();
                 yield break;
             }
 
             float elapsed           = 0f;
             float estimatedDuration = totalDist / (dashSpeed * 0.6f);
+            // 타임아웃: 예상 시간의 2배 내 었으면 반드시 완료
+            float timeout           = estimatedDuration * 2f + 1f;
 
-            while (Vector2.Distance(transform.position, DodgeDest) > ARRIVE_THRESHOLD)
+            while (elapsed < timeout)
             {
                 elapsed += Time.deltaTime;
                 float t          = Mathf.Clamp01(elapsed / estimatedDuration);
                 float easedSpeed = dashSpeed * dodgeDashCurve.Evaluate(t);
-                var   next       = Vector2.MoveTowards(
+
+                // 커브 끝 부분에서 속도가 거의 0이 되면 MinSpeed로 보증
+                easedSpeed = Mathf.Max(easedSpeed, dashSpeed * 0.05f);
+
+                var next = Vector2.MoveTowards(
                     transform.position, DodgeDest, easedSpeed * Time.deltaTime);
                 View.SetPosition(next);
+
+                if (Vector2.Distance(transform.position, DodgeDest) <= ARRIVE_THRESHOLD)
+                    break;
+
                 yield return null;
             }
+
+            // 타임아웃이든 정상 도달이든 반드시 종점으로 스냅
             View.SetPosition(DodgeDest);
             OnDodgeDashComplete();
         }
@@ -421,7 +438,8 @@ namespace Game.Characters
             if (_attackRangeIndicator == null) CreateAttackRangeIndicator();
 
             var stat    = Model.StatData;
-            var nearest = ServiceLocator.Get<WaveManager>()?.GetNearestEnemy(transform.position);
+            EnemyPresenterBase nearest = ServiceLocator.Get<WaveManager>()?.GetNearestEnemy(transform.position)
+                ?? ServiceLocator.Get<BossRushManager>()?.GetCurrentBoss();
             var dir     = nearest != null
                 ? ((Vector2)nearest.transform.position - (Vector2)transform.position).normalized
                 : Vector2.up;

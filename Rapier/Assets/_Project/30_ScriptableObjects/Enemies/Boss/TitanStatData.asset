@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ffacc54a7c872044bb035941dd2a5dd3, type: 3}
+  m_Name: TitanStatData
+  m_EditorClassIdentifier: Assembly-CSharp::Game.Enemies.BossStatData
+  enemyName: Titan
+  sprite: {fileID: -712631045867808456, guid: b670ab75dde984907b8570040daa08c5, type: 3}
+  maxHp: 1200
+  attackPower: 80
+  moveSpeed: 1.8
+  attackRange: 2
+  attackWindupDuration: 0.6
+  attackHitDuration: 0.05
+  postAttackDelay: 0.8
+  approachAngleVariance: 10
+  bossScale: 2.5
+  phase1Color: {r: 0.85, g: 0.15, b: 0.15, a: 1}
+  phase2Color: {r: 1, g: 0.4, b: 0, a: 1}
+  phase2SpeedMultiplier: 1.4
+  phase2AttackMultiplier: 1.5
+  phaseTransitionDuration: 1.2
