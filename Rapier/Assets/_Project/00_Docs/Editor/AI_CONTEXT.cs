@@ -230,13 +230,19 @@
 // [MCP-02] .md 파일 직접 편집 불가 — 템플릿 교체 방식으로 운영
 //   mcpforunity는 확장자를 무조건 .cs로 치환한다.
 //   apply_text_edits, manage_script 등 모든 MCP 도구는 .cs 외 파일에 접근 불가.
-//   기획서(.md)의 실질적 원본은 DocSyncTool.cs 안의 GetDesignDocTemplate() 이다.
+//   두 문서의 실질적 원본은 DocSyncTool.cs 안의 템플릿 함수를 수정하는 방식으로 운영한다.
 //   .md 파일은 해당 템플릿으로부터 덮어쓰기 생성되는 파생 파일이다.
 //
 //   기획서 수정 워크플로우:
 //     1. DocSyncTool.cs 의 GetDesignDocTemplate() 내용을 수정
 //     2. execute_menu_item('Rapier/Docs/Create DesignDoc MD') -> .md 덮어쓰기
 //     3. execute_menu_item('Rapier/Docs/Sync to DOCX') -> .docx 자동 동기화
+//
+//   가이드라인 수정 워크플로우:
+//     1. DocSyncTool.cs 의 GetGuidelinesTemplate() 내용을 수정
+//     2. execute_menu_item('Rapier/Docs/Create Guidelines MD') -> .md 덮어쓰기
+//     3. execute_menu_item('Rapier/Docs/Sync to DOCX') -> .docx 자동 동기화
+//
 //
 // [MCP-03] apply_text_edits 한글 endCol 문제
 //   한글 멀티바이트로 endCol 오류 발생 가능.
