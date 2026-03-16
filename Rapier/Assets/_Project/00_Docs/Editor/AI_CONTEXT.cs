@@ -72,6 +72,13 @@
 //   시스템 간 통신        : C# event
 //   씬 경계 글로벌 이벤트 : SO 이벤트 채널 (추후 씬 분리 시 도입)
 //
+// [적 계층 구조]
+//   EnemyPresenterBase (abstract) ← 모든 적의 공통 베이스 (Chase/Windup/Hit/PostAttack)
+//   ├── NormalEnemyPresenter       ← 일반 적 (WaveManager 오브젝트 풀)
+//   └── BossPresenterBase (abstract) ← 2페이즈 시스템, OnPhaseChanged 이벤트
+//       ├── TitanBossPresenter     ← 직선 돌진 + 그로기
+//       └── SpecterBossPresenter   ← 2페이즈 순간이동
+//
 // [폴더 인덱싱]
 //   10 단위 숫자 접두사로 ABC 정렬 혼용 방지. Scripts 내부는 기능명만 사용.
 //
@@ -79,7 +86,7 @@
 //   프로토타입 단계. 기획 안정화 후 Bootstrap + Additive 분리 예정.
 //
 // [네임스페이스]
-//   형식: Game.[시스템명]   예: Game.Core / Game.Input / Game.Combat / Game.Characters
+//   형식: Game.[시스템명]   예: Game.Core / Game.Input / Game.Combat / Game.Characters / Game.UI
 
 // -------------------------------------------------------
 // [4] 폴더 구조 스냅샷
@@ -88,27 +95,57 @@
 // ├── Rapier-Private/
 // └── _Project/
 //     ├── 00_Docs/
-//     │   ├── PROJECT_GUIDELINES.md          (팀 지침서)
-//     │   ├── Rapier_Prototype_DesignDoc.md  (기획서 원본)
-//     │   ├── Rapier_Prototype_DesignDoc.docx (팀원용 뷰어, 자동 생성)
+//     │   ├── PROJECT_GUIDELINES.md
+//     │   ├── Rapier_Prototype_DesignDoc.md
+//     │   ├── Rapier_Prototype_DesignDoc.docx
 //     │   └── Editor/
 //     │       ├── DocSyncTool.cs
 //     │       ├── ProjectFolderSetup.cs
 //     │       ├── HudSetup.cs
-//     │       └── AI_CONTEXT.cs         <- 이 파일
+//     │       ├── BossRushHudSetup.cs        ← 보스 러시 HUD Canvas 자동 생성
+//     │       ├── BossStatDataCreator.cs     ← SO 에셋 + 씬 자동 조립
+//     │       ├── PrefabMissingScriptCleaner.cs ← MissingScript 정리 유틸
+//     │       └── AI_CONTEXT.cs              ← 이 파일
 //     ├── 10_Scripts/
-//     │   ├── Core/        (ServiceLocator, ICharacterView, IPlayerCharacter, Interfaces, Utils, CameraFollow)
-//     │   ├── Input/       (GestureRecognizer, InputSystemInitializer)
+//     │   ├── Core/        (ServiceLocator, ICharacterView, IPlayerCharacter, Interfaces,
+//     │   │                  Utils, CameraFollow, StageBuilder, VirtualJoystick,
+//     │   │                  InputSystemInitializer)
+//     │   ├── Input/       (GestureRecognizer)           ← UI 터치 필터링 포함
 //     │   ├── Combat/      (IDamageable)
-//     │   ├── Characters/  (CharacterPresenterBase, CharacterView, CharacterModel, CharacterStatData
+//     │   ├── Characters/  (CharacterPresenterBase, CharacterView, CharacterModel,
+//     │   │                  CharacterStatData
 //     │   │                  Rapier/RapierPresenter, Rapier/RapierStatData)
-//     │   ├── Enemies/     (EnemyModel, EnemyView, EnemyPresenter, WaveManager, EnemyHpBar)
-//     │   ├── UI/HUD/      (HudView)
-//     │   └── Data/        (EnemyStatData, NormalEnemyStatData.asset)
-//     ├── 20_Prefabs/      (Enemy_Template.prefab, Rapier_Player.prefab)
+//     │   ├── Enemies/
+//     │   │   ├── EnemyPresenterBase.cs      ← 모든 적 공통 베이스 (GetModel() 포함)
+//     │   │   ├── NormalEnemyPresenter.cs    ← 일반 적 (기존 EnemyPresenter 대체)
+//     │   │   ├── EnemyModel.cs
+//     │   │   ├── EnemyView.cs
+//     │   │   ├── EnemyHpBar.cs
+//     │   │   ├── WaveManager.cs             ← NormalEnemyPresenter 풀 관리
+//     │   │   ├── BossRushManager.cs         ← 보스 순서·사망 감지·스테이지 전환
+//     │   │   └── Boss/
+//     │   │       ├── BossPresenterBase.cs   ← 2페이즈 시스템, OnPhaseChanged
+//     │   │       ├── TitanBossPresenter.cs  ← 직선 돌진·예고 인디케이터·그로기·벽 감지
+//     │   │       └── SpecterBossPresenter.cs ← 순간이동
+//     │   ├── UI/
+//     │   │   ├── HUD/     (HudView, BossRushHudView)
+//     │   │   └── VirtualJoystick.cs
+//     │   └── Data/        (EnemyStatData, BossStatData, NormalEnemyStatData.asset)
+//     ├── 20_Prefabs/
+//     │   ├── Enemy_Template.prefab          ← NormalEnemyPresenter
+//     │   ├── Rapier_Player.prefab
+//     │   ├── Titan_Boss.prefab              ← TitanBossPresenter
+//     │   └── Specter_Boss.prefab            ← SpecterBossPresenter
 //     ├── 30_ScriptableObjects/
-//     │   └── Characters/  (RapierStatData.asset)
+//     │   ├── Characters/  (RapierStatData.asset)
+//     │   └── Enemies/
+//     │       ├── NormalEnemyStatData.asset
+//     │       └── Boss/
+//     │           ├── TitanStatData.asset
+//     │           └── SpecterStatData.asset
 //     └── 40_Scenes/
+//         ├── SampleScene.unity              ← 기존 웨이브 프로토타입
+//         └── BossRushDemo.unity             ← 보스 러시 데모 (독립 씬)
 
 // -------------------------------------------------------
 // [5] 완료된 작업
@@ -119,93 +156,74 @@
 //   InputSystemInitializer.cs — ServiceLocator 등록
 //
 // [Phase 2] 캐릭터 베이스
-//   ICharacterView.cs — SetPosition/PlayAttack/PlayHit/PlayDodge/PlayDeath/
-//                        UpdateHpGauge/UpdateChargeGauge/SetSprite
-//   CharacterStatData.cs (SO) / CharacterModel.cs / CharacterPresenterBase.cs / CharacterView.cs
+//   ICharacterView.cs / CharacterStatData.cs / CharacterModel.cs
+//   CharacterPresenterBase.cs / CharacterView.cs
 //
 // [Phase 3] 플레이어 / 씬 기반
 //   CameraFollow.cs / StageBuilder.cs / VirtualJoystick.cs
-//   GestureRecognizer 재설계:
-//     Move  — dist >= 20px AND duration >= 0.25초
-//     Swipe — dist >= 60px AND duration < 0.25초 (FingerUp 시)
+//   GestureRecognizer 재설계 (Move/Swipe 판별 기준)
 //
 // [Phase 4] 적 시스템
 //   IDamageable.cs / EnemyStatData.cs / EnemyModel.cs / EnemyView.cs
-//   EnemyPresenter.cs — 추적 AI, AttackWindow 카운터
-//   WaveManager.cs    — 10초 웨이브, 오브젝트 풀, GetNearestEnemy
-//   Enemy_Template.prefab — Enemy 레이어(8번), BoxCollider2D
+//   EnemyPresenter.cs / WaveManager.cs / Enemy_Template.prefab
 //
 // [Phase 5] UI 연결
-//   HudView.cs — IPlayerCharacter 인터페이스로 플레이어 참조
-//   EnemyHpBar.cs — 적 위 World Space HP 바 + 레이피어 표식 수(MarkText TMP) 표시
-//                   Inspector 미연결 시 Awake에서 자식 "MarkText" 자동 탐색
+//   HudView.cs / EnemyHpBar.cs (레이피어 표식 수 표시 포함)
 //
 // [Phase 6] 전투 고도화 + 저스트 회피 연출
-//   [6-1] 저스트 회피 슬로우모션 — AnimationCurve slowCurve, slowDuration = 3f (unscaledTime)
-//   [6-2] 공격 범위 가시화 — 반투명 노란 사각형 인디케이터 (동적 생성)
-//   [6-3] 적 공격 예고 시스템 — EnemyView.PlayWindup(duration, range)
-//   [6-4] 무적 구간 — 이동 기반 (회피 대시 전 구간, 저스트 회피 슬로우 구간)
-//   [6-5] 카메라 줌 펀치 — CameraFollow.TriggerZoomPunch()
-//   [6-6] 회피 쿨타임 — DodgeCooldownRoutine, unscaledTime 기반
-//   [6-7] 회피 쿨타임 HUD
+//   저스트 회피 슬로우모션 / 공격 범위 인디케이터 / 적 공격 예고
+//   무적 구간 / 카메라 줌 펀치 / 회피 쿨타임 HUD
 //
 // [Phase 7] 레이피어 캐릭터 고유 메커니즘 + 이동 시스템 리팩토링
+//   이동 시스템 Presenter 주도 / MoveState / CanAttack / 무적 구간 재설계
+//   저스트 회피 트리거 재설계 / 레이피어 스킬 시퀀스 / 스킬 공격 범위 독립화
+//   공격 즉시 발동 / 입력 영역 제한 제거
 //
-//   [7-1] 이동 시스템 리팩토링
-//     - CharacterView에서 이동 로직(_targetPosition, Lerp Update) 완전 제거
-//     - ICharacterView.MoveTo() → SetPosition(Vector2) 교체
-//       SetPosition은 transform.position을 즉시 설정 (Lerp 없음)
-//     - Presenter가 위치를 계산하고 View.SetPosition()으로 전달하는 구조 확립
-//     - Walk: Presenter Update()에서 delta 계산 → View.SetPosition()
-//     - DodgeDash: Base 코루틴에서 MoveTowards → View.SetPosition()
-//     - SkillDash/Return: Rapier 코루틴에서 MoveTowards → View.SetPosition()
-//       (Time.unscaledDeltaTime 사용 — 슬로우모션 영향 없음)
-//     - DodgeDash에 EaseOutQuad(AnimationCurve) 적용 (Inspector 조정 가능)
+// [Phase 8] 보스 러시 데모
 //
-//   [7-2] MoveState / CanAttack / _isDodging 설계
-//     - MoveState { Free, Locked }: Walk 차단 전용 (회피와 무관)
-//     - _isDodging (Base protected): HandleSwipe → true, OnDodgeDashComplete → false
-//       자식은 SetDodging(bool)으로 직접 제어
-//     - CanAttack (Base virtual): !_isDodging 기반
-//       RapierPresenter override: base.CanAttack && !_isSkillSequenceActive
+//   [8-1] 적 계층 리팩토링
+//     EnemyPresenter → EnemyPresenterBase(abstract) + NormalEnemyPresenter 로 분리.
+//     RapierPresenter, EnemyHpBar, WaveManager 모두 EnemyPresenterBase 기반으로 수정.
+//     RapierPresenter의 OnMarkChanged, 표식 테이블, 스킬 타겟이 EnemyPresenterBase 타입으로 통일.
+//     PerformAttack/ShowAttackRangeIndicator — WaveManager 없을 시 BossRushManager 폴백 추가.
 //
-//   [7-3] 무적 구간 재설계 (이동 기반)
-//     - 일반 회피: HandleSwipe → SetInvincible(true), OnDodgeDashComplete → SetInvincible(false)
-//     - 저스트 회피: HandleJustDodge → SetInvincible(true), OnSlowMotionEnd → SetInvincible(false)
-//     - OnDodgeDashComplete / OnSlowMotionEnd 모두 virtual — 자식이 override하여 해제 억제 가능
+//   [8-2] 보스 시스템
+//     BossStatData(SO) — EnemyStatData 상속, 2페이즈 스탯 배율·색상·스케일·전환 연출 시간.
+//     BossPresenterBase — HP 50% 이하 진입 시 2페이즈 전환 루틴, OnPhaseChanged 이벤트.
+//                         GetMoveSpeed/GetAttackPower override로 페이즈별 배율 자동 적용.
+//     TitanBossPresenter:
+//       1페이즈: 느린 근접 공격 (베이스 AI)
+//       2페이즈: 일반 AI와 완전 교대로 직선 돌진 시퀀스 수행
+//               ① 예고(WindupCharge): StageBuilder.RaycastToWall()로 벽까지 거리 계산,
+//                  주황 선형 인디케이터를 벽까지 표시 (_chargeWindupDuration 초)
+//               ② 직선 돌진: 고정 방향·고정 거리(벽까지). 플레이어 히트 시 데미지.
+//               ③ 그로기: _grogyDuration(2.5초) 완전 정지
+//               _isChargeSequence=true 동안 base.Update() 차단 → 일반 AI 중단
+//     SpecterBossPresenter:
+//       1페이즈: 빠른 추적
+//       2페이즈: OnEnterWindup() override → 페이드 아웃/인 + 플레이어 주변 순간이동
 //
-//   [7-4] 저스트 회피 트리거 재설계
-//     - ForceJustDodge(#if UNITY_EDITOR) 제거
-//     - GestureRecognizer.TriggerJustDodge(Vector2) 추가 — 게임 로직용 정식 API
-//     - JustDodgeAvailable (Base protected): Swipe 시 true, 발동 또는 DodgeDash 완료 시 false
-//       "한 회피당 딱 한 번만" 저스트 회피 발동 보장
-//     - RapierPresenter.TakeDamage: JustDodgeAvailable == true → ConsumeJustDodge() → TriggerJustDodge()
-//     - 이후 IsInvincible이면 피해 무시 (슬로우/스킬 대시 중)
+//   [8-3] 보스 러시 매니저 & UI
+//     BossRushManager — ServiceLocator 등록, 보스 배열 순서대로 Instantiate+Spawn,
+//                       OnDeath → 승리 패널 or AllClear 패널 표시.
+//                       GetCurrentBoss() — RapierPresenter의 스킬 타겟 폴백용.
+//     BossRushHudView — 화면 상단 대형 HP바, 보스명·페이즈 텍스트, 스테이지 텍스트,
+//                       승리 패널("다음 스테이지" 버튼), AllClear 패널.
+//     BossRushHudSetup(Editor) — Screen Space Overlay Canvas 자동 생성 메뉴.
 //
-//   [7-5] 레이피어 고유 스킬 시퀀스
-//     - _isSkillSequenceActive: OnJustDodge 타겟 확보 시 true, 복귀 완료/조건 불충족 시 false
-//       (기존 _skillPending + _isDashSkillActive 통합)
-//     - OnDodgeDashComplete override: _isSkillSequenceActive이면 SetDodging/무적 해제 억제
-//     - OnSlowMotionEnd override: _isSkillSequenceActive이면 무적 해제 억제
-//     - DashSkillRoutine: 대시 → PerformSkillAttack() → DodgeDest 복귀
-//       복귀 완료 시 SetDodging(false) + SetInvincible(false) + FreeMovement()
+//   [8-4] BossRushDemo 씬
+//     SampleScene과 독립. WaveManager 없이 BossRushManager 단독 운영.
+//     EventSystem + InputSystemUIInputModule 포함 (UI 터치 필터링 필수).
 //
-//   [7-6] 스킬 공격 범위 독립화
-//     - RapierStatData에 skillAttackWidth/Height/Offset 전용 필드 추가
-//     - PerformSkillAttack(): 레이피어 전용 OverlapBox, 일반 공격과 완전 독립
-//     - 빨간 사각형 인디케이터 (0.35초 표시 후 숨김)
-//
-//   [7-7] 공격 즉시 발동
-//     - AttackRoutine: PerformAttack() 즉시 실행 → 인디케이터 0.4초 표시 → 숨김
-//       (기존: 인디케이터 표시 → 0.5초 딜레이 → PerformAttack)
-//
-//   [7-8] 입력 영역 제한 제거
-//     - GestureRecognizer 하단 40% 제한 제거 → 전체 화면 허용
-//
-//   [7-9] 정리/제거
-//     - JustDodgeDebugger.cs 삭제 (디버그 전용 도구)
-//     - PlayerPresenter.cs 삭제 (RapierPresenter가 IPlayerCharacter 구현으로 대체)
-//     - GestureRecognizer AttackWindow API 제거 (OpenAttackWindow/CloseAttackWindow/IsAttackWindowOpen)
+//   [8-5] 버그 수정 목록
+//     DodgeDashRoutine — MinSpeed(dashSpeed*0.05f) 보증 + 타임아웃으로 영구 잠금 방지.
+//     DodgeDashCurve   — 끝값 0.00f → 0.50f (회피 후 즉시 이동 연결).
+//     RapierPresenter  — _dashSkillStarted 플래그 분리:
+//                         OnDodgeDashComplete는 _dashSkillStarted=true일 때만 억제.
+//                         OnSlowMotionEnd에서 _isSkillSequenceActive도 함께 초기화
+//                         (Hold 없이 슬로우 종료 시 영구 잠금 방지).
+//     GestureRecognizer — IsPointerOverUI() 추가, HandleFingerDown에서 UI 위 터치 차단.
+//     StageBuilder.RaycastToWall() — 타이탄 돌진 벽 감지용 AABB 교차 계산.
 
 // -------------------------------------------------------
 // [6] 미해결 이슈
@@ -215,11 +233,12 @@
 // -------------------------------------------------------
 // [7] 다음 작업
 // -------------------------------------------------------
-// [NEXT-01] ~ [NEXT-02] 완료
-// [NEXT-03] Phase 7 완료 — 레이피어 캐릭터 고유 메커니즘 + 이동 시스템 리팩토링
-// [NEXT-04] Phase 8 계획 수립 필요
-//   후보: 다른 캐릭터(Warrior/Assassin/Ranger) 구현,
-//         씬 전환/Bootstrap 구조, 스테이지 시스템, 아트 교체 등
+// Phase 8 완료 (보스 러시 데모).
+// Phase 9 후보:
+//   - Warrior / Assassin / Ranger 캐릭터 구현
+//   - 씬 전환 / Bootstrap 구조
+//   - 스테이지 시스템 (웨이브 or 보스 러시 선택)
+//   - 아트 교체
 
 // -------------------------------------------------------
 // [8] MCP 운영 제약 및 팁
@@ -229,8 +248,7 @@
 //
 // [MCP-02] .md 파일 직접 편집 불가 — 템플릿 교체 방식으로 운영
 //   mcpforunity는 확장자를 무조건 .cs로 치환한다.
-//   apply_text_edits, manage_script 등 모든 MCP 도구는 .cs 외 파일에 접근 불가.
-//   두 문서의 실질적 원본은 DocSyncTool.cs 안의 템플릿 함수를 수정하는 방식으로 운영한다.
+//   두 문서의 실질적 원본은 DocSyncTool.cs 안의 템플릿 함수.
 //   .md 파일은 해당 템플릿으로부터 덮어쓰기 생성되는 파생 파일이다.
 //
 //   기획서 수정 워크플로우:
@@ -242,7 +260,6 @@
 //     1. DocSyncTool.cs 의 GetGuidelinesTemplate() 내용을 수정
 //     2. execute_menu_item('Rapier/Docs/Create Guidelines MD') -> .md 덮어쓰기
 //     3. execute_menu_item('Rapier/Docs/Sync to DOCX') -> .docx 자동 동기화
-//
 //
 // [MCP-03] apply_text_edits 한글 endCol 문제
 //   한글 멀티바이트로 endCol 오류 발생 가능.
@@ -266,6 +283,11 @@
 // [MCP-08] 코드로 생성한 RectTransform — Pivot 기본값(0.5, 0.5) 주의
 //   anchoredPosition은 pivot 기준 계산. Anchor와 Pivot을 반드시 일치시킬 것.
 //
+// [MCP-09] EventSystem 생성 시 InputSystemUIInputModule 사용
+//   New Input System 환경에서 EventSystem 생성 시
+//   StandaloneInputModule 대신 InputSystemUIInputModule을 사용할 것.
+//   StandaloneInputModule은 구 Input System 전용 → 런타임 에러 발생.
+//
 // [TIP-01] 2D Sprite 패키지 내장 스프라이트
 //   경로: Packages/com.unity.2d.sprite/Editor/ObjectMenuCreation/DefaultAssets/Textures/v2/
 //   로드: AssetDatabase.LoadAssetAtPath<Sprite>(경로 + 파일명)
@@ -285,19 +307,17 @@
 //   Hold 이벤트는 판정 직후부터 발생. ChargeRequiredTime이 짧으면
 //   최초 이벤트 수신 시점에 이미 duration 초과 -> 차지가 즉시 1로 보임.
 //   프로토타입 단계에서는 ChargeRequiredTime >= 1.0f 권장.
+//
+// [TIP-04] BossRushManager는 WaveManager 없이 단독 운영
+//   BossRushDemo 씬에는 WaveManager가 없다.
+//   RapierPresenter/CharacterPresenterBase의 적 탐색 로직은
+//   WaveManager 우선 → null이면 BossRushManager 폴백 구조로 작성되어 있음.
 
 // -------------------------------------------------------
 // [10] AI 실수 기록
 // -------------------------------------------------------
-// 재작업이 발생한 경우 아래에 누적 기록한다.
-// 기록 전 채팅으로 내용을 보고하고 사용자 승인 후 추가한다.
-// 형식: [MISTAKE-N] 제목
-//        상황: 언제/어디서
-//        실수: 무엇을 잘못했는가
-//        교훈: 앞으로 어떻게 할 것인가
-//
 // [MISTAKE-01] execute_menu_item 미사용으로 사용자에게 수동 실행 요청
-//   상황: HUD 셋업 메뉴(Rapier/Setup/Rebuild HUD Canvas) 실행 시
+//   상황: HUD 셋업 메뉴 실행 시
 //   실수: execute_menu_item으로 직접 실행 가능한 메뉴를 사용자에게 넘김
 //   교훈: Unity 에디터 메뉴는 항상 execute_menu_item으로 AI가 직접 실행할 것
 //
@@ -362,3 +382,26 @@
 //   상황: validate_script 에러 0건이나 콘솔에 이전 캐시 에러가 남아있던 상황
 //   실수: read_console로 실제 에러 잔존 여부를 재확인하지 않고 완료 보고
 //   교훈: 작업 완료 보고 전 반드시 read_console clear 후 재확인까지 완료할 것
+//
+// [MISTAKE-13] _isSkillSequenceActive 하나로 OnDodgeDashComplete 억제
+//   상황: Phase 8 보스 러시 데모에서 저스트 회피 후 이동/공격 불가 버그 수정 시
+//   실수: 스킬 대기 상태(_isSkillSequenceActive)와 스킬 대시 진행 상태를 구분하지 않아
+//         보스가 있는 상황에서 일반 회피만 해도 OnDodgeDashComplete가 억제되어 영구 잠금 발생
+//   교훈: 억제 조건은 실제 대시가 StartCoroutine된 _dashSkillStarted로만 판단할 것.
+//         OnSlowMotionEnd에서도 _isSkillSequenceActive를 함께 초기화해야
+//         Hold 없이 슬로우가 끝난 경우 잠금이 풀린다.
+//
+// [MISTAKE-14] DodgeDashCurve EaseOut 끝값 0으로 인한 영구 잠금
+//   상황: 일반 회피 후 이동/공격 불가 버그 원인 분석 시
+//   실수: AnimationCurve 끝값이 0.00f → MoveTowards 이동량이 0에 수렴하여
+//         ARRIVE_THRESHOLD(0.05f)에 도달하지 못하고 while 루프 무한 반복.
+//         결과적으로 OnDodgeDashComplete()가 호출되지 않아 _isDodging/MoveState 영구 잠금.
+//   교훈: Ease 커브 끝값은 0보다 큰 값(0.50f 이상)으로 유지할 것.
+//         DodgeDashRoutine에 MinSpeed 보증(dashSpeed*0.05f)과 타임아웃을 항상 포함할 것.
+//
+// [MISTAKE-15] StandaloneInputModule 사용으로 Input System 에러
+//   상황: BossRushDemo 씬에 EventSystem 오브젝트 생성 시
+//   실수: StandaloneInputModule 추가 → New Input System 환경에서
+//         UnityEngine.Input.get_mousePosition() 런타임 에러 연속 발생
+//   교훈: MCP-09 참고. New Input System 프로젝트에서 EventSystem 생성 시
+//         반드시 InputSystemUIInputModule을 사용할 것.
