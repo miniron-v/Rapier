@@ -1,6 +1,6 @@
 ﻿# 프로젝트 개발 지침서 (Project Guidelines)
 
-> **버전**: v0.1.0
+> **버전**: v0.5.0
 > **최초 작성일**: 2026-03-05
 > **목적**: 본 문서는 프로젝트 전반의 아키텍처, 코딩 컨벤션, 폴더 구조, 협업 규칙을 정의합니다.
 > 모든 개발자(인간 및 AI)는 코드 작성 전 반드시 이 문서를 숙지하고, 작업 시 지침으로 삼아야 합니다.
@@ -15,7 +15,7 @@
 | 플랫폼 | 모바일 (Android / iOS), PC 테스트 지원 |
 | 화면 방향 | 세로 모드 (Portrait) |
 | 렌더 파이프라인 | URP 2D |
-| 조작 | 화면 하단 40% 영역, 단일 손가락(엄지) 조작 / PC 마우스 지원 |
+| 조작 | 전체 화면, 단일 손가락(엄지) 조작 / PC 마우스 지원 |
 | 클리어 조건 | 보스 처치 |
 | 목표 | 프로토타입 → 안정적 서비스 → 수익화 |
 
@@ -24,18 +24,9 @@
 | 입력 | 상태 | 조건 | 설명 |
 |------|------|------|------|
 | Drag | Move | 이동 거리 ≥ 20px, 지속 ≥ 0.3초 | 순수 이동. 공격 판정 없음 |
-| Tap | Attack | 이동 거리 < 20px, 지속 < 0.2초 | 제자리 정지 후 전방 광역 공격 |
-| Swipe | Dodge | 이동 거리 ≥ 20px, 지속 < 0.3초 | 방향 회피. 무적 0.2초 |
+| Tap | Attack | 이동 거리 < 20px, 지속 < 0.2초 | 전방 사각형 범위 광역 공격. 즉시 히트 판정. 인디케이터 0.4초 표시 |
+| Swipe | Dodge | 이동 거리 ≥ 20px, 지속 < 0.3초 | 방향 회피. 회피 대시 전 구간 무적. 쿨다운 2초 |
 | Hold → Release | Charge → Skill | 정지 상태, 지속 ≥ 0.3초 | 스킬 차지 후 발동 |
-
-### 핵심 조작 상태 (Input States)
-
-| 입력 | 상태 | 설명 |
-|------|------|------|
-| Drag | Move | 순수 이동, 공격 판정 없음 |
-| Tap | Attack | 제자리 정지 후 공격 |
-| Swipe | Dodge/Dash | 방향 회피 |
-| Hold → Release | Charge → Skill | 스킬 차지 및 발동 |
 
 ---
 
@@ -54,11 +45,15 @@
 
 ### 기본 패턴: MVP (Model - View - Presenter)
 
+```
 [Model] <--Interface--> [Presenter] <--직접참조--> [View]
+```
 
-- Model: 순수 데이터와 상태. MonoBehaviour 금지. SO 또는 순수 C# 클래스.
-- View: 화면 표시와 애니메이션만. 로직 금지. MonoBehaviour.
-- Presenter: Model과 View 중재. 게임 로직의 핵심. MonoBehaviour.
+- **Model**: 순수 데이터와 상태. MonoBehaviour 금지. SO 또는 순수 C# 클래스.
+- **View**: 화면 표시와 시각 연출만. 로직 금지. MonoBehaviour.
+  - 위치 설정은 View가 직접 결정하지 않음. Presenter가 계산한 위치를 View.SetPosition()으로 전달받아 반영.
+- **Presenter**: Model과 View 중재. 게임 로직의 핵심. MonoBehaviour.
+  - 이동 위치 계산 책임: Walk/Dash/Skill 이동 모두 Presenter가 매 프레임 계산 후 View.SetPosition() 호출.
 
 ### DI (Dependency Injection) 전략
 
@@ -89,40 +84,20 @@
 | ISP | IAttackable, IDodgeable 등 작은 단위로 분리 |
 | DIP | Presenter는 구체 View가 아닌 IView Interface에 의존 |
 
-### 금지 패턴
-
-- Singleton 남용 금지
-- View에서 로직 처리 금지
-- GameObject.Find(), SendMessage() 사용 금지
-
-### 기본 패턴: MVP (Model - View - Presenter)
-
-[Model] <--Interface--> [Presenter] <--직접참조--> [View]
-
-- **Model**: 순수 데이터와 상태. MonoBehaviour 금지. SO 또는 순수 C# 클래스.
-- **View**: 화면 표시와 애니메이션만. 로직 금지. MonoBehaviour.
-- **Presenter**: Model과 View 중재. 게임 로직의 핵심. MonoBehaviour.
-
-### SOLID 원칙
-
-| 원칙 | 적용 방법 |
-|------|-----------|
-| SRP | 클래스 하나는 하나의 책임만 |
-| OCP | 캐릭터 추가 시 기존 코드 수정 없이 확장 |
-| LSP | 자식 클래스는 부모를 완전히 대체 가능 |
-| ISP | IAttackable, IDodgeable 등 작은 단위로 분리 |
-| DIP | Presenter는 구체 View가 아닌 IView Interface에 의존 |
+자식 고유 상태에 의존하는 로직은 반드시 자식 안에서만 처리.
+Base와의 결합은 virtual/override 계약으로만 수행할 것.
 
 ### 금지 패턴
 
 - Singleton 남용 금지
-- View에서 로직 처리 금지
+- View에서 로직 처리 금지 (이동 계산 포함)
 - GameObject.Find(), SendMessage() 사용 금지
 
 ---
 
 ## 4. 폴더 구조
 
+```
 Assets/
 ├── Rapier-Private/               # 비공개 (별도 Git repo, .gitignore 제외)
 │   ├── Art/
@@ -133,20 +108,22 @@ Assets/
     ├── 00_Docs/                  # 개발 문서, 지침서
     │   └── Editor/
     ├── 10_Scripts/
-    │   ├── Core/                 # Interfaces, Base, Utils
-    │   ├── Input/
-    │   ├── Combat/               # Model, View, Presenter
+    │   ├── Core/                 # Interfaces, Base, Utils, ServiceLocator
+    │   ├── Input/                # GestureRecognizer, InputSystemInitializer
+    │   ├── Combat/               # IDamageable
     │   ├── Characters/           # Base, Warrior, Assassin, Rapier, Ranger
-    │   ├── Enemies/
+    │   ├── Enemies/              # EnemyModel, EnemyView, EnemyPresenter, WaveManager, EnemyHpBar
     │   ├── UI/                   # HUD, Common
-    │   └── Data/                 # Characters, Skills
+    │   └── Data/                 # EnemyStatData
     ├── 20_Prefabs/               # Characters, Enemies, Skills, UI
     ├── 30_ScriptableObjects/     # Characters, Skills
     └── 40_Scenes/                # SampleScene, _Test/
+```
 
 규칙: 모든 프로젝트 에셋은 반드시 _Project/ 하위에 위치.
 .gitignore 제외 대상: Assets/Rapier-Private/
 
+---
 
 ## 5. 네임스페이스 규칙
 
@@ -214,6 +191,8 @@ Assets/
 - 이벤트 구독은 OnEnable, 해제는 OnDisable에서 반드시 쌍으로 처리
 - 핸들러 이름: Handle + 동사 (HandleTapPerformed)
 
+---
+
 ## 8. ScriptableObject 활용 규칙
 
 - 캐릭터 스탯, 스킬 설정값은 SO로 분리
@@ -224,7 +203,7 @@ Assets/
 
 ## 9. 씬 구성 전략
 
-- 현재: 단일 씬 (SampleScene) - 프로토타입 단계
+- 현재: 단일 씬 (SampleScene) — 프로토타입 단계
 - 추후: Bootstrap(영속) + Gameplay(Additive) + UI(Additive) 분리
 - 씬 분리는 기획 안정화 후 진행
 
@@ -234,7 +213,9 @@ Assets/
 
 ### 입력 아키텍처
 
+```
 New Input System → GestureRecognizer → InputState Enum → C# event → CharacterPresenter
+```
 
 ### 플랫폼 처리
 
@@ -243,16 +224,22 @@ New Input System → GestureRecognizer → InputState Enum → C# event → Char
 
 ### 입력 유효 영역
 
-- 화면 하단 40% (정규화 Y좌표 0.0 ~ 0.4)
+- 전체 화면 (제한 없음)
 
-### 제스처 구분 기준 (초기값, 플레이테스트 후 조정)
+### 제스처 구분 기준
 
 | 제스처 | 판별 조건 |
 |--------|-----------|
 | Tap | 이동 거리 < 20px, 지속 시간 < 0.2초 |
-| Swipe | 이동 거리 >= 20px, 지속 시간 < 0.3초 |
+| Swipe | 이동 거리 >= 60px, 지속 시간 < 0.25초 |
 | Hold | 이동 없음, 지속 시간 >= 0.3초 |
-| Drag | 이동 거리 >= 20px, 지속 시간 >= 0.3초 |
+| Drag | 이동 거리 >= 20px, 지속 시간 >= 0.25초 |
+
+### 저스트 회피 트리거
+
+- 회피 대시 중(JustDodgeAvailable == true) 피격 시 GestureRecognizer.TriggerJustDodge() 호출
+- 한 회피당 1회만 발동. ConsumeJustDodge()로 소비.
+- 디버그용 ForceJustDodge 제거됨 — TriggerJustDodge()가 유일한 발동 API
 
 ---
 
@@ -268,10 +255,16 @@ New Input System → GestureRecognizer → InputState Enum → C# event → Char
 6. 기획자용 Inspector 세팅 (SO, SerializeField)
 7. 메인 씬 편입
 
+### AI 협업 규칙
+
+- 설계 완료 후 채팅으로 보고 → 승인 후 착수. 승인 없이 MCP 작업 시작 금지.
+- 작업 완료 보고 전: read_console clear 후 재확인까지 완료.
+- SOLID 원칙 준수: 자식 고유 상태는 자식 안에서만 처리. Base는 virtual/override 계약으로만 결합.
+
 ### 코드 리뷰 체크리스트
 
 - [ ] 네임스페이스가 올바르게 지정되었는가?
-- [ ] View에 로직이 없는가?
+- [ ] View에 로직이 없는가? (이동 계산 포함)
 - [ ] Presenter가 IView Interface를 통해 View와 통신하는가?
 - [ ] 이벤트 구독/해제가 OnEnable/OnDisable에 쌍으로 있는가?
 - [ ] SerializeField에 [Header]로 Inspector 그룹이 지정되었는가?
@@ -279,6 +272,7 @@ New Input System → GestureRecognizer → InputState Enum → C# event → Char
 - [ ] Find(), SendMessage()를 사용하지 않았는가?
 - [ ] SO 데이터는 읽기 전용 프로퍼티로만 외부에 노출하는가?
 - [ ] 새 캐릭터 추가 시 기존 코드를 수정하지 않아도 되는가? (OCP)
+- [ ] 자식 고유 상태가 Base에 노출되지 않는가? (DIP/OCP)
 
 ---
 
@@ -290,6 +284,7 @@ New Input System → GestureRecognizer → InputState Enum → C# event → Char
 | v0.2.1 | 2026-03-05 | GuidelinesEditor.cs 추가. md 직접 수정 유틸 도입으로 cs 재생성 방식 제거 |
 | v0.3.0 | 2026-03-05 | DI 전략, 테스트 전략, 데이터 설계 원칙 추가. 이벤트 통신 표에 ServiceLocator 항목 추가 |
 | v0.4.0 | 2026-03-07 | 클리어 조건 추가. 조작 조건 수치 명세화 (Tap/Swipe/Drag/Hold 기준값 확정) |
+| v0.5.0 | 2026-03-16 | 입력 유효 영역 전체 화면으로 변경. View 이동 로직 금지 명시(Presenter가 SetPosition 호출). 저스트 회피 트리거 API 갱신(TriggerJustDodge). AI 협업 규칙 추가. 코드 리뷰 체크리스트 갱신. 중복 섹션 정리. |
 
 ---
 
