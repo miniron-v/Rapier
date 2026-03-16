@@ -1,10 +1,10 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Game.Enemies
 {
     /// <summary>
     /// 적 기본 스탯 데이터.
-    /// 적 종류마다 다른 SO 에셋을 생성해 참조한다.
     /// 경로: Assets/_Project/30_ScriptableObjects/Enemies/
     /// </summary>
     [CreateAssetMenu(
@@ -14,8 +14,7 @@ namespace Game.Enemies
     {
         [Header("기본 정보")]
         public string enemyName = "Enemy";
-        [Tooltip("시각적으로 표시할 스프라이트. SO에서 할당.")]
-        public UnityEngine.Sprite sprite;
+        public Sprite sprite;
 
         [Header("전투 스탯")]
         [Min(1)] public float maxHp       = 250f;
@@ -23,14 +22,16 @@ namespace Game.Enemies
         [Min(0)] public float moveSpeed   = 2.5f;
 
         [Header("공격")]
-        [Tooltip("공격 범위 반경 (월드 단위)")]
+        [Tooltip("Chase → Windup 진입 거리 (월드 단위)")]
         [Min(0)] public float attackRange = 1.2f;
-        [Tooltip("공격 예고 연출 시간 (초) — 범위 인디케이터 알파 0.5→1.0, 저스트 회피 가능")]
-        [Min(0)] public float attackWindupDuration = 0.3f;
-        [Tooltip("공격 히트박스 활성 시간 (초)")]
-        [Min(0)] public float attackHitDuration = 0.05f;
-        [Tooltip("공격 후 정지 딜레이 (초) — 이후 다시 추적 시작")]
+        [Tooltip("공격 후 정지 딜레이 (초)")]
         [Min(0)] public float postAttackDelay = 0.3f;
+
+        [Header("공격 시퀀스")]
+        [Tooltip("공격 패턴 목록. 순서대로 루프 실행.\n" +
+                 "우클릭 → Add → 원하는 AttackAction 파생 클래스 선택.")]
+        [SerializeReference]
+        public List<EnemyAttackAction> attackSequence = new List<EnemyAttackAction>();
 
         [Header("AI")]
         [Tooltip("플레이어 접근 시 랜덤 오프셋 각도 범위 (도)")]

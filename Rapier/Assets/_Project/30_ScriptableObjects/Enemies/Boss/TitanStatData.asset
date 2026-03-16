@@ -17,10 +17,12 @@ MonoBehaviour:
   maxHp: 1200
   attackPower: 80
   moveSpeed: 1.8
-  attackRange: 2
-  attackWindupDuration: 0.6
-  attackHitDuration: 0.05
+  attackRange: 4
   postAttackDelay: 0.8
+  attackSequence:
+  - rid: 7513602140748120196
+  - rid: 7513602140748120197
+  - rid: 7513602140748120198
   approachAngleVariance: 10
   bossScale: 2.5
   phase1Color: {r: 0.85, g: 0.15, b: 0.15, a: 1}
@@ -28,3 +30,120 @@ MonoBehaviour:
   phase2SpeedMultiplier: 1.4
   phase2AttackMultiplier: 1.5
   phaseTransitionDuration: 1.2
+  phase2Sequence:
+  - rid: 7513602140748120199
+  - rid: 7513602140748120200
+  - rid: 7513602140748120201
+  - rid: 7513602140748120202
+  references:
+    version: 2
+    RefIds:
+    - rid: 7513602140748120196
+      type: {class: MeleeAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
+      data:
+        windupDuration: 1
+        lockIndicatorDirection: 1
+        indicators:
+        - shape: 0
+          angleOffset: 0
+          sectorData:
+            range: 4
+            angle: 120
+          rectData:
+            range: 0
+            width: 0
+        hitRange: 4
+    - rid: 7513602140748120197
+      type: {class: MeleeAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
+      data:
+        windupDuration: 1
+        lockIndicatorDirection: 1
+        indicators:
+        - shape: 0
+          angleOffset: 0
+          sectorData:
+            range: 4
+            angle: 120
+          rectData:
+            range: 0
+            width: 0
+        hitRange: 4
+    - rid: 7513602140748120198
+      type: {class: MeleeAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
+      data:
+        windupDuration: 1
+        lockIndicatorDirection: 1
+        indicators:
+        - shape: 0
+          angleOffset: 0
+          sectorData:
+            range: 4
+            angle: 120
+          rectData:
+            range: 0
+            width: 0
+        hitRange: 4
+    - rid: 7513602140748120199
+      type: {class: MeleeAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
+      data:
+        windupDuration: 1
+        lockIndicatorDirection: 1
+        indicators:
+        - shape: 0
+          angleOffset: 0
+          sectorData:
+            range: 4
+            angle: 120
+          rectData:
+            range: 0
+            width: 0
+        hitRange: 4
+    - rid: 7513602140748120200
+      type: {class: MeleeAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
+      data:
+        windupDuration: 1
+        lockIndicatorDirection: 1
+        indicators:
+        - shape: 0
+          angleOffset: 0
+          sectorData:
+            range: 4
+            angle: 120
+          rectData:
+            range: 0
+            width: 0
+        hitRange: 4
+    - rid: 7513602140748120201
+      type: {class: MeleeAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
+      data:
+        windupDuration: 1
+        lockIndicatorDirection: 1
+        indicators:
+        - shape: 0
+          angleOffset: 0
+          sectorData:
+            range: 4
+            angle: 120
+          rectData:
+            range: 0
+            width: 0
+        hitRange: 4
+    - rid: 7513602140748120202
+      type: {class: ChargeAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
+      data:
+        windupDuration: 1
+        lockIndicatorDirection: 1
+        indicators:
+        - shape: 1
+          angleOffset: 0
+          sectorData:
+            range: 0
+            angle: 0
+          rectData:
+            range: 20
+            width: 3.6
+        chargeSpeed: 14
+        chargeHitRange: 1.8
+        chargeDamageMultiplier: 2
+        chargeMaxDistance: 20
+        grogyDuration: 2.5
