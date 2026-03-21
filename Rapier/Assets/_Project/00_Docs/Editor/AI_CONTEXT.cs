@@ -72,6 +72,11 @@
 //   시스템 간 통신        : C# event
 //   씬 경계 글로벌 이벤트 : SO 이벤트 채널 (추후 씬 분리 시 도입)
 //
+// [씬 구조]
+//   Lobby 씬  → BossRushDemo 씬 (게임) → 결과 후 Lobby로 복귀
+//   SceneController.LoadLobby() / LoadGame() 으로 전환.
+//   Time.timeScale은 씬 전환 전 항상 1f로 복구.
+//
 // [적 계층 구조]
 //   EnemyPresenterBase (abstract) ← 모든 적의 공통 베이스 (Chase/Windup/Hit/PostAttack + 시퀀서)
 //   ├── NormalEnemyPresenter       ← 일반 적 (WaveManager 오브젝트 풀)
@@ -134,7 +139,8 @@
 //     │       ├── DocSyncTool.cs
 //     │       ├── ProjectFolderSetup.cs
 //     │       ├── HudSetup.cs
-//     │       ├── BossRushHudSetup.cs
+//     │       ├── BossRushHudSetup.cs        ← BossRushManager._hudView 자동 연결 + EventSystem 생성
+//     │       ├── LobbyHudSetup.cs           ← 로비 Canvas 자동 생성 + EventSystem 생성
 //     │       ├── BossStatDataCreator.cs
 //     │       ├── TitanDataSetup.cs          ← 타이탄 공격 시퀀스 초기값 설정
 //     │       ├── EnemyDataSetup.cs          ← 일반 적 / 스펙터 공격 시퀀스 초기값 설정
@@ -142,34 +148,35 @@
 //     │       └── AI_CONTEXT.cs
 //     ├── 10_Scripts/
 //     │   ├── Core/
+//     │   │   └── SceneController.cs         ← LoadLobby() / LoadGame() 정적 유틸
 //     │   ├── Input/       (GestureRecognizer)
 //     │   ├── Combat/      (IDamageable)
 //     │   ├── Characters/  (CharacterPresenterBase, CharacterView, CharacterModel,
 //     │   │                  CharacterStatData, Rapier/RapierPresenter, Rapier/RapierStatData)
 //     │   ├── Enemies/
-//     │   │   ├── EnemyPresenterBase.cs      ← 시퀀서 통합, PrepareWindup/Execute 위임
+//     │   │   ├── EnemyPresenterBase.cs
 //     │   │   ├── NormalEnemyPresenter.cs
 //     │   │   ├── EnemyModel.cs
-//     │   │   ├── EnemyView.cs               ← AttackIndicator에 위임
+//     │   │   ├── EnemyView.cs
 //     │   │   ├── EnemyHpBar.cs
-//     │   │   ├── AttackIndicatorData.cs     ← AttackIndicatorShape / SectorIndicatorData /
-//     │   │   │                                 RectIndicatorData / AttackIndicatorEntry
-//     │   │   ├── AttackIndicator.cs         ← 메시 기반 인디케이터 (채우기/아웃라인/스캔라인)
-//     │   │   ├── EnemyAttackAction.cs       ← abstract base (PrepareWindup + Execute)
-//     │   │   ├── EnemyAttackContext.cs      ← 런타임 컨텍스트 (LockedForward 포함)
-//     │   │   ├── EnemyAttackSequencer.cs    ← 순서 관리 + SetSequence()
-//     │   │   ├── MeleeAttackAction.cs       ← Sector/Rectangle 모양별 히트 판정
+//     │   │   ├── AttackIndicatorData.cs
+//     │   │   ├── AttackIndicator.cs
+//     │   │   ├── EnemyAttackAction.cs
+//     │   │   ├── EnemyAttackContext.cs
+//     │   │   ├── EnemyAttackSequencer.cs
+//     │   │   ├── MeleeAttackAction.cs
 //     │   │   ├── AoeAttackAction.cs
-//     │   │   ├── ChargeAttackAction.cs      ← PrepareWindup에서 wallDist 확정
-//     │   │   ├── TeleportAttackAction.cs    ← 페이드아웃/인 + 순간이동
+//     │   │   ├── ChargeAttackAction.cs
+//     │   │   ├── TeleportAttackAction.cs
 //     │   │   ├── WaveManager.cs
-//     │   │   ├── BossRushManager.cs
+//     │   │   ├── BossRushManager.cs         ← InitHudView() 추가, 플레이어 사망 구독
 //     │   │   └── Boss/
-//     │   │       ├── BossPresenterBase.cs   ← 페이즈 전환 시 SetSequence() 호출
-//     │   │       ├── TitanBossPresenter.cs  ← 거의 빈 클래스. 공격은 AttackAction에 위임.
-//     │   │       └── SpecterBossPresenter.cs ← 거의 빈 클래스. 공격은 AttackAction에 위임.
+//     │   │       ├── BossPresenterBase.cs
+//     │   │       ├── TitanBossPresenter.cs
+//     │   │       └── SpecterBossPresenter.cs
 //     │   ├── UI/
 //     │   │   ├── HUD/     (HudView, BossRushHudView)
+//     │   │   ├── LobbyManager.cs            ← 시작 버튼 → SceneController.LoadGame()
 //     │   │   └── VirtualJoystick.cs
 //     │   └── Data/        (EnemyStatData, BossStatData)
 //     ├── 20_Prefabs/
@@ -186,7 +193,8 @@
 //     │           └── SpecterStatData.asset
 //     └── 40_Scenes/
 //         ├── SampleScene.unity
-//         └── BossRushDemo.unity
+//         ├── BossRushDemo.unity
+//         └── Lobby.unity
 
 // -------------------------------------------------------
 // [5] 완료된 작업
@@ -220,9 +228,47 @@
 //     [SerializeReference] 리스트 갱신 시:
 //       null 초기화 → SetDirty → SaveAssets → ImportAsset → 재할당 순서 필수.
 //
-// [Phase 10 준비] Android 빌드 버그 수정
+// [Phase 10] Android 빌드 버그 수정
 //   StageBuilder.cs / VirtualJoystick.cs 의 #if UNITY_EDITOR 분기 제거.
 //   런타임 Sprite를 Texture2D 직접 생성 방식으로 교체. (TIP-06 참고)
+//
+// [Phase 11] 게임 루프 구현 (결과 UI → 로비 씬 → 게임 씬)
+//
+//   [11-1] SceneController.cs 신규 생성 (Game.Core)
+//     LoadLobby() / LoadGame() 정적 유틸.
+//     씬 전환 전 Time.timeScale = 1f 복구 보장.
+//     씬 이름 상수: LOBBY = "Lobby", BOSS_RUSH = "BossRushDemo"
+//
+//   [11-2] LobbyManager.cs 신규 생성 (Game.UI)
+//     시작 버튼 → SceneController.LoadGame().
+//     Init(Button startButton) 공개 메서드로 LobbyHudSetup이 주입.
+//
+//   [11-3] CharacterPresenterBase 수정
+//     public event Action OnPlayerDeath 추가.
+//     HandleDeath()에서 OnPlayerDeath 발행.
+//
+//   [11-4] BossRushManager 수정
+//     SubscribePlayerDeath() — FindObjectOfType로 플레이어 사망 이벤트 구독.
+//     HandlePlayerDeath() — _isGameOver 플래그 + ShowResult(false).
+//     ShowAllClear() → ShowResult(true) 교체.
+//     InitHudView(BossRushHudView) 공개 메서드 추가 — BossRushHudSetup이 주입.
+//
+//   [11-5] BossRushHudView 수정
+//     _allClearPanel 제거 → _resultPanel + _resultText + _toLobbyButton 로 교체.
+//     ShowResult(bool isCleared): true=ALL CLEAR(노랑), false=GAME OVER(빨강).
+//     Init(...) 공개 메서드로 BossRushHudSetup이 주입.
+//
+//   [11-6] Setup 툴 직렬화 방식 개선
+//     Reflection → Init() 직접 호출 방식으로 전환.
+//     SetDirty(컴포넌트) + MarkSceneDirty + SaveScene 으로 씬 저장 자동화.
+//     BossRushHudSetup: BossRushManager 탐색 → InitHudView() 주입.
+//     BossRushHudSetup / LobbyHudSetup: EnsureEventSystem() 추가
+//       — EventSystem 없을 때만 생성, InputSystemUIInputModule 사용.
+//
+//   [11-7] LobbyHudSetup.cs 신규 생성
+//     메뉴: Rapier/Lobby/Create Lobby HUD / Rapier/Lobby/Rebuild Lobby HUD
+//     배경 + 타이틀("RAPIER") + 시작 버튼 생성.
+//     LobbyManager.Init(btn) 주입 + SetDirty + SaveScene.
 
 // -------------------------------------------------------
 // [6] 미해결 이슈
@@ -240,8 +286,8 @@
 // -------------------------------------------------------
 // [7] 다음 작업
 // -------------------------------------------------------
-// Phase 9 완료 (인디케이터 + 시퀀서 시스템).
-// Phase 10 후보:
+// Phase 11 완료 (게임 루프).
+// Phase 12 후보:
 //   - EnemyStatData CustomEditor
 //       [SerializeReference] 타입 선택 드롭다운
 //       공격 패턴별 인디케이터 미리보기 패널 (SO 하단 탭 형식)
@@ -275,8 +321,8 @@
 //   한글 멀티바이트로 endCol 오류 발생 가능.
 //   대안: endLine+1, endCol=1 로 다음 줄 첫 칸까지 포함.
 //
-// [MCP-04] batch_execute 는 manage_asset, execute_menu_item, validate_script 미지원
-//   순차 실행으로 대체.
+// [MCP-04] batch_execute 는 manage_asset, execute_menu_item, validate_script,
+//           manage_script, delete_script 미지원. 순차 실행으로 대체.
 //
 // [MCP-05] 원인 미확정 상태에서 MCP 코드 수정 금지
 //   에디터에서 직접 확인 가능한 사항(레이어, 콜라이더, 스프라이트 할당 등)은
@@ -284,7 +330,7 @@
 //
 // [MCP-06] 구조적 파일은 delete -> create 전체 재생성
 //   AI_CONTEXT, HudSetup 등 전체 구조가 중요한 파일은
-//   apply_text_edits 부분 수정 대신 delete_script -> manage_script create 로 재생성.
+//   apply_text_edits 부분 수정 대신 delete_script -> create_script 로 재생성.
 //
 // [MCP-07] 코드로 생성한 Canvas — CanvasScaler 기본값 주의
 //   기본값 ConstantPixelSize -> Device Simulator에서 UI 작게 보임.
@@ -336,6 +382,15 @@
 //     단순 사각형 → Texture2D(64×64) 직접 생성 후 Sprite.Create
 //     단순 원형   → Texture2D(128×128) 픽셀 채우기 후 Sprite.Create
 //     게임 아트   → Resources.Load<Sprite>() 또는 SO 레퍼런스
+//
+// [TIP-07] Setup 툴 작성 시 [SerializeField] 필드 전체 연결 체크리스트 준수
+//   Setup 툴 완성 전, 해당 씬에 존재하는 모든 컴포넌트의 [SerializeField] 필드 목록과
+//   Setup 툴의 주입 코드를 1:1로 대조할 것.
+//   확인 항목:
+//     1. 생성한 컴포넌트(HudView 등)의 모든 [SerializeField] → Init()으로 주입됐는가?
+//     2. 씬의 다른 컴포넌트(Manager 등)가 참조해야 할 필드 → 탐색 후 주입됐는가?
+//     3. EventSystem이 필요한 씬인가? → EnsureEventSystem() 호출됐는가?
+//     4. SetDirty(컴포넌트) + MarkSceneDirty + SaveScene 순서가 지켜졌는가?
 
 // -------------------------------------------------------
 // [10] AI 실수 기록
@@ -353,7 +408,7 @@
 // [MISTAKE-03] apply_text_edits로 긴 메서드 범위를 잘못 산정해 중괄호 불균형 발생
 //   상황: BuildHud 메서드를 apply_text_edits로 부분 교체 시도
 //   실수: 기존 메서드의 끝 줄을 잘못 지정해 닫는 중괄호 누락
-//   교훈: 긴 메서드 교체 시 delete_script 후 manage_script create로 재생성하는 방식이 안전
+//   교훈: 긴 메서드 교체 시 delete_script 후 create_script로 재생성하는 방식이 안전
 //
 // [MISTAKE-04] ChargeRequiredTime을 짧게 설정해 차지가 즉시 1로 표시됨
 //   상황: CharacterStatData.chargeRequiredTime = 0.3f 설정 시
@@ -370,7 +425,7 @@
 //   상황: AI_CONTEXT.cs를 여러 세션에 걸쳐 apply_text_edits로 부분 수정
 //   실수: 라인 번호 오산으로 내용 중복, 누락, 엉뚱한 위치 삽입이 누적됨
 //   교훈: AI_CONTEXT처럼 전체 구조가 중요한 파일은 부분 수정보다
-//         delete_script 후 manage_script create로 전체 재생성하는 방식이 안전
+//         delete_script 후 create_script로 전체 재생성하는 방식이 안전
 //
 // [MISTAKE-07] SpriteAtlasManager.LoadAtlas() 잘못된 코드 삽입
 //   상황: CreateAttackRangeIndicator()에서 내장 스프라이트 로드 시도
@@ -460,3 +515,12 @@
 //         극단적 스케일(20×30 등)로 늘어나 스테이지 미렌더링, 조이스틱 사각형 출력.
 //   교훈: TIP-06 참고. 런타임 MonoBehaviour에 AssetDatabase / #if UNITY_EDITOR 사용 금지.
 //         런타임 Sprite는 Texture2D 직접 생성 / Resources.Load / SO 레퍼런스로만 조달할 것.
+//
+// [MISTAKE-20] Setup 툴에서 [SerializeField] 필드 연결 누락
+//   상황: Phase 11 게임 루프 구현 중 Setup 툴 작성 시
+//   실수: BossRushHudSetup이 BossRushManager._hudView를 주입하는 코드 누락.
+//         LobbyHudSetup이 EventSystem을 생성하지 않아 버튼 클릭 불가.
+//         Init() 방식 도입 후에도 SetDirty(컴포넌트) 누락으로 직렬화 미보장.
+//   교훈: TIP-07 참고. Setup 툴 완성 전 [SerializeField] 필드 전체 연결 체크리스트 준수.
+//         생성 컴포넌트 필드 + 씬 내 다른 컴포넌트 참조 필드 + EventSystem 여부를
+//         1:1로 대조한 뒤 코드 작성할 것.

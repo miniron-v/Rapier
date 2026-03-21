@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using UnityEngine;
 using Game.Core;
@@ -33,10 +34,18 @@ namespace Game.Characters
     /// [MoveState]
     ///   Free   : Walk 허용
     ///   Locked : Walk 차단
+    ///
+    /// [게임 루프]
+    ///   플레이어 사망 시 OnPlayerDeath 이벤트 발행.
+    ///   BossRushManager가 구독하여 GAME OVER 처리.
     /// </summary>
     [RequireComponent(typeof(CharacterView))]
     public abstract class CharacterPresenterBase : MonoBehaviour
     {
+        // ── 게임 루프 이벤트 ──────────────────────────────────────
+        /// <summary>플레이어 사망 시 발행. BossRushManager가 구독.</summary>
+        public event Action OnPlayerDeath;
+
         // ── 슬로우모션 설정 ───────────────────────────────────────
         [Header("Just Dodge Slow Motion")]
         [SerializeField] private AnimationCurve slowCurve = new AnimationCurve(
@@ -250,7 +259,7 @@ namespace Game.Characters
             OnSwipe(direction);
         }
 
-private IEnumerator DodgeDashRoutine(float dashSpeed)
+        private IEnumerator DodgeDashRoutine(float dashSpeed)
         {
             float totalDist = Vector2.Distance(transform.position, DodgeDest);
             if (totalDist < ARRIVE_THRESHOLD)
@@ -262,7 +271,6 @@ private IEnumerator DodgeDashRoutine(float dashSpeed)
 
             float elapsed           = 0f;
             float estimatedDuration = totalDist / (dashSpeed * 0.6f);
-            // 타임아웃: 예상 시간의 2배 내 었으면 반드시 완료
             float timeout           = estimatedDuration * 2f + 1f;
 
             while (elapsed < timeout)
@@ -271,7 +279,6 @@ private IEnumerator DodgeDashRoutine(float dashSpeed)
                 float t          = Mathf.Clamp01(elapsed / estimatedDuration);
                 float easedSpeed = dashSpeed * dodgeDashCurve.Evaluate(t);
 
-                // 커브 끝 부분에서 속도가 거의 0이 되면 MinSpeed로 보증
                 easedSpeed = Mathf.Max(easedSpeed, dashSpeed * 0.05f);
 
                 var next = Vector2.MoveTowards(
@@ -284,7 +291,6 @@ private IEnumerator DodgeDashRoutine(float dashSpeed)
                 yield return null;
             }
 
-            // 타임아웃이든 정상 도달이든 반드시 종점으로 스냅
             View.SetPosition(DodgeDest);
             OnDodgeDashComplete();
         }
@@ -395,6 +401,7 @@ private IEnumerator DodgeDashRoutine(float dashSpeed)
             View.PlayDeath();
             StopSlowMotion();
             OnDisable();
+            OnPlayerDeath?.Invoke();
         }
 
         // ── 슬로우모션 ────────────────────────────────────────────
