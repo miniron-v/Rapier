@@ -21,7 +21,7 @@ namespace Game.Core
         public float wallThickness = 0.5f;
         public Color wallColor     = new Color(0.4f, 0.4f, 0.5f, 1f);
 
-private void Awake()
+        private void Awake()
         {
             ServiceLocator.Register(this);
             BuildBackground();
@@ -41,7 +41,7 @@ private void Awake()
             go.transform.SetParent(transform);
 
             var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite       = LoadSprite("Square");
+            sr.sprite       = CreateSquareSprite();
             sr.color        = bgColor;
             sr.sortingOrder = -10;
 
@@ -83,7 +83,7 @@ private void Awake()
             go.transform.localScale = scale;
 
             var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite       = LoadSprite("Square");
+            sr.sprite       = CreateSquareSprite();
             sr.color        = gridColor;
             sr.sortingOrder = -9;
         }
@@ -95,7 +95,6 @@ private void Awake()
             float halfH = stageHeight * 0.5f;
             float t     = wallThickness;
 
-            // 상/하/좌/우
             MakeWall("Wall_Top",    new Vector3(0f,        halfH + t * 0.5f, 0f), new Vector3(stageWidth + t * 2, t, 1f));
             MakeWall("Wall_Bottom", new Vector3(0f,       -halfH - t * 0.5f, 0f), new Vector3(stageWidth + t * 2, t, 1f));
             MakeWall("Wall_Left",   new Vector3(-halfW - t * 0.5f, 0f, 0f),       new Vector3(t, stageHeight,     1f));
@@ -110,29 +109,34 @@ private void Awake()
             go.transform.localScale = scale;
 
             var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite       = LoadSprite("Square");
+            sr.sprite       = CreateSquareSprite();
             sr.color        = wallColor;
             sr.sortingOrder = -8;
 
-            // 물리 콜라이더 (플레이어 이동 제한용)
             var col = go.AddComponent<BoxCollider2D>();
             col.size = Vector2.one;
         }
 
-        // ── 플레이어 이동 제한 (경계 클램프) ─────────────────────
+        // ── 경계 유틸 ─────────────────────────────────────────────
         /// <summary>월드 좌표를 스테이지 안으로 클램프한다.</summary>
+        public Vector2 ClampToStage(Vector2 pos, float radius = 0.5f)
+        {
+            float halfW = stageWidth  * 0.5f - radius;
+            float halfH = stageHeight * 0.5f - radius;
+            return new Vector2(
+                Mathf.Clamp(pos.x, -halfW, halfW),
+                Mathf.Clamp(pos.y, -halfH, halfH));
+        }
+
         /// <summary>
         /// 시작점에서 방향으로 발사한 레이가 스테이지 경계와 만나는 지점까지의 거리를 반환한다.
-        /// 벽 두께는 제외하고 스테이지 내부 경계 기준.
         /// </summary>
         public float RaycastToWall(Vector2 origin, Vector2 direction, float maxDistance = 100f)
         {
             float halfW = stageWidth  * 0.5f;
             float halfH = stageHeight * 0.5f;
+            float tMin  = maxDistance;
 
-            float tMin = maxDistance;
-
-            // X축 경계
             if (Mathf.Abs(direction.x) > 0.0001f)
             {
                 float tX = direction.x > 0
@@ -141,7 +145,6 @@ private void Awake()
                 if (tX > 0f && tX < tMin) tMin = tX;
             }
 
-            // Y축 경계
             if (Mathf.Abs(direction.y) > 0.0001f)
             {
                 float tY = direction.y > 0
@@ -153,28 +156,28 @@ private void Awake()
             return Mathf.Max(0f, tMin);
         }
 
-        
-public Vector2 ClampToStage(Vector2 pos, float radius = 0.5f)
+        // ── Sprite 생성 유틸 ──────────────────────────────────────
+        /// <summary>
+        /// 64×64 흰색 Texture2D로 사각형 Sprite를 생성한다.
+        /// 에디터/빌드 공통 경로. AssetDatabase 의존성 없음.
+        /// </summary>
+        private static Sprite CreateSquareSprite()
         {
-            float halfW = stageWidth  * 0.5f - radius;
-            float halfH = stageHeight * 0.5f - radius;
-            return new Vector2(
-                Mathf.Clamp(pos.x, -halfW, halfW),
-                Mathf.Clamp(pos.y, -halfH, halfH));
-        }
+            const int size = 64;
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            tex.filterMode = FilterMode.Bilinear;
 
-private static Sprite LoadSprite(string name)
-        {
-            string path = $"Packages/com.unity.2d.sprite/Editor/ObjectMenuCreation/DefaultAssets/Textures/v2/{name}.png";
-#if UNITY_EDITOR
-            return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(path);
-#else
-            // 맰타임에서는 화이트 이미지 사용
-            return Sprite.Create(
-                Texture2D.whiteTexture,
-                new Rect(0, 0, 4, 4),
-                new Vector2(0.5f, 0.5f));
-#endif
+            var pixels = new Color32[size * size];
+            for (int i = 0; i < pixels.Length; i++)
+                pixels[i] = new Color32(255, 255, 255, 255);
+
+            tex.SetPixels32(pixels);
+            tex.Apply();
+
+            return Sprite.Create(tex,
+                new Rect(0, 0, size, size),
+                new Vector2(0.5f, 0.5f),
+                size); // pixelsPerUnit = size → 월드 1유닛 = 텍스처 전체
         }
     }
 }

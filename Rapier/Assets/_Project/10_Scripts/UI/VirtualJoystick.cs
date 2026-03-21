@@ -48,9 +48,8 @@ namespace Game.UI
         }
 
         // ── UI 위치 갱신 ─────────────────────────────────────────
-private void UpdatePosition()
+        private void UpdatePosition()
         {
-            // 스크린 좌표 → Canvas RectTransform 로칼 좌표로 변환
             RectTransform canvasRect = _canvas.GetComponent<RectTransform>();
             Camera uiCam = _canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : _canvas.worldCamera;
 
@@ -61,7 +60,6 @@ private void UpdatePosition()
 
             _outerRect.anchoredPosition = originLocal;
 
-            // Inner: Outer 반경 내로 클램프
             var offset = currentLocal - originLocal;
             if (offset.magnitude > _outerRadius)
                 offset = offset.normalized * _outerRadius;
@@ -85,25 +83,25 @@ private void UpdatePosition()
             _canvas.sortingOrder = 100;
 
             _scaler = canvasGO.AddComponent<CanvasScaler>();
-            _scaler.uiScaleMode         = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            _scaler.referenceResolution  = new Vector2(1080, 1920);
-            _scaler.matchWidthOrHeight   = 0.5f;
+            _scaler.uiScaleMode        = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            _scaler.referenceResolution = new Vector2(1080, 1920);
+            _scaler.matchWidthOrHeight  = 0.5f;
             canvasGO.AddComponent<GraphicRaycaster>();
 
             // Outer (배경 원)
-            var outerGO   = CreateCircle(canvasGO.transform, "Joystick_Outer",
-                                         _outerRadius * 2f, _outerColor, 10);
-            _outerRect    = outerGO.GetComponent<RectTransform>();
+            var outerGO = CreateCircle(canvasGO.transform, "Joystick_Outer",
+                                       _outerRadius * 2f, _outerColor, 10);
+            _outerRect  = outerGO.GetComponent<RectTransform>();
 
             // Inner (핸들 원)
-            var innerGO   = CreateCircle(canvasGO.transform, "Joystick_Inner",
-                                         _innerRadius * 2f, _innerColor, 11);
-            _innerRect    = innerGO.GetComponent<RectTransform>();
+            var innerGO = CreateCircle(canvasGO.transform, "Joystick_Inner",
+                                       _innerRadius * 2f, _innerColor, 11);
+            _innerRect  = innerGO.GetComponent<RectTransform>();
         }
 
         private GameObject CreateCircle(Transform parent, string name, float size, Color color, int order)
         {
-            var go   = new GameObject(name);
+            var go = new GameObject(name);
             go.transform.SetParent(parent, false);
 
             var rect = go.AddComponent<RectTransform>();
@@ -114,11 +112,10 @@ private void UpdatePosition()
             rect.sizeDelta        = new Vector2(size, size);
 
             var img = go.AddComponent<Image>();
-            img.sprite      = LoadCircleSprite();
-            img.color       = color;
+            img.sprite        = CreateCircleSprite();
+            img.color         = color;
             img.raycastTarget = false;
 
-            var sr = go.GetComponent<UnityEngine.UI.Graphic>();
             var canvas = go.AddComponent<Canvas>();
             canvas.overrideSorting = true;
             canvas.sortingOrder    = order;
@@ -126,14 +123,42 @@ private void UpdatePosition()
             return go;
         }
 
-        private Sprite LoadCircleSprite()
+        // ── Sprite 생성 유틸 ──────────────────────────────────────
+        /// <summary>
+        /// 128×128 원형 Texture2D로 Circle Sprite를 생성한다.
+        /// 에디터/빌드 공통 경로. AssetDatabase 의존성 없음.
+        /// </summary>
+        private static Sprite CreateCircleSprite()
         {
-#if UNITY_EDITOR
-            return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(
-                "Packages/com.unity.2d.sprite/Editor/ObjectMenuCreation/DefaultAssets/Textures/v2/Circle.png");
-#else
-            return Sprite.Create(Texture2D.whiteTexture, new Rect(0,0,4,4), new Vector2(0.5f, 0.5f));
-#endif
+            const int size   = 128;
+            const float half = size * 0.5f;
+            const float r    = half - 1f; // 1px 안쪽 margin
+
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            tex.filterMode = FilterMode.Bilinear;
+
+            var pixels = new Color32[size * size];
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float dx = x - half + 0.5f;
+                    float dy = y - half + 0.5f;
+                    float dist = Mathf.Sqrt(dx * dx + dy * dy);
+
+                    // 경계 1px 안티앨리어싱
+                    byte a = (byte)(Mathf.Clamp01(r - dist + 0.5f) * 255f);
+                    pixels[y * size + x] = new Color32(255, 255, 255, a);
+                }
+            }
+
+            tex.SetPixels32(pixels);
+            tex.Apply();
+
+            return Sprite.Create(tex,
+                new Rect(0, 0, size, size),
+                new Vector2(0.5f, 0.5f),
+                size);
         }
     }
 }

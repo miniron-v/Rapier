@@ -219,6 +219,10 @@
 //                              Rapier/Dev/Setup Specter Sequence
 //     [SerializeReference] 리스트 갱신 시:
 //       null 초기화 → SetDirty → SaveAssets → ImportAsset → 재할당 순서 필수.
+//
+// [Phase 10 준비] Android 빌드 버그 수정
+//   StageBuilder.cs / VirtualJoystick.cs 의 #if UNITY_EDITOR 분기 제거.
+//   런타임 Sprite를 Texture2D 직접 생성 방식으로 교체. (TIP-06 참고)
 
 // -------------------------------------------------------
 // [6] 미해결 이슈
@@ -301,6 +305,7 @@
 //         9Sliced / HexagonFlatTop / HexagonPointTop / IsometricDiamond
 //   용도 권장:
 //     플레이어 -> Circle  /  일반 적 -> Square 또는 Capsule  /  보스 -> HexagonFlatTop
+//   ※ 에디터 전용 API. 런타임 MonoBehaviour에서는 사용 금지. (TIP-06 참고)
 //
 // [TIP-02] SpriteRenderer / UI Image 생성 시 Sprite None 여부 반드시 확인
 //   SpriteRenderer: sprite=None 이면 오브젝트가 보이지 않음.
@@ -323,6 +328,14 @@
 //   기존 직렬화 데이터가 남아있으면 단순 재할당으로는 반영 안 됨.
 //   null 초기화 → EditorUtility.SetDirty → AssetDatabase.SaveAssets
 //   → AssetDatabase.ImportAsset → 재할당 → SetDirty → SaveAssets 순서 필수.
+//
+// [TIP-06] 런타임 Sprite 조달 원칙
+//   AssetDatabase는 에디터 전용 API. 런타임 MonoBehaviour에서 사용 금지.
+//   런타임 파일에 #if UNITY_EDITOR 분기가 보이면 즉시 의심할 것.
+//   에디터에서는 정상 동작하므로 빌드 전까지 버그가 드러나지 않는다.
+//     단순 사각형 → Texture2D(64×64) 직접 생성 후 Sprite.Create
+//     단순 원형   → Texture2D(128×128) 픽셀 채우기 후 Sprite.Create
+//     게임 아트   → Resources.Load<Sprite>() 또는 SO 레퍼런스
 
 // -------------------------------------------------------
 // [10] AI 실수 기록
@@ -439,3 +452,11 @@
 //         실제 원인(bossScale 스케일 상속으로 인디케이터 크기 불일치)과 무관했음.
 //   교훈: 버그 원인을 디버그 로그로 먼저 확정한 뒤 수정 방향을 결정할 것.
 //         기획 의도에 반하는 수정은 사용자에게 먼저 확인 후 진행할 것.
+//
+// [MISTAKE-19] 런타임 MonoBehaviour에서 AssetDatabase + #if UNITY_EDITOR 우회 코드 사용
+//   상황: StageBuilder.cs / VirtualJoystick.cs 에서 빌드용 #else 분기로
+//         Sprite.Create(Texture2D.whiteTexture, 4×4 Rect, ...) 반환
+//   실수: 에디터에서는 정상 동작. 빌드(Android)에서는 4×4 흰 점 Sprite가
+//         극단적 스케일(20×30 등)로 늘어나 스테이지 미렌더링, 조이스틱 사각형 출력.
+//   교훈: TIP-06 참고. 런타임 MonoBehaviour에 AssetDatabase / #if UNITY_EDITOR 사용 금지.
+//         런타임 Sprite는 Texture2D 직접 생성 / Resources.Load / SO 레퍼런스로만 조달할 것.
