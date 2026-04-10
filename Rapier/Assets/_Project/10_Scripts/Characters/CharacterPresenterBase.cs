@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using UnityEngine;
 using Game.Core;
-using Game.Core.Stage;
 using Game.Input;
 using Game.Combat;
 using Game.Enemies;
@@ -254,15 +253,7 @@ namespace Game.Characters
 
         private void PerformAttack()
         {
-            // WaveManager → BossRushManager → ProgressionManager 순으로 폴백
-            EnemyPresenterBase nearestEnemy = null;
-            var waveManager = ServiceLocator.Get<WaveManager>();
-            if (waveManager != null)
-                nearestEnemy = waveManager.GetNearestEnemy(transform.position);
-            if (nearestEnemy == null)
-                nearestEnemy = ServiceLocator.Get<BossRushManager>()?.GetCurrentBoss();
-            if (nearestEnemy == null)
-                nearestEnemy = ServiceLocator.Get<ProgressionManager>()?.CurrentBoss;
+            EnemyPresenterBase nearestEnemy = FindNearestEnemy(30f);
 
             var stat = Model.StatData;
             var dir  = nearestEnemy != null
@@ -588,9 +579,7 @@ namespace Game.Characters
             if (_attackRangeIndicator == null) CreateAttackRangeIndicator();
 
             var stat    = Model.StatData;
-            EnemyPresenterBase nearest = ServiceLocator.Get<WaveManager>()?.GetNearestEnemy(transform.position)
-                ?? ServiceLocator.Get<BossRushManager>()?.GetCurrentBoss()
-                ?? ServiceLocator.Get<ProgressionManager>()?.CurrentBoss;
+            EnemyPresenterBase nearest = FindNearestEnemy(30f);
             var dir     = nearest != null
                 ? ((Vector2)nearest.transform.position - (Vector2)transform.position).normalized
                 : Vector2.up;
@@ -630,6 +619,40 @@ namespace Game.Characters
             tex.SetPixels32(pixels);
             tex.Apply();
             return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), size);
+        }
+
+        // ── 타겟 탐색 ─────────────────────────────────────────────
+        /// <summary>
+        /// Physics2D 기반 근접 적 탐색. WaveManager/BossRushManager 의존 없이 어느 씬에서든 동작.
+        /// </summary>
+        protected EnemyPresenterBase FindNearestEnemy(float searchRadius)
+        {
+            var hits         = Physics2D.OverlapCircleAll(transform.position, searchRadius,
+                                                          LayerMask.GetMask("Enemy"));
+            EnemyPresenterBase nearest  = null;
+            float              minDistSq = float.MaxValue;
+
+            foreach (var hit in hits)
+            {
+                var enemy = hit.GetComponent<EnemyPresenterBase>();
+                if (enemy == null || !enemy.IsAlive) continue;
+
+                float distSq = ((Vector2)enemy.transform.position - (Vector2)transform.position).sqrMagnitude;
+                if (distSq < minDistSq)
+                {
+                    minDistSq = distSq;
+                    nearest   = enemy;
+                }
+            }
+            return nearest;
+        }
+
+        // ── 위치 순간이동 ─────────────────────────────────────────
+        /// <summary>Transform과 View를 동시에 지정 위치로 이동한다. ProgressionManager.ResetPlayerPosition에서 사용.</summary>
+        public void Warp(Vector2 pos)
+        {
+            transform.position = pos;
+            View?.SetPosition(pos);
         }
 
         // ── Gizmo ─────────────────────────────────────────────────

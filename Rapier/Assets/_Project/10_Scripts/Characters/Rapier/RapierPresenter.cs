@@ -3,7 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Game.Core;
-using Game.Core.Stage;
 using Game.Combat;
 using Game.Enemies;
 
@@ -124,13 +123,7 @@ namespace Game.Characters
         /// </summary>
         protected override void OnJustDodge(Vector2 direction)
         {
-            var waveManager = ServiceLocator.Get<WaveManager>();
-            _skillTarget = waveManager?.GetNearestEnemy(transform.position);
-
-            if (_skillTarget == null)
-                _skillTarget = ServiceLocator.Get<BossRushManager>()?.GetCurrentBoss();
-            if (_skillTarget == null)
-                _skillTarget = ServiceLocator.Get<ProgressionManager>()?.CurrentBoss;
+            _skillTarget = FindNearestEnemy(30f);
 
             if (_skillTarget != null)
                 Debug.Log($"[RapierPresenter] 스킬 시퀀스 후보 캐싱: {_skillTarget.name}");
@@ -202,15 +195,7 @@ namespace Game.Characters
         // ── 스킬 공격 ─────────────────────────────────────────────
         private void PerformSkillAttack()
         {
-            EnemyPresenterBase nearest = null;
-
-            var waveManager = ServiceLocator.Get<WaveManager>();
-            if (waveManager != null)
-                nearest = waveManager.GetNearestEnemy(transform.position);
-            if (nearest == null)
-                nearest = ServiceLocator.Get<BossRushManager>()?.GetCurrentBoss();
-            if (nearest == null)
-                nearest = ServiceLocator.Get<ProgressionManager>()?.CurrentBoss;
+            EnemyPresenterBase nearest = FindNearestEnemy(30f);
 
             var dir = nearest != null
                 ? ((Vector2)nearest.transform.position - (Vector2)transform.position).normalized
