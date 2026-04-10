@@ -93,6 +93,11 @@ namespace Game.UI.Lobby
                 int captured = i;
                 _tabHandlers[i] = () => HandleTabButtonClicked(captured);
             }
+
+            // 자식 Presenter 초기화 — _view는 비직렬화 필드이므로 런타임에 재주입
+            _homePresenter?.Init(_homeTabView);
+            _characterPresenter?.Init(_characterTabView);
+            _settingsPresenter?.Init(_settingsTabView);
         }
 
         private void OnEnable()
