@@ -9,7 +9,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 00000000000000000000000000000001, type: 3}
+  m_Script: {fileID: 11500000, guid: a874dbde24cd43b99864e8a8abe5bcad, type: 3}
   m_Name: Top_Rare_IronArmor
   m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Equipment.EquipmentItemData
   _itemName: "\uCCA0\uC81C \uCC30\uAD50"
