@@ -1,0 +1,178 @@
+using UnityEngine;
+using Game.Core.Stage;
+using Game.Data.RunStats;
+
+namespace Game.UI.Intermission
+{
+    /// <summary>
+    /// 인터미션 흐름 관리자.
+    ///
+    /// [역할]
+    ///   - ProgressionManager로부터 Open() / ShowDeathPopup() 호출을 받는다.
+    ///   - IntermissionView / DeathPopupView / StageClearView 수명 관리.
+    ///   - 스탯 선택 완료 → StageManager.NotifyIntermissionComplete() 연결.
+    ///   - 이어하기/로비 복귀 → StageManager.ContinueFromDeath() / ReturnToLobby() 연결.
+    ///   - 스테이지 클리어 → StageClearView.Show() + StageManager.OnStageCleared 구독.
+    ///
+    /// [이벤트 구독 쌍]
+    ///   OnEnable  : 모든 View 이벤트 + StageManager.OnStageCleared 구독
+    ///   OnDisable : 구독 해제 (짝 보장)
+    /// </summary>
+    public class IntermissionManager : MonoBehaviour
+    {
+        [Header("참조")]
+        [SerializeField] private IntermissionView _intermissionView;
+        [SerializeField] private DeathPopupView   _deathPopupView;
+        [SerializeField] private StageClearView   _stageClearView;
+        [SerializeField] private StageManager     _stageManagerRef;
+
+        // ── 내부 상태 ────────────────────────────────────────────────
+        private RunStatContainer _runStat;
+        private StageManager     _stageManager;
+
+        // ── 구독 관리 ────────────────────────────────────────────────
+        private void OnEnable()
+        {
+            if (_intermissionView != null)
+                _intermissionView.OnStatSelected += HandleStatSelected;
+
+            if (_deathPopupView != null)
+            {
+                _deathPopupView.OnContinueClicked      += HandleContinue;
+                _deathPopupView.OnReturnToLobbyClicked += HandleReturnToLobby;
+            }
+
+            if (_stageClearView != null)
+            {
+                _stageClearView.OnReturnToLobbyClicked += HandleClearReturnToLobby;
+                _stageClearView.OnNextStageClicked     += HandleNextStage;
+            }
+
+            // Inspector에서 직접 연결된 StageManager 구독
+            if (_stageManagerRef != null)
+                _stageManagerRef.OnStageCleared += HandleStageCleared;
+        }
+
+        private void OnDisable()
+        {
+            if (_intermissionView != null)
+                _intermissionView.OnStatSelected -= HandleStatSelected;
+
+            if (_deathPopupView != null)
+            {
+                _deathPopupView.OnContinueClicked      -= HandleContinue;
+                _deathPopupView.OnReturnToLobbyClicked -= HandleReturnToLobby;
+            }
+
+            if (_stageClearView != null)
+            {
+                _stageClearView.OnReturnToLobbyClicked -= HandleClearReturnToLobby;
+                _stageClearView.OnNextStageClicked     -= HandleNextStage;
+            }
+
+            if (_stageManagerRef != null)
+                _stageManagerRef.OnStageCleared -= HandleStageCleared;
+
+            // 동적으로 연결된 경우에도 해제
+            if (_stageManager != null && _stageManager != _stageManagerRef)
+                _stageManager.OnStageCleared -= HandleStageCleared;
+        }
+
+        // ── 공개 API ─────────────────────────────────────────────────
+        /// <summary>
+        /// 인터미션 방 진입 시 호출.
+        /// HP는 ProgressionManager가 이미 회복했으므로 여기서는 UI만 표시.
+        /// </summary>
+        public void Open(RunStatContainer runStat, StageManager stageManager)
+        {
+            _runStat      = runStat;
+            SetStageManager(stageManager);
+
+            if (_intermissionView != null)
+            {
+                var (first, second) = StatPickPool.PickTwo();
+                _intermissionView.Show(first, second);
+            }
+            else
+            {
+                Debug.LogWarning("[IntermissionManager] IntermissionView 없음 — 자동으로 다음 방 진입.");
+                _stageManager?.NotifyIntermissionComplete();
+            }
+        }
+
+        /// <summary>
+        /// 플레이어 사망 시 사망 팝업을 표시한다.
+        /// </summary>
+        public void ShowDeathPopup(StageManager stageManager)
+        {
+            SetStageManager(stageManager);
+
+            if (_deathPopupView != null)
+                _deathPopupView.Show();
+            else
+            {
+                Debug.LogWarning("[IntermissionManager] DeathPopupView 없음 — 자동 이어하기.");
+                HandleContinue();
+            }
+        }
+
+        // ── 이벤트 핸들러 ────────────────────────────────────────────
+        private void HandleStatSelected(RunStatEntry entry)
+        {
+            _runStat?.Apply(entry.Type, entry.Value);
+            Debug.Log($"[IntermissionManager] 스탯 선택: {entry.DisplayName} → 다음 보스 방으로.");
+
+            _intermissionView?.Hide();
+            _stageManager?.NotifyIntermissionComplete();
+        }
+
+        private void HandleContinue()
+        {
+            Debug.Log("[IntermissionManager] 이어하기 선택 — RunStat 유지.");
+            _deathPopupView?.Hide();
+            _stageManager?.ContinueFromDeath();
+        }
+
+        private void HandleReturnToLobby()
+        {
+            Debug.Log("[IntermissionManager] 로비 복귀 선택 — RunStat 초기화.");
+            _deathPopupView?.Hide();
+            _stageManager?.ReturnToLobby();
+        }
+
+        private void HandleStageCleared()
+        {
+            Debug.Log("[IntermissionManager] 스테이지 클리어 → 결과 화면 표시.");
+            _stageClearView?.Show();
+        }
+
+        private void HandleClearReturnToLobby()
+        {
+            Debug.Log("[IntermissionManager] 클리어 후 로비 복귀.");
+            _stageClearView?.Hide();
+            Game.Core.SceneController.LoadLobby();
+        }
+
+        private void HandleNextStage()
+        {
+            Debug.Log("[IntermissionManager] 다음 스테이지 진입.");
+            _stageClearView?.Hide();
+            // TODO: 다음 스테이지 로드 로직 (Phase 12-E 이후 연결)
+            Game.Core.SceneController.LoadGame();
+        }
+
+        // ── 내부 유틸 ────────────────────────────────────────────────
+        private void SetStageManager(StageManager stageManager)
+        {
+            // 기존 동적 구독 해제
+            if (_stageManager != null && _stageManager != _stageManagerRef)
+                _stageManager.OnStageCleared -= HandleStageCleared;
+
+            _stageManager = stageManager;
+
+            // 새 stageManager가 Inspector와 다른 경우에만 동적 구독
+            if (_stageManager != null && _stageManager != _stageManagerRef)
+                _stageManager.OnStageCleared += HandleStageCleared;
+        }
+    }
+}

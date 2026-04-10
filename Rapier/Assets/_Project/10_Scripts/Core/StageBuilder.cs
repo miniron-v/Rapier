@@ -1,9 +1,11 @@
 using UnityEngine;
+using Game.Core.Stage;
 
 namespace Game.Core
 {
     /// <summary>
     /// 격자 패턴 배경과 벽(경계)을 런타임에 생성한다.
+    /// Phase 12-D: RoomNode 배열로 스테이지를 구성하여 StageManager에 주입한다.
     /// 프로토타입 전용. 아트 교체 시 제거 예정.
     /// </summary>
     public class StageBuilder : MonoBehaviour
@@ -21,12 +23,34 @@ namespace Game.Core
         public float wallThickness = 0.5f;
         public Color wallColor     = new Color(0.4f, 0.4f, 0.5f, 1f);
 
+        [Header("스테이지 구성 (나선비경 스타일)")]
+        [Tooltip("방 배치 순서: BossRoom→Intermission→BossRoom→...  비우면 BossRushManager가 단독 동작.")]
+        [SerializeField] private RoomNode[] _roomNodes;
+
+        [Header("참조")]
+        [SerializeField] private StageManager _stageManager;
+
         private void Awake()
         {
             ServiceLocator.Register(this);
             BuildBackground();
             BuildGrid();
             BuildWalls();
+        }
+
+        private void Start()
+        {
+            // StageManager와 방 배열이 모두 설정된 경우에만 나선비경 스테이지를 구동한다.
+            // 설정이 없으면 기존 BossRushManager 단독 모드로 동작 (하위 호환).
+            if (_stageManager != null && _roomNodes != null && _roomNodes.Length > 0)
+            {
+                _stageManager.Init(_roomNodes);
+                Debug.Log("[StageBuilder] StageManager에 방 배열 주입 완료.");
+            }
+            else
+            {
+                Debug.Log("[StageBuilder] StageManager 미설정 — BossRushManager 단독 모드.");
+            }
         }
 
         private void OnDestroy()
