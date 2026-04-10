@@ -16,16 +16,21 @@ namespace Game.Characters
     ///   Rapier는 고유 스킬 시퀀스에 한해 BeginSignatureSkill() / EndSignatureSkill() 훅으로만
     ///   Base에 신호를 보낸다. 자식은 차단 플래그를 직접 읽거나 쓰지 않는다.
     ///
-    /// [고유 스킬 시퀀스]
-    ///   OnJustDodge : 타겟 확보 후 BeginSignatureSkill() — 슬로우 종료 후에도 Tap/무적/이동잠금 유지
-    ///   OnSkillRelease(justDodgeReady=true) : 타겟 생존 시 DashSkillRoutine 시작
+    /// [고유 스킬 시퀀스 — 지연 진입 모델]
+    ///   OnJustDodge : 이 시점에 표식 대시 스킬을 "예약"만 한다. _skillTarget 만 캐싱하고
+    ///     BeginSignatureSkill / LockMovement 는 호출하지 않는다. 이유는 사용자가 슬로우
+    ///     구간 내에 Hold/Release 를 하지 않고 그냥 흘려보낼 수 있기 때문이며, 그 경우
+    ///     스킬 시퀀스 자체가 시작되지 않아야 한다 (회귀 버그 방지 — 영구 잠금 차단).
+    ///   OnSkillRelease(justDodgeReady=true, 타겟 생존) :
+    ///     여기서 비로소 BeginSignatureSkill() + LockMovement() 를 호출하고 DashSkillRoutine 시작.
     ///     - 대시 → 공격 → 복귀 전 구간 무적/Tap 차단
-    ///     - 복귀 완료 시 EndSignatureSkill() + 무적 OFF + FreeMovement
-    ///   OnSlowMotionEnd : 타겟이 없어 스킬 시퀀스가 시작되지 않았고 사용자가 Hold를 안 했다면
-    ///     Base가 _isJustDodgeSlowActive를 내리며, BeginSignatureSkill이 호출되지 않았으므로
-    ///     RapierPresenter도 추가로 정리할 것이 없다.
-    ///   OnSkillRelease(fullyCharged=true): 차지 스킬은 동기 실행이며 Base가 _isChargeSkillActive로
-    ///     실행 구간을 자동 차단한다.
+    ///     - 복귀 완료 시 EndSignatureSkillCleanup() = EndSignatureSkill() + 무적 OFF + FreeMovement
+    ///   OnSlowMotionEnd : 사용자가 슬로우 동안 Hold/Release 하지 않았다면 Base 가
+    ///     _isJustDodgeSlowActive 와 Model.IsJustDodgeReady 를 내리고,
+    ///     RapierPresenter 는 _skillTarget 만 정리한 뒤 평범한 상태로 복귀한다.
+    ///     (스킬 시퀀스가 이미 시작된 경우엔 DashSkillRoutine 이 _skillTarget 을 사용 중이므로 보존)
+    ///   OnSkillRelease(fullyCharged=true): 차지 스킬은 동기 실행이며 Base 가 _isChargeSkillActive
+    ///     로 실행 구간을 자동 차단한다.
     /// </summary>
     public class RapierPresenter : CharacterPresenterBase, IDamageable, IPlayerCharacter
     {
@@ -108,6 +113,14 @@ namespace Game.Characters
         }
 
         // ── 저스트 회피 훅 ────────────────────────────────────────
+        /// <summary>
+        /// 저스트 회피가 발동된 순간의 훅.
+        /// 여기서는 "표식 대시 스킬 후보 타겟"만 캐싱한다 — BeginSignatureSkill 및 LockMovement 는
+        /// 호출하지 않는다. 사용자가 슬로우 구간 내에 실제로 Hold/Release 를 해서
+        /// <see cref="OnSkillRelease"/>가 저스트 회피 분기로 진입할 때 비로소 시그니처 스킬을 시작한다.
+        /// 사용자가 슬로우 동안 아무 입력도 하지 않으면 시그니처 스킬 자체가 시작되지 않으므로
+        /// OnSlowMotionEnd 에서 평범한 상태로 복귀할 수 있다 (영구 잠금 회귀 방지).
+        /// </summary>
         protected override void OnJustDodge(Vector2 direction)
         {
             var waveManager = ServiceLocator.Get<WaveManager>();
@@ -120,33 +133,44 @@ namespace Game.Characters
             }
 
             if (_skillTarget != null)
-            {
-                // 고유 스킬 시퀀스 대기 — Base에게 Tap 차단/무적/이동잠금 유지를 요청.
-                BeginSignatureSkill();
-                LockMovement();
-                Debug.Log($"[RapierPresenter] 스킬 시퀀스 대기: {_skillTarget.name}");
-            }
+                Debug.Log($"[RapierPresenter] 스킬 시퀀스 후보 캐싱: {_skillTarget.name}");
+        }
+
+        // ── 슬로우모션 종료 훅 ────────────────────────────────────
+        /// <summary>
+        /// 슬로우 종료 시 Base 후처리 (JustDodgeReady 만료, 슬로우 플래그 OFF, 무적 해제)를 먼저 수행하고,
+        /// 시그니처 스킬 시퀀스가 아직 시작되지 않은 경우에 한해 캐싱한 _skillTarget 을 비운다.
+        /// 스킬 시퀀스가 이미 시작되었다면 DashSkillRoutine 이 _skillTarget 을 사용 중이므로 건드리지 않는다.
+        /// </summary>
+        protected override void OnSlowMotionEnd()
+        {
+            base.OnSlowMotionEnd();
+
+            if (!IsSignatureSkillActive)
+                _skillTarget = null;
         }
 
         // ── 스킬 발동 훅 ──────────────────────────────────────────
+        /// <summary>
+        /// Hold → Release 시 Base 에서 호출된다.
+        /// 저스트 회피 발동권이 살아 있고 캐싱된 타겟이 생존해 있을 때만 표식 대시 스킬로 진입하며,
+        /// 이 분기 안에서 비로소 BeginSignatureSkill() + LockMovement() 를 호출한다.
+        /// 이렇게 하면 BeginSignatureSkill 호출 시점과 DashSkillRoutine 실행이 1:1 로 묶여
+        /// cleanup 누락에 의한 영구 잠금이 구조적으로 불가능하다.
+        /// </summary>
         protected override void OnSkillRelease(bool fullyCharged, bool justDodgeReady)
         {
             if (justDodgeReady && _skillTarget != null && _skillTarget.IsAlive)
             {
-                // 대시 시퀀스 시작. BeginSignatureSkill은 이미 OnJustDodge에서 호출됨.
+                // 표식 대시 스킬 시퀀스 시작. BeginSignatureSkill / LockMovement 는 여기서만 호출된다.
+                BeginSignatureSkill();
+                LockMovement();
                 StartCoroutine(DashSkillRoutine(_skillTarget));
             }
             else if (fullyCharged)
             {
-                // 저스트 회피로 진입했지만 타겟이 없거나, 순수 차지 스킬인 경우.
-                // 만약 저스트 회피 대기 상태가 있었다면(BeginSignatureSkill 호출됨) 정리한다.
-                if (IsSignatureSkillActive) EndSignatureSkillCleanup();
+                // 순수 차지 스킬. Base 가 _isChargeSkillActive 로 실행 구간을 자동 차단한다.
                 ExecuteChargeSkill();
-            }
-            else
-            {
-                // Hold 직후 Release지만 차지가 안 차고 저스트 회피 타겟도 없는 경우.
-                if (IsSignatureSkillActive) EndSignatureSkillCleanup();
             }
 
             _skillTarget = null;

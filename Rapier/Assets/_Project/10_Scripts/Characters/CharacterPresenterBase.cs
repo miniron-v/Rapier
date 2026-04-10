@@ -514,17 +514,28 @@ namespace Game.Characters
 
         /// <summary>
         /// 슬로우모션 종료 콜백.
-        /// 기본: 저스트 회피 슬로우 플래그 OFF + 고유 스킬이 이어지지 않으면 무적 OFF.
+        /// 기본 순서:
+        ///   1) JustDodgeReady(발동권) 을 명시적으로 만료시킨다 — 사용자가 슬로우 구간 내에
+        ///      Hold/Release로 표식 대시 스킬 분기에 진입하지 않았다면 이후 Hold/Release는
+        ///      일반 차지 스킬 분기만 탈 수 있도록 보장한다.
+        ///   2) 저스트 회피 슬로우 플래그 OFF.
+        ///   3) 고유 스킬 시퀀스가 이어지지 않은 경우에만 무적 OFF + FreeMovement
+        ///      (이어졌다면 자식이 스킬 종료 시점에 해제한다).
         /// 자식은 override해서 추가 연출/상태 정리를 할 수 있지만, Tap 차단 플래그 관리는
         /// Base가 담당하므로 자식이 따로 건드릴 필요가 없다.
         /// </summary>
         protected virtual void OnSlowMotionEnd()
         {
+            Model?.SetJustDodgeReady(false);
+
             _isJustDodgeSlowActive = false;
 
-            // 고유 스킬 시퀀스가 이어지는 경우 무적은 스킬 종료 시점에 해제된다.
+            // 고유 스킬 시퀀스가 이어지는 경우 무적/이동잠금 해제는 스킬 종료 시점으로 미룬다.
             if (!_isSignatureSkillActive)
+            {
                 Model?.SetInvincible(false);
+                FreeMovement();
+            }
         }
 
         private void StopSlowMotion()
