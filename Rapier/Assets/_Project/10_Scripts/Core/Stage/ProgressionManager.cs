@@ -66,6 +66,10 @@ namespace Game.Core.Stage
 
             _playerDeathHandled = false;
 
+            // 모든 방 진입 시 플레이어를 고정 시작 위치로 리셋
+            // (보스방은 이전 방의 포탈 위치 잔재 제거, 인터미션은 스탯 선택 대기 위치 확보)
+            ResetPlayerPosition(_playerSpawnPosition);
+
             switch (room.roomType)
             {
                 case RoomType.BossRoom:
@@ -123,8 +127,7 @@ namespace Game.Core.Stage
         // ── 인터미션 방 ──────────────────────────────────────────────
         private void HandleIntermissionEntered()
         {
-            // 플레이어 위치 고정 스폰
-            ResetPlayerPosition(_playerSpawnPosition);
+            // (플레이어 위치 리셋은 HandleRoomEntered 공통 처리)
 
             // 이어하기 진입이면 부활 처리, 아니면 HP 회복
             if (_stageManager != null && _stageManager.IsContinueMode)
