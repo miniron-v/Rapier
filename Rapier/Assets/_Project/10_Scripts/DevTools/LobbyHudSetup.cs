@@ -50,16 +50,34 @@ namespace Game.DevTools
             Build();
         }
 
+        private const string FONT_ASSET_PATH =
+            "Assets/_Project/30_ScriptableObjects/Fonts/NEXONLv1Gothic Regular SDF.asset";
+
+        private static TMP_FontAsset _font;
+
+        private static TMP_FontAsset GetFont()
+        {
+            if (_font == null)
+                _font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FONT_ASSET_PATH);
+            return _font;
+        }
+
         // ── 메인 빌드 메서드 ──────────────────────────────────────
         private static void Build()
         {
+            _font = null; // 매 빌드마다 재로드
             EnsureEventSystem();
+
+            // 기존 LobbyCanvas 비활성화 (충돌 방지)
+            var oldCanvas = GameObject.Find("LobbyCanvas");
+            if (oldCanvas != null)
+                oldCanvas.SetActive(false);
 
             // 1. Canvas 루트
             var root      = new GameObject(ROOT_NAME);
             var canvas    = root.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 0;
+            canvas.sortingOrder = 10;
 
             var scaler    = root.AddComponent<CanvasScaler>();
             scaler.uiScaleMode         = CanvasScaler.ScaleMode.ScaleWithScreenSize;
@@ -72,7 +90,7 @@ namespace Game.DevTools
             // 2. 탭 패널 영역 (탭 바 위쪽, 전체 화면에서 하단 바 높이 제외)
             var contentArea = CreateRectChild(root, "ContentArea");
             SetAnchors(contentArea, Vector2.zero, Vector2.one);
-            contentArea.offsetMin = new Vector2(0, 120); // 하단 탭 바 높이
+            contentArea.offsetMin = new Vector2(0, 180); // 하단 탭 바 높이
             contentArea.offsetMax = Vector2.zero;
 
             // 3. 5개 탭 패널 생성
@@ -262,7 +280,7 @@ namespace Game.DevTools
             var barRect = barGo.GetComponent<RectTransform>();
             SetAnchors(barRect, Vector2.zero, new Vector2(1f, 0f));
             barRect.offsetMin = Vector2.zero;
-            barRect.offsetMax = new Vector2(0f, 120f);
+            barRect.offsetMax = new Vector2(0f, 180f);
 
             var hLayout = barGo.AddComponent<HorizontalLayoutGroup>();
             hLayout.childForceExpandWidth  = true;
@@ -291,9 +309,11 @@ namespace Game.DevTools
                 labelGo.transform.SetParent(btnGo.transform, false);
                 var tmp = labelGo.AddComponent<TextMeshProUGUI>();
                 tmp.text      = labels[i];
-                tmp.fontSize  = 28;
+                tmp.fontSize  = 40;
                 tmp.alignment = TextAlignmentOptions.Center;
                 tmp.color     = new Color(0.7f, 0.7f, 0.7f);
+                var tabFont = GetFont();
+                if (tabFont != null) tmp.font = tabFont;
                 var labelRect = labelGo.GetComponent<RectTransform>();
                 SetAnchors(labelRect, Vector2.zero, Vector2.one);
                 labelRect.offsetMin = labelRect.offsetMax = Vector2.zero;
@@ -358,6 +378,8 @@ namespace Game.DevTools
             tmp.fontSize  = fontSize;
             tmp.alignment = alignment;
             tmp.color     = color ?? Color.white;
+            var labelFont = GetFont();
+            if (labelFont != null) tmp.font = labelFont;
             var rect = go.GetComponent<RectTransform>();
             SetAnchors(rect,
                 anchorMin ?? new Vector2(0.05f, 0.3f),
@@ -390,6 +412,8 @@ namespace Game.DevTools
             tmp.fontSize  = 40;
             tmp.alignment = TextAlignmentOptions.Center;
             tmp.color     = Color.white;
+            var btnFont = GetFont();
+            if (btnFont != null) tmp.font = btnFont;
             var labelRect = labelGo.GetComponent<RectTransform>();
             SetAnchors(labelRect, Vector2.zero, Vector2.one);
             labelRect.offsetMin = labelRect.offsetMax = Vector2.zero;
