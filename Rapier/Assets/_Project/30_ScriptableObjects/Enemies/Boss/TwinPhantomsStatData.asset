@@ -40,30 +40,30 @@ MonoBehaviour:
     - rid: 2897679572369932400
       type: {class: MeleeAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
       data:
-        windupDuration: 0.5
+        windupDuration: 0.7
         lockIndicatorDirection: 1
         indicators:
         - shape: 0
           angleOffset: 0
           sectorData:
-            range: 1.3
+            range: 3.5
             angle: 90
           rectData:
             range: 0
             width: 0
-        hitRange: 1.3
+        hitRange: 3.5
     - rid: 2897679572369932401
       type: {class: MeleeAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
       data:
-        windupDuration: 0.45
+        windupDuration: 0.65
         lockIndicatorDirection: 1
         indicators:
         - shape: 0
           angleOffset: -30
           sectorData:
-            range: 1.3
+            range: 3.5
             angle: 90
           rectData:
             range: 0
             width: 0
-        hitRange: 1.3
+        hitRange: 3.5

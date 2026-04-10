@@ -42,108 +42,108 @@ MonoBehaviour:
     - rid: 2897679572369932374
       type: {class: MeleeAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
       data:
-        windupDuration: 0.35
+        windupDuration: 0.55
         lockIndicatorDirection: 1
         indicators:
         - shape: 0
           angleOffset: 0
           sectorData:
-            range: 1.5
+            range: 4
             angle: 100
           rectData:
             range: 0
             width: 0
-        hitRange: 1.5
+        hitRange: 4
     - rid: 2897679572369932375
       type: {class: MeleeAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
       data:
-        windupDuration: 0.35
+        windupDuration: 0.5
         lockIndicatorDirection: 1
         indicators:
         - shape: 0
           angleOffset: 40
           sectorData:
-            range: 1.5
+            range: 4
             angle: 100
           rectData:
             range: 0
             width: 0
-        hitRange: 1.5
+        hitRange: 4
     - rid: 2897679572369932376
       type: {class: MeleeAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
       data:
-        windupDuration: 0.35
+        windupDuration: 0.5
         lockIndicatorDirection: 1
         indicators:
         - shape: 0
           angleOffset: -40
           sectorData:
-            range: 1.5
+            range: 4
             angle: 100
           rectData:
             range: 0
             width: 0
-        hitRange: 1.5
+        hitRange: 4
     - rid: 2897679572369932377
       type: {class: MeleeAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
       data:
-        windupDuration: 0.3
+        windupDuration: 0.55
         lockIndicatorDirection: 1
         indicators:
         - shape: 0
           angleOffset: 0
           sectorData:
-            range: 1.6
+            range: 4
             angle: 110
           rectData:
             range: 0
             width: 0
-        hitRange: 1.6
+        hitRange: 4
     - rid: 2897679572369932378
       type: {class: MeleeAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
       data:
-        windupDuration: 0.3
+        windupDuration: 0.5
         lockIndicatorDirection: 1
         indicators:
         - shape: 0
           angleOffset: 50
           sectorData:
-            range: 1.6
+            range: 4
             angle: 110
           rectData:
             range: 0
             width: 0
-        hitRange: 1.6
+        hitRange: 4
     - rid: 2897679572369932379
       type: {class: MeleeAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
       data:
-        windupDuration: 0.3
+        windupDuration: 0.5
         lockIndicatorDirection: 1
         indicators:
         - shape: 0
           angleOffset: -50
           sectorData:
-            range: 1.6
+            range: 4
             angle: 110
           rectData:
             range: 0
             width: 0
-        hitRange: 1.6
+        hitRange: 4
     - rid: 2897679572369932380
       type: {class: MeleeAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
       data:
-        windupDuration: 0.3
+        windupDuration: 0.55
         lockIndicatorDirection: 1
         indicators:
         - shape: 0
           angleOffset: 0
           sectorData:
-            range: 1.6
+            range: 4
             angle: 120
           rectData:
             range: 0
             width: 0
-        hitRange: 1.6
+        hitRange: 4
     - rid: 2897679572369932381
       type: {class: ChargeAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
       data:

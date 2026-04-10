@@ -37,18 +37,18 @@ MonoBehaviour:
     - rid: 2897679572369932393
       type: {class: MeleeAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
       data:
-        windupDuration: 0.55
+        windupDuration: 0.7
         lockIndicatorDirection: 1
         indicators:
         - shape: 0
           angleOffset: 0
           sectorData:
-            range: 1.4
+            range: 4
             angle: 80
           rectData:
             range: 0
             width: 0
-        hitRange: 1.2
+        hitRange: 4
     - rid: 2897679572369932394
       type: {class: TeleportAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
       data:
@@ -60,15 +60,15 @@ MonoBehaviour:
     - rid: 2897679572369932395
       type: {class: MeleeAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
       data:
-        windupDuration: 0.55
+        windupDuration: 0.7
         lockIndicatorDirection: 1
         indicators:
         - shape: 0
           angleOffset: 0
           sectorData:
-            range: 1.4
+            range: 4
             angle: 80
           rectData:
             range: 0
             width: 0
-        hitRange: 1.2
+        hitRange: 4

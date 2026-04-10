@@ -44,7 +44,7 @@ MonoBehaviour:
         - shape: 0
           angleOffset: 0
           sectorData:
-            range: 2.5
+            range: 4
             angle: 50
           rectData:
             range: 0
@@ -52,7 +52,7 @@ MonoBehaviour:
         - shape: 0
           angleOffset: 90
           sectorData:
-            range: 2.5
+            range: 4
             angle: 50
           rectData:
             range: 0
@@ -60,7 +60,7 @@ MonoBehaviour:
         - shape: 0
           angleOffset: 180
           sectorData:
-            range: 2.5
+            range: 4
             angle: 50
           rectData:
             range: 0
@@ -68,12 +68,12 @@ MonoBehaviour:
         - shape: 0
           angleOffset: 270
           sectorData:
-            range: 2.5
+            range: 4
             angle: 50
           rectData:
             range: 0
             width: 0
-        hitRange: 2
+        hitRange: 4
         damageMultiplier: 1
     - rid: 2897679572369932397
       type: {class: ProjectileAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
@@ -103,7 +103,7 @@ MonoBehaviour:
         - shape: 0
           angleOffset: 0
           sectorData:
-            range: 2.5
+            range: 4
             angle: 55
           rectData:
             range: 0
@@ -111,7 +111,7 @@ MonoBehaviour:
         - shape: 0
           angleOffset: 90
           sectorData:
-            range: 2.5
+            range: 4
             angle: 55
           rectData:
             range: 0
@@ -119,7 +119,7 @@ MonoBehaviour:
         - shape: 0
           angleOffset: 180
           sectorData:
-            range: 2.5
+            range: 4
             angle: 55
           rectData:
             range: 0
@@ -127,17 +127,17 @@ MonoBehaviour:
         - shape: 0
           angleOffset: 270
           sectorData:
-            range: 2.5
+            range: 4
             angle: 55
           rectData:
             range: 0
             width: 0
-        hitRange: 2
+        hitRange: 4
         damageMultiplier: 1.1
     - rid: 2897679572369932399
       type: {class: ProjectileAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
       data:
-        windupDuration: 0.65
+        windupDuration: 0.7
         lockIndicatorDirection: 1
         indicators:
         - shape: 1
