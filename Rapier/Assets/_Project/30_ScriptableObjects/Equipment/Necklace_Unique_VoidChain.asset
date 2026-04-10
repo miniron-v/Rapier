@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 00000000000000000000000000000001, type: 3}
+  m_Name: Necklace_Unique_VoidChain
+  m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Equipment.EquipmentItemData
+  _itemName: "\uD5C9\uBB34\uC758 \uBAA9\uAC78\uC774"
+  _description: "\uAD6C\uC5B4\uC9C0\uC9C0 \uC54A\uB294 \uC5B4\uB460\uC758 \uD798. \uC8FC\uC778\uC5D0\uAC8C \uB9C9\uB300\uD55C \uC2A4\uD0AC \uB370\uBBF8\uC9C0\uB97C \uC81C\uACF5\uD55C\uB2E4."
+  _icon: {fileID: 0}
+  _slotType: 6
+  _grade: 3
+  _mainStat:
+    statType: 9
+    flatValue: 0
+    percentValue: 0.3
+  _subStats:
+  - statType: 8
+    flatValue: 0
+    percentValue: 0.1
+  - statType: 6
+    flatValue: 0
+    percentValue: 0.1
+  - statType: 7
+    flatValue: 0
+    percentValue: 0.2
+  - statType: 1
+    flatValue: 20
+    percentValue: 0
