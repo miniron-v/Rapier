@@ -6,6 +6,7 @@ using UnityEditor.SceneManagement;
 using TMPro;
 using Game.Core;
 using Game.Core.Stage;
+using Game.Enemies;
 using Game.UI.Intermission;
 
 #if ENABLE_INPUT_SYSTEM
@@ -20,20 +21,18 @@ namespace Game.Editor
     /// [생성 구성]
     ///   [Core] — StageManager + ProgressionManager + StageBuilder
     ///   [UI] Canvas — IntermissionManager + IntermissionView + DeathPopupView + StageClearView
+    ///   Main Camera — Camera + CameraFollow (_target = 플레이어)
+    ///   Player — Rapier_Player 프리팹
     ///   EventSystem (없을 때만 생성)
     ///
-    /// [참조 배선]
-    ///   ProgressionManager._stageManager        → StageManager
-    ///   ProgressionManager._intermissionManager → IntermissionManager
-    ///   StageBuilder._stageManager              → StageManager
-    ///   IntermissionManager._intermissionView   → IntermissionView
-    ///   IntermissionManager._deathPopupView     → DeathPopupView
-    ///   IntermissionManager._stageClearView     → StageClearView
-    ///   IntermissionManager._stageManagerRef    → StageManager
-    ///
-    /// [수동 설정 필요]
-    ///   StageBuilder._roomNodes — 인스펙터에서 보스 프리팹/StatData를 직접 설정.
-    ///   플레이어 프리팹 — [Core] 아래에 수동 배치.
+    /// [RoomNode 배열 (7방)]
+    ///   [0] BossRoom      Specter
+    ///   [1] IntermissionRoom
+    ///   [2] BossRoom      Berserker
+    ///   [3] IntermissionRoom
+    ///   [4] BossRoom      Gravekeeper
+    ///   [5] IntermissionRoom
+    ///   [6] BossRoom      Titan
     ///
     /// [실행]
     ///   Rapier/Stage/Create Stage Demo Scene
@@ -41,12 +40,34 @@ namespace Game.Editor
     /// </summary>
     public static class StageSceneSetup
     {
+        // ── 에셋 경로 ─────────────────────────────────────────────
         private const string FONT_ASSET_PATH =
             "Assets/_Project/30_ScriptableObjects/Fonts/NEXONLv1Gothic Regular SDF.asset";
 
         private const string SCENE_SAVE_PATH =
             "Assets/_Project/40_Scenes/StageDemo.unity";
 
+        // 플레이어
+        private const string PLAYER_PREFAB_PATH =
+            "Assets/_Project/20_Prefabs/Rapier_Player.prefab";
+
+        // 보스 프리팹
+        private const string SPECTER_PREFAB_PATH     = "Assets/_Project/20_Prefabs/Specter_Boss.prefab";
+        private const string BERSERKER_PREFAB_PATH   = "Assets/_Project/20_Prefabs/Berserker_Boss.prefab";
+        private const string GRAVEKEEPER_PREFAB_PATH = "Assets/_Project/20_Prefabs/Gravekeeper_Boss.prefab";
+        private const string TITAN_PREFAB_PATH       = "Assets/_Project/20_Prefabs/Titan_Boss.prefab";
+
+        // 보스 StatData
+        private const string SPECTER_STAT_PATH     =
+            "Assets/_Project/30_ScriptableObjects/Enemies/Boss/SpecterStatData.asset";
+        private const string BERSERKER_STAT_PATH   =
+            "Assets/_Project/30_ScriptableObjects/Enemies/Boss/BerserkerStatData.asset";
+        private const string GRAVEKEEPER_STAT_PATH =
+            "Assets/_Project/30_ScriptableObjects/Enemies/Boss/GravekeeperStatData.asset";
+        private const string TITAN_STAT_PATH       =
+            "Assets/_Project/30_ScriptableObjects/Enemies/Boss/TitanStatData.asset";
+
+        // ── 폰트 캐시 ─────────────────────────────────────────────
         private static TMP_FontAsset _font;
 
         private static TMP_FontAsset GetFont()
@@ -56,14 +77,14 @@ namespace Game.Editor
             return _font;
         }
 
-        // 색상 팔레트
-        private static readonly Color OVERLAY_BG     = new Color(0.00f, 0.00f, 0.00f, 0.80f);
-        private static readonly Color CARD_BG         = new Color(0.12f, 0.18f, 0.28f, 0.95f);
-        private static readonly Color BTN_PRIMARY     = new Color(0.90f, 0.75f, 0.10f, 1.00f);
-        private static readonly Color BTN_DANGER      = new Color(0.85f, 0.20f, 0.15f, 1.00f);
-        private static readonly Color BTN_LOBBY       = new Color(0.30f, 0.55f, 0.90f, 1.00f);
-        private static readonly Color BTN_SAFE        = new Color(0.20f, 0.70f, 0.35f, 1.00f);
-        private static readonly Color BTN_TEXT_DARK   = new Color(0.08f, 0.04f, 0.00f, 1.00f);
+        // ── 색상 팔레트 ───────────────────────────────────────────
+        private static readonly Color OVERLAY_BG   = new Color(0.00f, 0.00f, 0.00f, 0.80f);
+        private static readonly Color CARD_BG      = new Color(0.12f, 0.18f, 0.28f, 0.95f);
+        private static readonly Color BTN_PRIMARY  = new Color(0.90f, 0.75f, 0.10f, 1.00f);
+        private static readonly Color BTN_DANGER   = new Color(0.85f, 0.20f, 0.15f, 1.00f);
+        private static readonly Color BTN_LOBBY    = new Color(0.30f, 0.55f, 0.90f, 1.00f);
+        private static readonly Color BTN_SAFE     = new Color(0.20f, 0.70f, 0.35f, 1.00f);
+        private static readonly Color BTN_TEXT_DARK= new Color(0.08f, 0.04f, 0.00f, 1.00f);
 
         [MenuItem("Rapier/Stage/Create Stage Demo Scene")]
         public static void CreateStageScene() => BuildScene(false);
@@ -76,7 +97,7 @@ namespace Game.Editor
             _font = null;
             Debug.Log($"[StageSceneSetup] Font={GetFont() != null}");
 
-            // 기존 씬 확인
+            // 기존 StageDemo 씬 확인
             var existingScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
             if (existingScene.name == "StageDemo" && !forceRebuild)
             {
@@ -98,55 +119,93 @@ namespace Game.Editor
             var progressionManager = coreGo.AddComponent<ProgressionManager>();
             var stageBuilder       = coreGo.AddComponent<StageBuilder>();
 
+            // ── 플레이어 ──────────────────────────────────────────
+            var playerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(PLAYER_PREFAB_PATH);
+            GameObject playerGo = null;
+            if (playerPrefab != null)
+            {
+                playerGo = (GameObject)PrefabUtility.InstantiatePrefab(playerPrefab);
+                Undo.RegisterCreatedObjectUndo(playerGo, "Create Player");
+                playerGo.name = "Player";
+                playerGo.transform.position = new Vector3(0f, -3f, 0f);
+                Debug.Log("[StageSceneSetup] Player 배치 완료.");
+            }
+            else
+            {
+                Debug.LogWarning($"[StageSceneSetup] Player 프리팹을 찾을 수 없음: {PLAYER_PREFAB_PATH}");
+            }
+
+            // ── Main Camera ───────────────────────────────────────
+            var cameraGo = new GameObject("Main Camera");
+            Undo.RegisterCreatedObjectUndo(cameraGo, "Create Main Camera");
+            cameraGo.tag = "MainCamera";
+
+            var cam                   = cameraGo.AddComponent<Camera>();
+            cam.orthographic          = true;
+            cam.orthographicSize      = 10f;
+            cam.clearFlags            = CameraClearFlags.SolidColor;
+            cam.backgroundColor       = new Color(0.10f, 0.10f, 0.15f, 1f);
+            cam.nearClipPlane         = -100f;
+            cam.farClipPlane          = 100f;
+            cameraGo.transform.position = new Vector3(0f, 0f, -10f);
+
+            var camFollow = cameraGo.AddComponent<CameraFollow>();
+            if (playerGo != null)
+            {
+                var camSo = new SerializedObject(camFollow);
+                camSo.FindProperty("_target").objectReferenceValue = playerGo.transform;
+                camSo.ApplyModifiedProperties();
+                EditorUtility.SetDirty(camFollow);
+                Debug.Log("[StageSceneSetup] CameraFollow._target → Player 연결 완료.");
+            }
+
             // ── [UI] Canvas ───────────────────────────────────────
             var canvasGo = new GameObject("[UI]");
             Undo.RegisterCreatedObjectUndo(canvasGo, "Create [UI]");
 
-            var canvas            = canvasGo.AddComponent<Canvas>();
-            canvas.renderMode     = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder   = 10;
+            var canvas          = canvasGo.AddComponent<Canvas>();
+            canvas.renderMode   = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = 10;
 
-            var scaler                   = canvasGo.AddComponent<CanvasScaler>();
-            scaler.uiScaleMode           = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution   = new Vector2(1080, 1920);
-            scaler.matchWidthOrHeight    = 0.5f;
+            var scaler                 = canvasGo.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode         = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1080, 1920);
+            scaler.matchWidthOrHeight  = 0.5f;
 
             canvasGo.AddComponent<GraphicRaycaster>();
 
             var intermissionManager = canvasGo.AddComponent<IntermissionManager>();
 
             // ── IntermissionView ──────────────────────────────────
-            var ivGo   = new GameObject("IntermissionPanel");
+            var ivGo = new GameObject("IntermissionPanel");
             ivGo.transform.SetParent(canvasGo.transform, false);
             SetFullStretch(ivGo);
             var intermissionView = ivGo.AddComponent<IntermissionView>();
 
-            // IntermissionView 하위 구조
             var ivPanel = CreatePanel(ivGo.transform, "Panel", OVERLAY_BG);
             ivPanel.SetActive(false);
             SetFullStretch(ivPanel);
 
-            var healNotice = CreateTMPText(ivPanel.transform, "HealNoticeText",
+            var healNotice   = CreateTMPText(ivPanel.transform, "HealNoticeText",
                 "HP가 100% 회복되었습니다!", 34, FontStyles.Normal, new Color(0.5f, 1f, 0.5f));
-            var healRt = healNotice.GetComponent<RectTransform>();
-            healRt.anchorMin        = new Vector2(0f, 0.75f);
-            healRt.anchorMax        = new Vector2(1f, 0.85f);
-            healRt.offsetMin        = healRt.offsetMax = Vector2.zero;
+            var healRt       = healNotice.GetComponent<RectTransform>();
+            healRt.anchorMin = new Vector2(0f, 0.75f);
+            healRt.anchorMax = new Vector2(1f, 0.85f);
+            healRt.offsetMin = healRt.offsetMax = Vector2.zero;
             healNotice.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
 
-            var cardAGo    = CreateCard(ivPanel.transform, "CardA", "스탯 A", "설명 A");
-            var cardARt    = cardAGo.GetComponent<RectTransform>();
-            cardARt.anchorMin        = new Vector2(0.05f, 0.35f);
-            cardARt.anchorMax        = new Vector2(0.47f, 0.72f);
-            cardARt.offsetMin        = cardARt.offsetMax = Vector2.zero;
+            var cardAGo = CreateCard(ivPanel.transform, "CardA", "스탯 A", "설명 A");
+            var cardARt = cardAGo.GetComponent<RectTransform>();
+            cardARt.anchorMin = new Vector2(0.05f, 0.35f);
+            cardARt.anchorMax = new Vector2(0.47f, 0.72f);
+            cardARt.offsetMin = cardARt.offsetMax = Vector2.zero;
 
-            var cardBGo    = CreateCard(ivPanel.transform, "CardB", "스탯 B", "설명 B");
-            var cardBRt    = cardBGo.GetComponent<RectTransform>();
-            cardBRt.anchorMin        = new Vector2(0.53f, 0.35f);
-            cardBRt.anchorMax        = new Vector2(0.95f, 0.72f);
-            cardBRt.offsetMin        = cardBRt.offsetMax = Vector2.zero;
+            var cardBGo = CreateCard(ivPanel.transform, "CardB", "스탯 B", "설명 B");
+            var cardBRt = cardBGo.GetComponent<RectTransform>();
+            cardBRt.anchorMin = new Vector2(0.53f, 0.35f);
+            cardBRt.anchorMax = new Vector2(0.95f, 0.72f);
+            cardBRt.offsetMin = cardBRt.offsetMax = Vector2.zero;
 
-            // IntermissionView SerializeField 주입
             var ivSo = new SerializedObject(intermissionView);
             ivSo.FindProperty("_panel").objectReferenceValue =
                 ivPanel;
@@ -176,12 +235,12 @@ namespace Game.Editor
             dpPanel.SetActive(false);
             SetFullStretch(dpPanel);
 
-            var dpTitle = CreateTMPText(dpPanel.transform, "TitleText",
+            var dpTitle   = CreateTMPText(dpPanel.transform, "TitleText",
                 "전투 불능!", 72, FontStyles.Bold, Color.red);
             var dpTitleRt = dpTitle.GetComponent<RectTransform>();
-            dpTitleRt.anchorMin        = new Vector2(0f, 0.55f);
-            dpTitleRt.anchorMax        = new Vector2(1f, 0.70f);
-            dpTitleRt.offsetMin        = dpTitleRt.offsetMax = Vector2.zero;
+            dpTitleRt.anchorMin = new Vector2(0f, 0.55f);
+            dpTitleRt.anchorMax = new Vector2(1f, 0.70f);
+            dpTitleRt.offsetMin = dpTitleRt.offsetMax = Vector2.zero;
             dpTitle.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
 
             var dpContinueBtn = CreateButton(dpPanel.transform, "ContinueButton",
@@ -219,12 +278,12 @@ namespace Game.Editor
             scPanel.SetActive(false);
             SetFullStretch(scPanel);
 
-            var scTitle = CreateTMPText(scPanel.transform, "TitleText",
+            var scTitle   = CreateTMPText(scPanel.transform, "TitleText",
                 "STAGE CLEAR!", 80, FontStyles.Bold, Color.yellow);
             var scTitleRt = scTitle.GetComponent<RectTransform>();
-            scTitleRt.anchorMin        = new Vector2(0f, 0.55f);
-            scTitleRt.anchorMax        = new Vector2(1f, 0.70f);
-            scTitleRt.offsetMin        = scTitleRt.offsetMax = Vector2.zero;
+            scTitleRt.anchorMin = new Vector2(0f, 0.55f);
+            scTitleRt.anchorMax = new Vector2(1f, 0.70f);
+            scTitleRt.offsetMin = scTitleRt.offsetMax = Vector2.zero;
             scTitle.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
 
             var scLobbyBtn = CreateButton(scPanel.transform, "ReturnToLobbyButton",
@@ -266,12 +325,13 @@ namespace Game.Editor
             pmSo.FindProperty("_intermissionManager").objectReferenceValue = intermissionManager;
             pmSo.ApplyModifiedProperties();
 
-            // ── StageBuilder 배선 ─────────────────────────────────
+            // ── StageBuilder 배선 + RoomNodes ─────────────────────
             var sbSo = new SerializedObject(stageBuilder);
             sbSo.FindProperty("_stageManager").objectReferenceValue = stageManager;
+            SetupRoomNodes(sbSo);
             sbSo.ApplyModifiedProperties();
 
-            // SetDirty
+            // ── SetDirty ──────────────────────────────────────────
             EditorUtility.SetDirty(intermissionView);
             EditorUtility.SetDirty(deathPopupView);
             EditorUtility.SetDirty(stageClearView);
@@ -279,17 +339,83 @@ namespace Game.Editor
             EditorUtility.SetDirty(progressionManager);
             EditorUtility.SetDirty(stageBuilder);
 
-            // 씬 저장
+            // ── 씬 저장 ───────────────────────────────────────────
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene, SCENE_SAVE_PATH);
 
             Selection.activeGameObject = coreGo;
 
             Debug.Log("[StageSceneSetup] StageDemo.unity 생성 완료!\n" +
-                      "남은 수동 작업:\n" +
-                      "  1. [Core] > StageBuilder의 _roomNodes에 보스 프리팹/StatData 배열 설정\n" +
-                      "  2. 플레이어 프리팹([Core] 아래)과 카메라 배치\n" +
-                      "  3. Build Settings에 StageDemo 씬 추가");
+                      "배치 구성:\n" +
+                      "  Specter → 인터미션 → Berserker → 인터미션 → Gravekeeper → 인터미션 → Titan\n" +
+                      "주의: Build Settings에 StageDemo 씬을 추가하세요.");
+        }
+
+        // ── RoomNode 배열 설정 ────────────────────────────────────
+        // [0] BossRoom      Specter
+        // [1] IntermissionRoom
+        // [2] BossRoom      Berserker
+        // [3] IntermissionRoom
+        // [4] BossRoom      Gravekeeper
+        // [5] IntermissionRoom
+        // [6] BossRoom      Titan
+        private static void SetupRoomNodes(SerializedObject sbSo)
+        {
+            // 에셋 로드
+            var specterPrefab     = AssetDatabase.LoadAssetAtPath<GameObject>(SPECTER_PREFAB_PATH);
+            var berserkerPrefab   = AssetDatabase.LoadAssetAtPath<GameObject>(BERSERKER_PREFAB_PATH);
+            var gravekeeperPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(GRAVEKEEPER_PREFAB_PATH);
+            var titanPrefab       = AssetDatabase.LoadAssetAtPath<GameObject>(TITAN_PREFAB_PATH);
+
+            var specterStat     = AssetDatabase.LoadAssetAtPath<BossStatData>(SPECTER_STAT_PATH);
+            var berserkerStat   = AssetDatabase.LoadAssetAtPath<BossStatData>(BERSERKER_STAT_PATH);
+            var gravekeeperStat = AssetDatabase.LoadAssetAtPath<BossStatData>(GRAVEKEEPER_STAT_PATH);
+            var titanStat       = AssetDatabase.LoadAssetAtPath<BossStatData>(TITAN_STAT_PATH);
+
+            LogAssetLoad("Specter 프리팹",     specterPrefab);
+            LogAssetLoad("Berserker 프리팹",   berserkerPrefab);
+            LogAssetLoad("Gravekeeper 프리팹", gravekeeperPrefab);
+            LogAssetLoad("Titan 프리팹",       titanPrefab);
+            LogAssetLoad("Specter StatData",     specterStat);
+            LogAssetLoad("Berserker StatData",   berserkerStat);
+            LogAssetLoad("Gravekeeper StatData", gravekeeperStat);
+            LogAssetLoad("Titan StatData",       titanStat);
+
+            var roomsProp = sbSo.FindProperty("_roomNodes");
+            roomsProp.arraySize = 7;
+
+            SetBossRoom(roomsProp, 0, "Specter",     specterPrefab,     specterStat);
+            SetIntermissionRoom(roomsProp, 1, "인터미션 1");
+            SetBossRoom(roomsProp, 2, "Berserker",   berserkerPrefab,   berserkerStat);
+            SetIntermissionRoom(roomsProp, 3, "인터미션 2");
+            SetBossRoom(roomsProp, 4, "Gravekeeper", gravekeeperPrefab, gravekeeperStat);
+            SetIntermissionRoom(roomsProp, 5, "인터미션 3");
+            SetBossRoom(roomsProp, 6, "Titan",       titanPrefab,       titanStat);
+        }
+
+        private static void SetBossRoom(SerializedProperty roomsProp, int index,
+                                        string name, GameObject prefab, BossStatData stat)
+        {
+            var room = roomsProp.GetArrayElementAtIndex(index);
+            room.FindPropertyRelative("roomType").enumValueIndex      = 0; // BossRoom
+            room.FindPropertyRelative("bossPrefab").objectReferenceValue   = prefab;
+            room.FindPropertyRelative("bossStatData").objectReferenceValue = stat;
+            room.FindPropertyRelative("displayName").stringValue           = name;
+        }
+
+        private static void SetIntermissionRoom(SerializedProperty roomsProp, int index, string name)
+        {
+            var room = roomsProp.GetArrayElementAtIndex(index);
+            room.FindPropertyRelative("roomType").enumValueIndex           = 1; // IntermissionRoom
+            room.FindPropertyRelative("bossPrefab").objectReferenceValue   = null;
+            room.FindPropertyRelative("bossStatData").objectReferenceValue = null;
+            room.FindPropertyRelative("displayName").stringValue           = name;
+        }
+
+        private static void LogAssetLoad(string label, Object asset)
+        {
+            if (asset == null)
+                Debug.LogWarning($"[StageSceneSetup] {label} 로드 실패 — 경로를 확인하세요.");
         }
 
         // ── EventSystem ───────────────────────────────────────────
@@ -372,8 +498,8 @@ namespace Game.Editor
         }
 
         /// <summary>
-        /// 스탯 선택 카드 생성. Button + Title + Desc 구조.
-        /// 반환 GO에 Button 컴포넌트가 있고, Find("Title") / Find("Desc") 접근 가능.
+        /// 스탯 선택 카드 생성. Button + Title(TMP) + Desc(TMP) 구조.
+        /// Find("Title") / Find("Desc")로 자식 접근 가능.
         /// </summary>
         private static GameObject CreateCard(Transform parent, string name,
                                              string titleText, string descText)
@@ -388,24 +514,22 @@ namespace Game.Editor
             colors.pressedColor     = new Color(0.08f, 0.12f, 0.20f, 1f);
             btn.colors = colors;
 
-            // Title
             var title   = CreateTMPText(go.transform, "Title", titleText, 40, FontStyles.Bold, Color.white);
             var titleRt = title.GetComponent<RectTransform>();
-            titleRt.anchorMin        = new Vector2(0f, 0.65f);
-            titleRt.anchorMax        = new Vector2(1f, 1f);
-            titleRt.offsetMin        = new Vector2(16f, 0f);
-            titleRt.offsetMax        = new Vector2(-16f, -12f);
+            titleRt.anchorMin = new Vector2(0f, 0.65f);
+            titleRt.anchorMax = new Vector2(1f, 1f);
+            titleRt.offsetMin = new Vector2(16f, 0f);
+            titleRt.offsetMax = new Vector2(-16f, -12f);
             title.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
 
-            // Desc
             var desc   = CreateTMPText(go.transform, "Desc", descText, 28, FontStyles.Normal,
                                        new Color(0.85f, 0.85f, 0.85f));
             var descRt = desc.GetComponent<RectTransform>();
-            descRt.anchorMin        = new Vector2(0f, 0f);
-            descRt.anchorMax        = new Vector2(1f, 0.65f);
-            descRt.offsetMin        = new Vector2(16f, 16f);
-            descRt.offsetMax        = new Vector2(-16f, 0f);
-            desc.GetComponent<TextMeshProUGUI>().alignment   = TextAlignmentOptions.TopJustified;
+            descRt.anchorMin = new Vector2(0f, 0f);
+            descRt.anchorMax = new Vector2(1f, 0.65f);
+            descRt.offsetMin = new Vector2(16f, 16f);
+            descRt.offsetMax = new Vector2(-16f, 0f);
+            desc.GetComponent<TextMeshProUGUI>().alignment      = TextAlignmentOptions.TopJustified;
             desc.GetComponent<TextMeshProUGUI>().enableWordWrapping = true;
 
             return go;
