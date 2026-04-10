@@ -30,6 +30,10 @@ MonoBehaviour:
   phase2AttackMultiplier: 1
   phaseTransitionDuration: 1
   phase2Sequence: []
+  _spawnCount: 2
+  _spawnOffsets:
+  - {x: -2, y: 0}
+  - {x: 2, y: 0}
   references:
     version: 2
     RefIds:

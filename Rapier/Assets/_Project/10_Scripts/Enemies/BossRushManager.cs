@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using Game.Core;
 using Game.UI;
@@ -11,15 +12,25 @@ namespace Game.Enemies
     ///
     /// [흐름]
     ///   Start → 첫 보스 스폰 + 플레이어 사망 구독
-    ///   보스 사망 → BossRushHudView에 승리 패널 표시
+    ///   보스(군) 전원 사망 → BossRushHudView에 승리 패널 표시
     ///   "다음 스테이지" 버튼 → SpawnNextBoss()
     ///   모든 보스 처치 → ShowResult(true) [ALL CLEAR]
     ///   플레이어 사망  → ShowResult(false) [GAME OVER]
     ///
+    /// [다중 스폰]
+    ///   BossStatData.SpawnCount > 1 인 보스는 spawnOffsets 만큼 위치를 달리해
+    ///   여러 인스턴스를 동시 스폰한다. 스테이지 클리어 판정은 "전원 사망".
+    ///   IMultiBossSibling 구현체에는 스폰 직후 SetSiblings() 를 호출한다.
+    ///
     /// [설정]
     ///   bossPrefabs  : 보스 프리팹 배열 (순서대로 등장)
     ///   bossStatDatas: 각 보스에 대응하는 BossStatData 배열
-    ///   spawnPosition: 보스 스폰 위치
+    ///   spawnPosition: 보스 스폰 기준 위치
+    ///
+    /// [이벤트 구독/해제 짝]
+    ///   플레이어 OnPlayerDeath : SubscribePlayerDeath (Start) / UnsubscribePlayerDeath (OnDestroy)
+    ///   보스    OnDeath        : SpawnBossRoutine (스폰 시) / ClearActiveBossInstances (다음 스폰 직전/OnDestroy)
+    ///   보스    OnPhaseChanged : SpawnBossRoutine (스폰 시) / ClearActiveBossInstances (다음 스폰 직전/OnDestroy)
     /// </summary>
     public class BossRushManager : MonoBehaviour
     {
@@ -32,13 +43,20 @@ namespace Game.Enemies
         [SerializeField] private BossRushHudView _hudView;
 
         // ── 내부 상태 ─────────────────────────────────────────────
-        private int               _currentStageIndex = -1;
-        private BossPresenterBase _currentBoss;
-        private bool              _isBossAlive;
-        private bool              _isGameOver;
+        private int                          _currentStageIndex  = -1;
+        private readonly List<BossPresenterBase> _activeBossInstances = new List<BossPresenterBase>();
+        private int                          _aliveCount;
+        private bool                         _isGameOver;
+
+        /// <summary>편의 프로퍼티 — 단일 보스 접근 (HUD 등 레거시 연결용).</summary>
+        private BossPresenterBase CurrentBoss =>
+            _activeBossInstances.Count > 0 ? _activeBossInstances[0] : null;
 
         public int CurrentStage => _currentStageIndex + 1;
         public int TotalStages  => _bossPrefabs != null ? _bossPrefabs.Length : 0;
+
+        // ── 플레이어 사망 구독 해제용 캐시 ───────────────────────
+        private CharacterPresenterBase _subscribedPlayer;
 
         private void Awake()
         {
@@ -53,24 +71,28 @@ namespace Game.Enemies
 
         private void OnDestroy()
         {
+            ClearActiveBossInstances();
+            UnsubscribePlayerDeath();
             ServiceLocator.Unregister<BossRushManager>();
         }
 
         // ── 외부 API ──────────────────────────────────────────────
-        /// <summary>현재 살아있는 보스 반환. 없으면 null.</summary>
+        /// <summary>현재 살아있는 보스 첫 번째 인스턴스 반환. 없으면 null.</summary>
         public BossPresenterBase GetCurrentBoss()
         {
-            if (_currentBoss != null && _currentBoss.IsAlive)
-                return _currentBoss;
+            foreach (var b in _activeBossInstances)
+            {
+                if (b != null && b.IsAlive)
+                    return b;
+            }
             return null;
         }
 
-/// <summary>BossRushHudSetup이 호출하는 HudView 주입 메서드.</summary>
+        /// <summary>BossRushHudSetup이 호출하는 HudView 주입 메서드.</summary>
         public void InitHudView(BossRushHudView hudView)
         {
             _hudView = hudView;
         }
-
 
         /// <summary>"다음 스테이지" 버튼에서 호출.</summary>
         public void SpawnNextBoss()
@@ -84,11 +106,8 @@ namespace Game.Enemies
                 return;
             }
 
-            if (_currentBoss != null)
-            {
-                Destroy(_currentBoss.gameObject);
-                _currentBoss = null;
-            }
+            // 이전 스테이지 인스턴스 정리
+            ClearActiveBossInstances();
 
             StartCoroutine(SpawnBossRoutine(_currentStageIndex));
         }
@@ -96,15 +115,23 @@ namespace Game.Enemies
         // ── 플레이어 사망 감지 ────────────────────────────────────
         private void SubscribePlayerDeath()
         {
-            // CharacterPresenterBase는 ServiceLocator 비등록 타입 → FindObjectOfType 사용
-            var player = FindObjectOfType<CharacterPresenterBase>();
-            if (player == null)
+            _subscribedPlayer = FindObjectOfType<CharacterPresenterBase>();
+            if (_subscribedPlayer == null)
             {
                 Debug.LogWarning("[BossRushManager] CharacterPresenterBase를 찾을 수 없음. 사망 이벤트 구독 불가.");
                 return;
             }
-            player.OnPlayerDeath += HandlePlayerDeath;
+            _subscribedPlayer.OnPlayerDeath += HandlePlayerDeath;
             Debug.Log("[BossRushManager] 플레이어 사망 이벤트 구독 완료.");
+        }
+
+        private void UnsubscribePlayerDeath()
+        {
+            if (_subscribedPlayer != null)
+            {
+                _subscribedPlayer.OnPlayerDeath -= HandlePlayerDeath;
+                _subscribedPlayer = null;
+            }
         }
 
         private void HandlePlayerDeath()
@@ -127,48 +154,109 @@ namespace Game.Enemies
                 ? _bossStatDatas[index]
                 : null;
 
-            var go = Instantiate(prefab, _spawnPosition, Quaternion.identity);
-            _currentBoss = go.GetComponent<BossPresenterBase>();
+            // ── 다중 스폰 파라미터 결정 ─────────────────────────
+            int     spawnCount   = statData != null ? statData.SpawnCount : 1;
+            IReadOnlyList<Vector2> spawnOffsets = statData?.SpawnOffsets;
 
-            if (_currentBoss == null)
+            for (int i = 0; i < spawnCount; i++)
             {
-                Debug.LogError($"[BossRushManager] {prefab.name}에 BossPresenterBase가 없음!");
+                Vector2 offset   = (spawnOffsets != null && i < spawnOffsets.Count)
+                    ? spawnOffsets[i]
+                    : Vector2.zero;
+                Vector2 spawnPos = _spawnPosition + offset;
+
+                var go   = Instantiate(prefab, spawnPos, Quaternion.identity);
+                var boss = go.GetComponent<BossPresenterBase>();
+
+                if (boss == null)
+                {
+                    Debug.LogError($"[BossRushManager] {prefab.name}에 BossPresenterBase가 없음! (인스턴스 {i})");
+                    Destroy(go);
+                    continue;
+                }
+
+                if (statData != null)
+                    boss.Spawn(statData, spawnPos);
+
+                boss.OnDeath        += HandleBossDeath;
+                boss.OnPhaseChanged += HandleBossPhaseChanged;
+
+                _activeBossInstances.Add(boss);
+            }
+
+            if (_activeBossInstances.Count == 0)
+            {
+                Debug.LogError($"[BossRushManager] Stage {CurrentStage} — 유효한 보스 인스턴스 없음!");
                 yield break;
             }
 
-            if (statData != null)
-                _currentBoss.Spawn(statData, _spawnPosition);
+            _aliveCount = _activeBossInstances.Count;
 
-            _currentBoss.OnDeath += HandleBossDeath;
+            // ── IMultiBossSibling 주입 ─────────────────────────
+            bool hasSibling = false;
+            foreach (var b in _activeBossInstances)
+            {
+                if (b is IMultiBossSibling) { hasSibling = true; break; }
+            }
+            if (hasSibling)
+            {
+                var readonlyList = _activeBossInstances.AsReadOnly();
+                foreach (var b in _activeBossInstances)
+                {
+                    if (b is IMultiBossSibling sibling)
+                        sibling.SetSiblings(readonlyList);
+                }
+            }
 
-            if (_currentBoss is BossPresenterBase bossBase)
-                bossBase.OnPhaseChanged += phase => _hudView?.UpdatePhase(phase);
-
-            _isBossAlive = true;
-
+            // ── HUD 연결 (첫 번째 인스턴스 기준) ─────────────────
             _hudView?.SetupBoss(
                 statData?.enemyName ?? prefab.name,
-                _currentBoss,
+                CurrentBoss,
                 CurrentStage,
                 TotalStages
             );
 
-            Debug.Log($"[BossRushManager] Stage {CurrentStage}/{TotalStages} — {statData?.enemyName ?? prefab.name} 등장!");
+            Debug.Log($"[BossRushManager] Stage {CurrentStage}/{TotalStages} — " +
+                      $"{statData?.enemyName ?? prefab.name} ×{_activeBossInstances.Count} 등장!");
+        }
+
+        // ── 페이즈 변경 핸들러 ────────────────────────────────────
+        private void HandleBossPhaseChanged(BossPresenterBase.BossPhase phase)
+        {
+            _hudView?.UpdatePhase(phase);
         }
 
         // ── 보스 사망 처리 ────────────────────────────────────────
         private void HandleBossDeath()
         {
-            if (!_isBossAlive) return;
-            _isBossAlive = false;
+            _aliveCount--;
+            Debug.Log($"[BossRushManager] 보스 1체 처치. 남은 생존 카운트: {_aliveCount}");
 
+            if (_aliveCount > 0) return; // 아직 살아있는 인스턴스 있음
+
+            // 전원 사망
             bool isFinalBoss = (_currentStageIndex >= TotalStages - 1);
-            Debug.Log($"[BossRushManager] 보스 처치! 최종: {isFinalBoss}");
+            Debug.Log($"[BossRushManager] 스테이지 보스 전원 처치! 최종: {isFinalBoss}");
 
             if (isFinalBoss)
                 _hudView?.ShowResult(true);
             else
                 _hudView?.ShowVictoryPanel(CurrentStage, TotalStages);
+        }
+
+        // ── 활성 인스턴스 정리 (이벤트 해제 포함) ─────────────────
+        private void ClearActiveBossInstances()
+        {
+            foreach (var boss in _activeBossInstances)
+            {
+                if (boss == null) continue;
+                // 이벤트 구독 해제
+                boss.OnDeath        -= HandleBossDeath;
+                boss.OnPhaseChanged -= HandleBossPhaseChanged;
+                Destroy(boss.gameObject);
+            }
+            _activeBossInstances.Clear();
+            _aliveCount = 0;
         }
     }
 }
