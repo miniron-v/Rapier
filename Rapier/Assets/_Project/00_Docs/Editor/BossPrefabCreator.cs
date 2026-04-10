@@ -33,8 +33,9 @@ namespace Game.Editor
     /// </summary>
     public static class BossPrefabCreator
     {
-        private const string TEMPLATE_PATH = "Assets/_Project/20_Prefabs/Titan_Boss.prefab";
-        private const string PREFAB_DIR    = "Assets/_Project/20_Prefabs/";
+        private const string TEMPLATE_PATH         = "Assets/_Project/20_Prefabs/Titan_Boss.prefab";
+        private const string ENEMY_TEMPLATE_PATH   = "Assets/_Project/20_Prefabs/Enemy_Template.prefab";
+        private const string PREFAB_DIR             = "Assets/_Project/20_Prefabs/";
 
         [MenuItem("Rapier/BossRush/Create New Boss Prefabs")]
         public static void CreateNewBossPrefabs()
@@ -51,6 +52,47 @@ namespace Game.Editor
             Debug.Log("[BossPrefabCreator] 신규 5종 보스 프리팹 생성 완료.");
             Debug.Log("  ※ GravekeeperBossPresenter._minionPrefab / _minionData 는 Inspector에서 수동 연결 필요.");
             Debug.Log("  ※ TwinPhantomsBossPresenter.partner 는 씬 배치 후 서로 수동 연결 필요.");
+        }
+
+        // ── Gravekeeper 전용 미니언 프리팹 생성 ───────────────────
+        [MenuItem("Rapier/BossRush/Create Gravekeeper Minion Prefab")]
+        public static void CreateGravekeeperMinionPrefab()
+        {
+            const string destPath = PREFAB_DIR + "GravekeeperMinion.prefab";
+
+            // 이미 존재하면 스킵
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(destPath) != null)
+            {
+                Debug.LogWarning("[BossPrefabCreator] GravekeeperMinion.prefab 이미 존재 — 스킵.");
+                return;
+            }
+
+            // Enemy_Template 확인
+            var template = AssetDatabase.LoadAssetAtPath<GameObject>(ENEMY_TEMPLATE_PATH);
+            if (template == null)
+            {
+                Debug.LogError($"[BossPrefabCreator] 템플릿 {ENEMY_TEMPLATE_PATH} 없음 — GravekeeperMinion 생성 중단.");
+                return;
+            }
+
+            var tempGo = PrefabUtility.LoadPrefabContents(ENEMY_TEMPLATE_PATH);
+
+            try
+            {
+                tempGo.name = "GravekeeperMinion";
+
+                PrefabUtility.SaveAsPrefabAsset(tempGo, destPath);
+
+                Debug.Log($"[BossPrefabCreator] GravekeeperMinion.prefab 생성 완료 → {destPath}");
+                Debug.Log("  ※ GravekeeperBossPresenter._minionPrefab / _minionData 는 Inspector에서 수동 연결 필요.");
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(tempGo);
+            }
+
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
         }
 
         // ── 프리팹 생성 ────────────────────────────────────────────
