@@ -39,6 +39,18 @@ namespace Game.Editor
         private const string SPRITE_BASE =
             "Packages/com.unity.2d.sprite/Editor/ObjectMenuCreation/DefaultAssets/Textures/v2/";
 
+        private const string FONT_ASSET_PATH =
+            "Assets/_Project/30_ScriptableObjects/Fonts/NEXONLv1Gothic Regular SDF.asset";
+
+        private static TMP_FontAsset _font;
+
+        private static TMP_FontAsset GetFont()
+        {
+            if (_font == null)
+                _font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FONT_ASSET_PATH);
+            return _font;
+        }
+
         private static readonly Color BG_DARK         = new Color(0.05f, 0.05f, 0.05f, 0.85f);
         private static readonly Color HP_BG_COLOR     = new Color(0.12f, 0.12f, 0.12f, 0.90f);
         private static readonly Color HP_FILL_COLOR   = new Color(0.90f, 0.20f, 0.20f, 1.00f);
@@ -55,8 +67,9 @@ namespace Game.Editor
 
         private static void BuildHud(bool forceRebuild)
         {
+            _font = null; // 매 빌드마다 재로드
             var sq = AssetDatabase.LoadAssetAtPath<Sprite>(SPRITE_BASE + "Square.png");
-            Debug.Log($"[BossRushHudSetup] Square={sq != null}");
+            Debug.Log($"[BossRushHudSetup] Square={sq != null}, Font={GetFont() != null}");
 
             // ── 기존 Canvas 제거 ──────────────────────────────────
             var existing = GameObject.Find("BossRushHudCanvas");
@@ -275,6 +288,9 @@ namespace Game.Editor
             var go  = new GameObject(name);
             go.transform.SetParent(parent, false);
             var tmp       = go.AddComponent<TextMeshProUGUI>();
+            var font      = GetFont();
+            if (font != null)
+                tmp.font  = font;
             tmp.text      = text;
             tmp.fontSize  = fontSize;
             tmp.fontStyle = style;

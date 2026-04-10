@@ -16,59 +16,59 @@ MonoBehaviour:
   sprite: {fileID: -2413806693520163455, guid: a86470a33a6bf42c4b3595704624658b, type: 3}
   maxHp: 600
   attackPower: 50
-  moveSpeed: 5.5
-  attackRange: 1.4
-  postAttackDelay: 0.2
+  moveSpeed: 4.5
+  attackRange: 1.2
+  postAttackDelay: 0.25
   attackSequence:
-  - rid: 7513602140748120211
+  - rid: 2897679572369932393
   approachAngleVariance: 30
   bossScale: 1.8
   phase1Color: {r: 0.5, g: 0.1, b: 0.9, a: 1}
   phase2Color: {r: 0.8, g: 0, b: 1, a: 1}
-  phase2SpeedMultiplier: 1.6
-  phase2AttackMultiplier: 1.2
+  phase2SpeedMultiplier: 1.4
+  phase2AttackMultiplier: 1.3
   phaseTransitionDuration: 0.8
   phase2Sequence:
-  - rid: 7513602140748120212
-  - rid: 7513602140748120213
+  - rid: 2897679572369932394
+  - rid: 2897679572369932395
   references:
     version: 2
     RefIds:
-    - rid: 7513602140748120211
+    - rid: 2897679572369932393
       type: {class: MeleeAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
       data:
-        windupDuration: 0.25
-        lockIndicatorDirection: 0
+        windupDuration: 0.7
+        lockIndicatorDirection: 1
         indicators:
         - shape: 0
           angleOffset: 0
           sectorData:
-            range: 1.4
+            range: 4
             angle: 80
           rectData:
             range: 0
             width: 0
-        hitRange: 1.4
-    - rid: 7513602140748120212
+        hitRange: 4
+    - rid: 2897679572369932394
       type: {class: TeleportAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
       data:
-        windupDuration: 0.15
+        windupDuration: 0
         lockIndicatorDirection: 0
         indicators: []
-        teleportOffset: 1.2
-        fadeTime: 0.15
-    - rid: 7513602140748120213
+        teleportOffset: 1.3
+        fadeTime: 0.2
+    - rid: 2897679572369932395
       type: {class: MeleeAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
       data:
-        windupDuration: 0.25
-        lockIndicatorDirection: 0
+        windupDuration: 0.7
+        lockIndicatorDirection: 1
         indicators:
         - shape: 0
           angleOffset: 0
           sectorData:
-            range: 1.4
+            range: 4
             angle: 80
           rectData:
             range: 0
             width: 0
-        hitRange: 1.4
+        hitRange: 4

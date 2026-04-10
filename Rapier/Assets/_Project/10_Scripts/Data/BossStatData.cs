@@ -27,5 +27,19 @@ namespace Game.Enemies
                  "비워두면 1페이즈 attackSequence를 계속 사용.")]
         [SerializeReference]
         public List<EnemyAttackAction> phase2Sequence = new List<EnemyAttackAction>();
+
+        [Header("다중 스폰")]
+        [Tooltip("이 보스를 동시에 스폰할 개체 수. 기본 1.")]
+        [SerializeField] private int _spawnCount = 1;
+
+        [Tooltip("각 인스턴스의 스폰 오프셋 배열. spawnCount와 길이를 맞출 것.\n" +
+                 "단일 스폰 보스는 (0,0) 1개면 충분.")]
+        [SerializeField] private Vector2[] _spawnOffsets = new Vector2[] { Vector2.zero };
+
+        /// <summary>스폰할 보스 개체 수. 최소 1 보장.</summary>
+        public int SpawnCount => Mathf.Max(1, _spawnCount);
+
+        /// <summary>각 인스턴스의 스폰 오프셋 목록 (읽기 전용).</summary>
+        public IReadOnlyList<Vector2> SpawnOffsets => _spawnOffsets;
     }
 }
