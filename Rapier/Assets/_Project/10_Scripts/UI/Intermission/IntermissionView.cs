@@ -41,15 +41,9 @@ namespace Game.UI.Intermission
         [Header("안내 텍스트")]
         [SerializeField] private TextMeshProUGUI _healNoticeText;
 
-        [Header("포탈 (이어하기 전용)")]
-        [SerializeField] private Button _portalButton;
-
         // ── 이벤트 ───────────────────────────────────────────────────
         /// <summary>카드 선택 완료 시 발행. IntermissionManager가 구독.</summary>
         public event Action<RunStatEntry> OnStatSelected;
-
-        /// <summary>이어하기 포탈 버튼 클릭 시 발행. IntermissionManager가 구독.</summary>
-        public event Action OnPortalEntered;
 
         // ── 내부 상태 ────────────────────────────────────────────────
         private RunStatEntry _entryA;
@@ -58,16 +52,14 @@ namespace Game.UI.Intermission
         // ── 구독 관리 ────────────────────────────────────────────────
         private void OnEnable()
         {
-            if (_cardAButton  != null) _cardAButton.onClick.AddListener(HandleCardAClicked);
-            if (_cardBButton  != null) _cardBButton.onClick.AddListener(HandleCardBClicked);
-            if (_portalButton != null) _portalButton.onClick.AddListener(HandlePortalClicked);
+            if (_cardAButton != null) _cardAButton.onClick.AddListener(HandleCardAClicked);
+            if (_cardBButton != null) _cardBButton.onClick.AddListener(HandleCardBClicked);
         }
 
         private void OnDisable()
         {
-            if (_cardAButton  != null) _cardAButton.onClick.RemoveListener(HandleCardAClicked);
-            if (_cardBButton  != null) _cardBButton.onClick.RemoveListener(HandleCardBClicked);
-            if (_portalButton != null) _portalButton.onClick.RemoveListener(HandlePortalClicked);
+            if (_cardAButton != null) _cardAButton.onClick.RemoveListener(HandleCardAClicked);
+            if (_cardBButton != null) _cardBButton.onClick.RemoveListener(HandleCardBClicked);
         }
 
         // ── 공개 API ─────────────────────────────────────────────────
@@ -87,27 +79,8 @@ namespace Game.UI.Intermission
             if (_healNoticeText != null)
                 _healNoticeText.text = "HP가 100% 회복되었습니다!";
 
-            // 카드 표시, 포탈 숨김
-            if (_cardAButton  != null) _cardAButton.gameObject.SetActive(true);
-            if (_cardBButton  != null) _cardBButton.gameObject.SetActive(true);
-            if (_portalButton != null) _portalButton.gameObject.SetActive(false);
-
-            if (_panel != null) _panel.SetActive(true);
-            Time.timeScale = 0f;
-        }
-
-        /// <summary>
-        /// 이어하기 인터미션용: 스탯 카드 없이 포탈 버튼만 표시한다.
-        /// </summary>
-        public void ShowContinue()
-        {
-            if (_healNoticeText != null)
-                _healNoticeText.text = "HP가 100% 회복되었습니다!\n이전 스탯이 유지됩니다.";
-
-            // 카드 숨김, 포탈 표시
-            if (_cardAButton  != null) _cardAButton.gameObject.SetActive(false);
-            if (_cardBButton  != null) _cardBButton.gameObject.SetActive(false);
-            if (_portalButton != null) _portalButton.gameObject.SetActive(true);
+            if (_cardAButton != null) _cardAButton.gameObject.SetActive(true);
+            if (_cardBButton != null) _cardBButton.gameObject.SetActive(true);
 
             if (_panel != null) _panel.SetActive(true);
             Time.timeScale = 0f;
@@ -121,8 +94,7 @@ namespace Game.UI.Intermission
         }
 
         // ── 버튼 핸들러 ──────────────────────────────────────────────
-        private void HandleCardAClicked()    => OnStatSelected?.Invoke(_entryA);
-        private void HandleCardBClicked()    => OnStatSelected?.Invoke(_entryB);
-        private void HandlePortalClicked()   => OnPortalEntered?.Invoke();
+        private void HandleCardAClicked() => OnStatSelected?.Invoke(_entryA);
+        private void HandleCardBClicked() => OnStatSelected?.Invoke(_entryB);
     }
 }

@@ -165,7 +165,7 @@ GameObject:
   - component: {fileID: 2579916085034148604}
   - component: {fileID: 5344430933183985379}
   - component: {fileID: 7866023991707264383}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: Rapier_Player
   m_TagString: Untagged
   m_Icon: {fileID: 0}

@@ -10,7 +10,7 @@ namespace Game.UI.Intermission
     /// [역할]
     ///   - ProgressionManager로부터 Open() / ShowDeathPopup() 호출을 받는다.
     ///   - IntermissionView / DeathPopupView / StageClearView 수명 관리.
-    ///   - 스탯 선택 완료 → StageManager.NotifyIntermissionComplete() 연결.
+    ///   - 스탯 선택 완료 → 스탯 적용 + UI 닫기 (다음 방 전환은 포탈이 담당).
     ///   - 이어하기/로비 복귀 → StageManager.ContinueFromDeath() / ReturnToLobby() 연결.
     ///   - 스테이지 클리어 → StageClearView.Show() + StageManager.OnStageCleared 구독.
     ///
@@ -34,10 +34,7 @@ namespace Game.UI.Intermission
         private void OnEnable()
         {
             if (_intermissionView != null)
-            {
-                _intermissionView.OnStatSelected  += HandleStatSelected;
-                _intermissionView.OnPortalEntered += HandlePortalEntered;
-            }
+                _intermissionView.OnStatSelected += HandleStatSelected;
 
             if (_deathPopupView != null)
             {
@@ -51,7 +48,6 @@ namespace Game.UI.Intermission
                 _stageClearView.OnNextStageClicked     += HandleNextStage;
             }
 
-            // Inspector에서 직접 연결된 StageManager 구독
             if (_stageManagerRef != null)
                 _stageManagerRef.OnStageCleared += HandleStageCleared;
         }
@@ -59,10 +55,7 @@ namespace Game.UI.Intermission
         private void OnDisable()
         {
             if (_intermissionView != null)
-            {
-                _intermissionView.OnStatSelected  -= HandleStatSelected;
-                _intermissionView.OnPortalEntered -= HandlePortalEntered;
-            }
+                _intermissionView.OnStatSelected -= HandleStatSelected;
 
             if (_deathPopupView != null)
             {
@@ -79,7 +72,6 @@ namespace Game.UI.Intermission
             if (_stageManagerRef != null)
                 _stageManagerRef.OnStageCleared -= HandleStageCleared;
 
-            // 동적으로 연결된 경우에도 해제
             if (_stageManager != null && _stageManager != _stageManagerRef)
                 _stageManager.OnStageCleared -= HandleStageCleared;
         }
@@ -87,30 +79,29 @@ namespace Game.UI.Intermission
         // ── 공개 API ─────────────────────────────────────────────────
         /// <summary>
         /// 인터미션 방 진입 시 호출.
-        /// HP는 ProgressionManager가 이미 회복했으므로 여기서는 UI만 표시.
+        /// IsContinueMode면 UI를 띄우지 않고 즉시 리턴 — 플레이어는 이미 부활했고 포탈만 세상에 있는 상태.
+        /// 일반 모드는 카드 2장 표시.
         /// </summary>
         public void Open(RunStatContainer runStat, StageManager stageManager)
         {
-            _runStat      = runStat;
+            _runStat = runStat;
             SetStageManager(stageManager);
+
+            // 이어하기 모드: UI 없이 포탈만 대기
+            if (stageManager != null && stageManager.IsContinueMode)
+            {
+                Debug.Log("[IntermissionManager] 이어하기 인터미션 — UI 생략, 포탈 대기.");
+                return;
+            }
 
             if (_intermissionView != null)
             {
-                if (stageManager != null && stageManager.IsContinueMode)
-                {
-                    Debug.Log("[IntermissionManager] 이어하기 인터미션 — 포탈 UI 표시.");
-                    _intermissionView.ShowContinue();
-                }
-                else
-                {
-                    var (first, second) = StatPickPool.PickTwo();
-                    _intermissionView.Show(first, second);
-                }
+                var (first, second) = StatPickPool.PickTwo();
+                _intermissionView.Show(first, second);
             }
             else
             {
-                Debug.LogWarning("[IntermissionManager] IntermissionView 없음 — 자동으로 다음 방 진입.");
-                _stageManager?.NotifyIntermissionComplete();
+                Debug.LogWarning("[IntermissionManager] IntermissionView 없음 — 카드 UI 생략.");
             }
         }
 
@@ -137,15 +128,8 @@ namespace Game.UI.Intermission
             Debug.Log($"[IntermissionManager] 스탯 선택: {entry.DisplayName}\n" +
                       $"[RunStat 현황] {_runStat?.GetSummaryLog()}");
 
+            // 스탯 적용 + UI 닫기까지만. 다음 방 전환은 플레이어가 포탈을 밟을 때 일어난다.
             _intermissionView?.Hide();
-            _stageManager?.NotifyIntermissionComplete();
-        }
-
-        private void HandlePortalEntered()
-        {
-            Debug.Log("[IntermissionManager] 포탈 진입 → 보스 방으로.");
-            _intermissionView?.Hide();
-            _stageManager?.NotifyIntermissionComplete();
         }
 
         private void HandleContinue()
@@ -186,13 +170,11 @@ namespace Game.UI.Intermission
         // ── 내부 유틸 ────────────────────────────────────────────────
         private void SetStageManager(StageManager stageManager)
         {
-            // 기존 동적 구독 해제
             if (_stageManager != null && _stageManager != _stageManagerRef)
                 _stageManager.OnStageCleared -= HandleStageCleared;
 
             _stageManager = stageManager;
 
-            // 새 stageManager가 Inspector와 다른 경우에만 동적 구독
             if (_stageManager != null && _stageManager != _stageManagerRef)
                 _stageManager.OnStageCleared += HandleStageCleared;
         }

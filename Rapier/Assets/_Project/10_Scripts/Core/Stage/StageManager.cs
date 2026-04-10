@@ -98,31 +98,31 @@ namespace Game.Core.Stage
         }
 
         /// <summary>
-        /// 현재 방(보스 방)에서 보스가 처치됐을 때 호출.
-        /// 인터미션 방이 있으면 인터미션 진입, 없으면 스테이지 클리어.
+        /// 포탈을 통과했을 때 호출. 보스 처치 후 또는 인터미션 선택 완료 후 포탈 진입 시 발동.
+        /// 마지막 방이면 스테이지 클리어, 아니면 다음 방 진입.
         /// </summary>
-        public void NotifyBossDefeated()
+        public void NotifyPortalEntered()
         {
             if (!_isStageActive) return;
 
-            _bossesDefeated++;
-            Debug.Log($"[StageManager] 보스 처치! ({_bossesDefeated}/{TotalBossRooms})");
+            // 보스 방에서 온 경우 처치 카운트 증가
+            if (CurrentRoom != null && CurrentRoom.roomType == RoomType.BossRoom)
+            {
+                _bossesDefeated++;
+                Debug.Log($"[StageManager] 포탈 진입 (보스 처치 후). ({_bossesDefeated}/{TotalBossRooms})");
+            }
+            else
+            {
+                Debug.Log("[StageManager] 포탈 진입 (인터미션 완료).");
+            }
+
+            IsContinueMode = false;
 
             bool hasNext = _currentRoomIndex + 1 < _rooms.Length;
             if (hasNext)
                 EnterNextRoom();
             else
                 HandleStageCleared();
-        }
-
-        /// <summary>
-        /// 인터미션에서 스탯 선택(또는 포탈 진입) 완료 후 다음 방(보스 방)으로 진입.
-        /// </summary>
-        public void NotifyIntermissionComplete()
-        {
-            if (!_isStageActive) return;
-            IsContinueMode = false;
-            EnterNextRoom();
         }
 
         /// <summary>

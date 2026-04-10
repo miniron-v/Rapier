@@ -12,16 +12,11 @@ namespace Game.Core.Stage
     /// 스테이지 방 전환 오케스트레이터.
     ///
     /// [역할]
-    ///   - StageManager.OnRoomEntered 구독 → 방 종류에 따라 보스 스폰 또는 인터미션 UI 표시
-    ///   - 보스 사망 → StageManager.NotifyBossDefeated()
+    ///   - StageManager.OnRoomEntered 구독 → 방 종류에 따라 보스 스폰 또는 인터미션 처리
+    ///   - 보스 사망 → 포탈 스폰
+    ///   - 포탈 진입 → StageManager.NotifyPortalEntered()
+    ///   - 인터미션 진입 → 플레이어 위치 리셋 + UI + 포탈 스폰
     ///   - 플레이어 사망 → 이어하기 팝업 표시
-    ///   - 인터미션 선택 완료 → StageManager.NotifyIntermissionComplete()
-    ///
-    /// [보스 전투 테스트]
-    ///   신규 보스(12-C) 참조 금지. TitanBossPresenter(또는 지정 프리팹) 재사용.
-    ///
-    /// [수정 금지 영역]
-    ///   BossRushManager 등록/참조 금지 (12-E 영역).
     /// </summary>
     public class ProgressionManager : MonoBehaviour
     {
@@ -32,24 +27,16 @@ namespace Game.Core.Stage
         [Header("보스 스폰")]
         [SerializeField] private Vector2 _bossSpawnPosition = Vector2.zero;
 
+        [Header("포탈 / 플레이어 스폰")]
+        [SerializeField] private Portal  _portalPrefab;           // null이면 런타임 생성
+        [SerializeField] private Vector2 _playerSpawnPosition = new Vector2(0f, -3f);
+        [SerializeField] private Vector2 _portalSpawnPosition  = new Vector2(0f,  3f);
+
         // ── 런타임 ───────────────────────────────────────────────────
         private EnemyPresenterBase _currentBoss;
         private bool               _bossAlive;
         private bool               _playerDeathHandled;
-
-        /// <summary>현재 살아있는 보스. 없으면 null. CharacterPresenterBase 폴백용.</summary>
-        public EnemyPresenterBase CurrentBoss => _bossAlive ? _currentBoss : null;
-
-        // ── ServiceLocator 등록 ───────────────────────────────────────
-        private void Awake()
-        {
-            ServiceLocator.Register(this);
-        }
-
-        private void OnDestroy()
-        {
-            ServiceLocator.Unregister<ProgressionManager>();
-        }
+        private Portal             _activePortal;
 
         // ── 이벤트 구독/해제 ─────────────────────────────────────────
         private void OnEnable()
@@ -65,12 +52,15 @@ namespace Game.Core.Stage
 
             UnsubscribeBoss();
             UnsubscribePlayer();
+            CleanupPortal();
         }
 
         // ── 방 진입 처리 ─────────────────────────────────────────────
         private void HandleRoomEntered(RoomNode room)
         {
-            // 이전 방 리소스 정리 (코루틴/구독 잔재 방지)
+            CleanupPortal();
+
+            // 이전 방 리소스 정리
             UnsubscribeBoss();
             CleanupCurrentBoss();
 
@@ -126,30 +116,49 @@ namespace Game.Core.Stage
             _bossAlive = false;
             UnsubscribeBoss();
 
-            Debug.Log("[ProgressionManager] 보스 처치 → StageManager 알림");
-            _stageManager?.NotifyBossDefeated();
+            Debug.Log("[ProgressionManager] 보스 처치 → 포탈 스폰");
+            SpawnPortal(_portalSpawnPosition);
         }
 
         // ── 인터미션 방 ──────────────────────────────────────────────
         private void HandleIntermissionEntered()
         {
+            // 플레이어 위치 고정 스폰
+            ResetPlayerPosition(_playerSpawnPosition);
+
             // 이어하기 진입이면 부활 처리, 아니면 HP 회복
             if (_stageManager != null && _stageManager.IsContinueMode)
                 RevivePlayer();
             else
                 HealPlayerToFull();
 
-            // 인터미션 UI 열기 (continue 여부는 IntermissionManager 내부에서 판단)
+            // 인터미션 UI 열기 (continue 여부는 IntermissionManager 내부에서 판단 — IsContinueMode면 UI 생략)
             if (_intermissionManager != null)
                 _intermissionManager.Open(_stageManager.RunStat, _stageManager);
             else
                 Debug.LogWarning("[ProgressionManager] IntermissionManager가 없음. 스탯 선택 UI 생략.");
+
+            // 포탈 즉시 스폰
+            SpawnPortal(_portalSpawnPosition);
+        }
+
+        // ── 플레이어 위치 리셋 ────────────────────────────────────────
+        private void ResetPlayerPosition(Vector2 pos)
+        {
+            var player = FindObjectOfType<CharacterPresenterBase>(true);
+            if (player == null)
+            {
+                Debug.LogWarning("[ProgressionManager] 플레이어를 찾을 수 없어 위치 리셋 불가.");
+                return;
+            }
+            player.Warp(pos);
+            Debug.Log($"[ProgressionManager] 플레이어 위치 리셋 → {pos}");
         }
 
         // ── 플레이어 부활 ─────────────────────────────────────────────
         private void RevivePlayer()
         {
-            var player = FindObjectOfType<CharacterPresenterBase>(true); // includeInactive
+            var player = FindObjectOfType<CharacterPresenterBase>(true);
             if (player == null)
             {
                 Debug.LogWarning("[ProgressionManager] 부활할 플레이어를 찾을 수 없음.");
@@ -169,14 +178,47 @@ namespace Game.Core.Stage
                 return;
             }
 
-            // CharacterModel의 Heal()을 최대 HP만큼 호출하여 100% 회복
-            var rapier = player as Game.Characters.RapierPresenter;
+            var rapier = player as RapierPresenter;
             if (rapier != null && rapier.PublicModel != null)
             {
                 var model = rapier.PublicModel;
-                model.Heal(model.StatData.maxHp); // maxHp 이상 heal해도 Clamp 처리됨
+                model.Heal(model.StatData.maxHp);
                 Debug.Log($"[ProgressionManager] HP 100% 회복 완료. 현재: {model.CurrentHp}/{model.StatData.maxHp}");
             }
+        }
+
+        // ── 포탈 수명 관리 ────────────────────────────────────────────
+        private void SpawnPortal(Vector2 pos)
+        {
+            CleanupPortal();
+
+            if (_portalPrefab != null)
+                _activePortal = Instantiate(_portalPrefab, pos, Quaternion.identity);
+            else
+            {
+                var go = new GameObject("Portal");
+                go.transform.position = pos;
+                _activePortal = go.AddComponent<Portal>();
+            }
+
+            _activePortal.OnPlayerEntered += HandlePortalEntered;
+            Debug.Log($"[ProgressionManager] 포탈 스폰 @ {pos}");
+        }
+
+        private void CleanupPortal()
+        {
+            if (_activePortal == null) return;
+            _activePortal.OnPlayerEntered -= HandlePortalEntered;
+            Destroy(_activePortal.gameObject);
+            _activePortal = null;
+            Debug.Log("[ProgressionManager] 포탈 정리 완료.");
+        }
+
+        private void HandlePortalEntered()
+        {
+            Debug.Log("[ProgressionManager] 포탈 진입 → StageManager 알림");
+            CleanupPortal();
+            _stageManager?.NotifyPortalEntered();
         }
 
         // ── 플레이어 사망 처리 ───────────────────────────────────────
@@ -206,7 +248,6 @@ namespace Game.Core.Stage
 
             Debug.Log("[ProgressionManager] 플레이어 사망 → 사망 팝업 표시");
 
-            // 인터미션 매니저에 사망 팝업 요청
             if (_intermissionManager != null)
                 _intermissionManager.ShowDeathPopup(_stageManager);
             else
