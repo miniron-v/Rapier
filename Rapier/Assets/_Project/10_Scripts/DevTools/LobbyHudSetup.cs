@@ -252,7 +252,7 @@ namespace Game.DevTools
 
         // ── UI 헬퍼 메서드 ────────────────────────────────────────
 
-        private static (TabBarData buttons) CreateTabBar(GameObject root)
+        private static TabBarData CreateTabBar(GameObject root)
         {
             var barGo  = new GameObject("TabBar");
             barGo.transform.SetParent(root.transform, false);
