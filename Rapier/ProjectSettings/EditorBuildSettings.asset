@@ -11,6 +11,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/_Project/40_Scenes/BossRushDemo.unity
     guid: 0fa1630e013fcd44b88be0a066573ac5
+  - enabled: 1
+    path: Assets/_Project/40_Scenes/StageDemo.unity
+    guid: ae5d71766a94c6d4aaa3065af5b12101
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
   m_UseUCBPForAssetBundles: 0
