@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Game.Enemies
@@ -26,8 +27,12 @@ namespace Game.Enemies
     /// [코루틴/구독 짝]
     ///   partner.OnDeath += HandlePartnerDeath  (Spawn에서 구독)
     ///   partner.OnDeath -= HandlePartnerDeath  (OnDestroy에서 해제)
+    ///
+    /// [다중 스폰 지원]
+    ///   IMultiBossSibling 구현 — BossRushManager가 스폰 직후 SetSiblings()를 호출해
+    ///   partner 참조를 런타임 주입한다. Inspector 수동 연결과 양립 가능(에디터 테스트용).
     /// </summary>
-    public class TwinPhantomsBossPresenter : BossPresenterBase
+    public class TwinPhantomsBossPresenter : BossPresenterBase, IMultiBossSibling
     {
         [Header("파트너 참조")]
         [Tooltip("씬에 배치된 다른 TwinPhantomsBossPresenter. 둘이 서로를 연결.")]
@@ -89,6 +94,33 @@ namespace Game.Enemies
         {
             float base_ = base.GetAttackPower();
             return _isSurvivorEnhanced ? base_ * survivorAttackMultiplier : base_;
+        }
+
+        // ── IMultiBossSibling 구현: 런타임 partner 주입 ───────────
+        /// <summary>
+        /// BossRushManager가 스폰 직후 호출. 형제 리스트에서 자신을 제외한
+        /// 첫 번째 TwinPhantomsBossPresenter를 partner로 설정한다.
+        /// Inspector에서 이미 연결된 경우 런타임 주입이 덮어쓴다.
+        /// </summary>
+        public void SetSiblings(IReadOnlyList<BossPresenterBase> siblings)
+        {
+            // 기존 partner 구독이 있으면 먼저 해제 (중복 방지)
+            if (partner != null)
+                partner.OnDeath -= HandlePartnerDeath;
+
+            partner = null;
+            foreach (var s in siblings)
+            {
+                if (s != null && s != this && s is TwinPhantomsBossPresenter other)
+                {
+                    partner = other;
+                    break;
+                }
+            }
+
+            // 새 partner 구독
+            if (partner != null)
+                partner.OnDeath += HandlePartnerDeath;
         }
 
         // ── 파트너 사망 핸들러 ────────────────────────────────────
