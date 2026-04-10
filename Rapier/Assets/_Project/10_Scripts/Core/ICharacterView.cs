@@ -35,6 +35,9 @@ namespace Game.Characters
         /// <summary>사망 처리.</summary>
         void PlayDeath();
 
+        /// <summary>이어하기 부활 처리 (GameObject 재활성화, 스프라이트 복구).</summary>
+        void PlayRevive();
+
         /// <summary>스프라이트 설정.</summary>
         void SetSprite(UnityEngine.Sprite sprite);
     }

@@ -218,6 +218,17 @@ namespace Game.Editor
             cardBRt.anchorMax = new Vector2(0.95f, 0.72f);
             cardBRt.offsetMin = cardBRt.offsetMax = Vector2.zero;
 
+            // 포탈 버튼 (이어하기 전용 — 기본 비활성)
+            var portalBtn = CreateButton(ivPanel.transform, "PortalButton",
+                "포탈 진입 →", 50, BTN_PRIMARY, BTN_TEXT_DARK);
+            var portalRt  = portalBtn.GetComponent<RectTransform>();
+            portalRt.anchorMin        = new Vector2(0.15f, 0.40f);
+            portalRt.anchorMax        = new Vector2(0.85f, 0.40f);
+            portalRt.pivot            = new Vector2(0.5f, 1f);
+            portalRt.sizeDelta        = new Vector2(0f, 140f);
+            portalRt.anchoredPosition = Vector2.zero;
+            portalBtn.SetActive(false); // ShowContinue() 호출 시 활성화
+
             var ivSo = new SerializedObject(intermissionView);
             ivSo.FindProperty("_panel").objectReferenceValue               = ivPanel;
             ivSo.FindProperty("_cardAButton").objectReferenceValue         = cardAGo.GetComponent<Button>();
@@ -227,6 +238,7 @@ namespace Game.Editor
             ivSo.FindProperty("_cardBTitle").objectReferenceValue          = cardBGo.transform.Find("Title").GetComponent<TextMeshProUGUI>();
             ivSo.FindProperty("_cardBDesc").objectReferenceValue           = cardBGo.transform.Find("Desc").GetComponent<TextMeshProUGUI>();
             ivSo.FindProperty("_healNoticeText").objectReferenceValue      = healNotice.GetComponent<TextMeshProUGUI>();
+            ivSo.FindProperty("_portalButton").objectReferenceValue        = portalBtn.GetComponent<Button>();
             ivSo.ApplyModifiedProperties();
 
             // ── DeathPopupView ────────────────────────────────────

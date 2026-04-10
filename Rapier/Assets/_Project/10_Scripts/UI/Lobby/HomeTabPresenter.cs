@@ -57,7 +57,7 @@ namespace Game.UI.Lobby
         // ── Event Handlers ────────────────────────────────────────
         private void HandleEnterStageClicked()
         {
-            SceneController.LoadGame();
+            SceneController.LoadStageDemo();
         }
     }
 }

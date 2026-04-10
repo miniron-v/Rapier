@@ -20,8 +20,9 @@ namespace Game.Core
     /// </summary>
     public static class SceneController
     {
-        public const string LOBBY     = "Lobby";
-        public const string BOSS_RUSH = "BossRushDemo";
+        public const string LOBBY      = "Lobby";
+        public const string BOSS_RUSH  = "BossRushDemo";
+        public const string STAGE_DEMO = "StageDemo";
 
         /// <summary>로비 씬으로 이동.</summary>
         public static void LoadLobby()
@@ -30,11 +31,18 @@ namespace Game.Core
             SceneManager.LoadScene(LOBBY);
         }
 
-        /// <summary>보스 러시 게임 씬으로 이동.</summary>
+        /// <summary>보스 러시 게임 씬으로 이동 (레거시).</summary>
         public static void LoadGame()
         {
             Time.timeScale = 1f;
             SceneManager.LoadScene(BOSS_RUSH);
+        }
+
+        /// <summary>스테이지 데모 씬으로 이동.</summary>
+        public static void LoadStageDemo()
+        {
+            Time.timeScale = 1f;
+            SceneManager.LoadScene(STAGE_DEMO);
         }
     }
 }

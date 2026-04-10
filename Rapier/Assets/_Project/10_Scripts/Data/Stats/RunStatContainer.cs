@@ -93,6 +93,16 @@ namespace Game.Data.RunStats
         }
 
         /// <summary>
+        /// 현재 누적 RunStat 전체를 한 줄 문자열로 반환한다. 디버그 전용.
+        /// </summary>
+        public string GetSummaryLog()
+        {
+            return $"HP+{_hpPercent:P0} | ATK+{_atkPercent:P0} | MS+{_msPercent:P0} | " +
+                   $"회피CDR+{_dodgeCdrPercent:P0} | 차지시간-{_chargeTimeReductionPercent:P0} | " +
+                   $"무적+{_invincibilityPercent:P0} | 크리+{_critChancePercent:P0}";
+        }
+
+        /// <summary>
         /// 현재 누적 RunStat 기준 최종 HP를 계산한다.
         /// DesignDoc §6-3: 최종 = (기본 + MetaStat 깡합) × (1 + MetaStat%) × (1 + RunStat%) + RunStat 깡합
         /// Phase 12-D에서는 MetaStat를 0으로 처리 — 12-E에서 IMetaStatProvider로 주입.

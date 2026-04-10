@@ -34,7 +34,10 @@ namespace Game.UI.Intermission
         private void OnEnable()
         {
             if (_intermissionView != null)
-                _intermissionView.OnStatSelected += HandleStatSelected;
+            {
+                _intermissionView.OnStatSelected  += HandleStatSelected;
+                _intermissionView.OnPortalEntered += HandlePortalEntered;
+            }
 
             if (_deathPopupView != null)
             {
@@ -56,7 +59,10 @@ namespace Game.UI.Intermission
         private void OnDisable()
         {
             if (_intermissionView != null)
-                _intermissionView.OnStatSelected -= HandleStatSelected;
+            {
+                _intermissionView.OnStatSelected  -= HandleStatSelected;
+                _intermissionView.OnPortalEntered -= HandlePortalEntered;
+            }
 
             if (_deathPopupView != null)
             {
@@ -90,8 +96,16 @@ namespace Game.UI.Intermission
 
             if (_intermissionView != null)
             {
-                var (first, second) = StatPickPool.PickTwo();
-                _intermissionView.Show(first, second);
+                if (stageManager != null && stageManager.IsContinueMode)
+                {
+                    Debug.Log("[IntermissionManager] 이어하기 인터미션 — 포탈 UI 표시.");
+                    _intermissionView.ShowContinue();
+                }
+                else
+                {
+                    var (first, second) = StatPickPool.PickTwo();
+                    _intermissionView.Show(first, second);
+                }
             }
             else
             {
@@ -120,8 +134,16 @@ namespace Game.UI.Intermission
         private void HandleStatSelected(RunStatEntry entry)
         {
             _runStat?.Apply(entry.Type, entry.Value);
-            Debug.Log($"[IntermissionManager] 스탯 선택: {entry.DisplayName} → 다음 보스 방으로.");
+            Debug.Log($"[IntermissionManager] 스탯 선택: {entry.DisplayName}\n" +
+                      $"[RunStat 현황] {_runStat?.GetSummaryLog()}");
 
+            _intermissionView?.Hide();
+            _stageManager?.NotifyIntermissionComplete();
+        }
+
+        private void HandlePortalEntered()
+        {
+            Debug.Log("[IntermissionManager] 포탈 진입 → 보스 방으로.");
             _intermissionView?.Hide();
             _stageManager?.NotifyIntermissionComplete();
         }
@@ -157,8 +179,8 @@ namespace Game.UI.Intermission
         {
             Debug.Log("[IntermissionManager] 다음 스테이지 진입.");
             _stageClearView?.Hide();
-            // TODO: 다음 스테이지 로드 로직 (Phase 12-E 이후 연결)
-            Game.Core.SceneController.LoadGame();
+            // TODO: Phase 12-E 이후 실제 다음 스테이지 로드로 교체
+            Game.Core.SceneController.LoadStageDemo();
         }
 
         // ── 내부 유틸 ────────────────────────────────────────────────

@@ -53,6 +53,9 @@ namespace Game.Core.Stage
         /// <summary>런 스탯 컨테이너 (읽기 전용 접근).</summary>
         public RunStatContainer RunStat => _runStat;
 
+        /// <summary>이어하기로 인터미션에 재진입한 경우 true. 스탯 UI 생략에 사용.</summary>
+        public bool IsContinueMode { get; private set; }
+
         // ── 이벤트 ───────────────────────────────────────────────────
         /// <summary>방에 진입할 때 발행. RoomNode로 방 종류를 식별.</summary>
         public event Action<RoomNode> OnRoomEntered;
@@ -113,11 +116,12 @@ namespace Game.Core.Stage
         }
 
         /// <summary>
-        /// 인터미션에서 스탯 선택 완료 후 다음 방(보스 방)으로 진입.
+        /// 인터미션에서 스탯 선택(또는 포탈 진입) 완료 후 다음 방(보스 방)으로 진입.
         /// </summary>
         public void NotifyIntermissionComplete()
         {
             if (!_isStageActive) return;
+            IsContinueMode = false;
             EnterNextRoom();
         }
 
@@ -134,13 +138,26 @@ namespace Game.Core.Stage
         }
 
         /// <summary>
-        /// 사망 후 이어하기: 현재 방 (같은 보스 방)을 재진입한다. RunStat 유지.
+        /// 사망 후 이어하기: 직전 IntermissionRoom으로 이동. RunStat 유지.
+        /// 직전 인터미션이 없으면 현재 보스 방을 재진입.
         /// </summary>
         public void ContinueFromDeath()
         {
             if (!_isStageActive) return;
-            Debug.Log($"[StageManager] 이어하기 — 방 {_currentRoomIndex} 재진입.");
-            OnRoomEntered?.Invoke(CurrentRoom);
+
+            int prevIndex = _currentRoomIndex - 1;
+            if (prevIndex >= 0 && _rooms != null && _rooms[prevIndex].roomType == RoomType.IntermissionRoom)
+            {
+                IsContinueMode    = true;
+                _currentRoomIndex = prevIndex;
+                Debug.Log($"[StageManager] 이어하기 — 직전 인터미션 방 [{_currentRoomIndex}] {CurrentRoom.displayName} 진입.");
+                OnRoomEntered?.Invoke(CurrentRoom);
+            }
+            else
+            {
+                Debug.Log($"[StageManager] 이어하기 — 방 {_currentRoomIndex} 재진입 (직전 인터미션 없음).");
+                OnRoomEntered?.Invoke(CurrentRoom);
+            }
         }
 
         // ── 내부 ─────────────────────────────────────────────────────

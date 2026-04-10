@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using UnityEngine;
 using Game.Core;
+using Game.Core.Stage;
 using Game.Input;
 using Game.Combat;
 using Game.Enemies;
@@ -253,13 +254,15 @@ namespace Game.Characters
 
         private void PerformAttack()
         {
-            // WaveManager 우선, 없으면 BossRushManager 폴백
+            // WaveManager → BossRushManager → ProgressionManager 순으로 폴백
             EnemyPresenterBase nearestEnemy = null;
             var waveManager = ServiceLocator.Get<WaveManager>();
             if (waveManager != null)
                 nearestEnemy = waveManager.GetNearestEnemy(transform.position);
             if (nearestEnemy == null)
                 nearestEnemy = ServiceLocator.Get<BossRushManager>()?.GetCurrentBoss();
+            if (nearestEnemy == null)
+                nearestEnemy = ServiceLocator.Get<ProgressionManager>()?.CurrentBoss;
 
             var stat = Model.StatData;
             var dir  = nearestEnemy != null
@@ -497,6 +500,37 @@ namespace Game.Characters
             OnPlayerDeath?.Invoke();
         }
 
+        /// <summary>
+        /// 이어하기 전용 부활. HP 복구 + View 재활성화 + 제스처 재구독.
+        /// ProgressionManager가 인터미션 방 진입 시 호출한다.
+        /// </summary>
+        public void Revive()
+        {
+            if (Model == null) return;
+            Model.Revive(Model.StatData.maxHp);
+            View?.PlayRevive();
+
+            if (Gesture != null)
+            {
+                // 이중 구독 방지를 위해 해제 후 재구독
+                Gesture.OnTap           -= HandleTap;
+                Gesture.OnTap           += HandleTap;
+                Gesture.OnSwipe         -= HandleSwipe;
+                Gesture.OnSwipe         += HandleSwipe;
+                Gesture.OnMoveDirection -= HandleMoveDirection;
+                Gesture.OnMoveDirection += HandleMoveDirection;
+                Gesture.OnMoveEnd       -= HandleMoveEnd;
+                Gesture.OnMoveEnd       += HandleMoveEnd;
+                Gesture.OnHold          -= HandleHold;
+                Gesture.OnHold          += HandleHold;
+                Gesture.OnRelease       -= HandleRelease;
+                Gesture.OnRelease       += HandleRelease;
+                Gesture.OnJustDodge     -= HandleJustDodge;
+                Gesture.OnJustDodge     += HandleJustDodge;
+            }
+            Debug.Log($"[{GetType().Name}] 부활 완료. HP: {Model.CurrentHp}/{Model.StatData.maxHp}");
+        }
+
         // ── 슬로우모션 ────────────────────────────────────────────
         private IEnumerator SlowMotionRoutine()
         {
@@ -555,7 +589,8 @@ namespace Game.Characters
 
             var stat    = Model.StatData;
             EnemyPresenterBase nearest = ServiceLocator.Get<WaveManager>()?.GetNearestEnemy(transform.position)
-                ?? ServiceLocator.Get<BossRushManager>()?.GetCurrentBoss();
+                ?? ServiceLocator.Get<BossRushManager>()?.GetCurrentBoss()
+                ?? ServiceLocator.Get<ProgressionManager>()?.CurrentBoss;
             var dir     = nearest != null
                 ? ((Vector2)nearest.transform.position - (Vector2)transform.position).normalized
                 : Vector2.up;

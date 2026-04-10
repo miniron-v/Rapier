@@ -82,6 +82,17 @@ namespace Game.Characters
             gameObject.SetActive(false);
         }
 
+        public void PlayRevive()
+        {
+            gameObject.SetActive(true);
+            if (_renderer != null)
+            {
+                var c = _renderer.color;
+                c.a             = 1f;
+                _renderer.color = c;
+            }
+        }
+
         // ── 내부 유틸 ─────────────────────────────────────────────
         private System.Collections.IEnumerator FlashColor(Color flashColor, float duration)
         {

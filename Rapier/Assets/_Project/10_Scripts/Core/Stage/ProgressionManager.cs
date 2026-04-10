@@ -4,6 +4,7 @@ using UnityEngine;
 using Game.Characters;
 using Game.Enemies;
 using Game.UI.Intermission;
+using Game.Core;
 
 namespace Game.Core.Stage
 {
@@ -35,6 +36,20 @@ namespace Game.Core.Stage
         private EnemyPresenterBase _currentBoss;
         private bool               _bossAlive;
         private bool               _playerDeathHandled;
+
+        /// <summary>현재 살아있는 보스. 없으면 null. CharacterPresenterBase 폴백용.</summary>
+        public EnemyPresenterBase CurrentBoss => _bossAlive ? _currentBoss : null;
+
+        // ── ServiceLocator 등록 ───────────────────────────────────────
+        private void Awake()
+        {
+            ServiceLocator.Register(this);
+        }
+
+        private void OnDestroy()
+        {
+            ServiceLocator.Unregister<ProgressionManager>();
+        }
 
         // ── 이벤트 구독/해제 ─────────────────────────────────────────
         private void OnEnable()
@@ -118,14 +133,30 @@ namespace Game.Core.Stage
         // ── 인터미션 방 ──────────────────────────────────────────────
         private void HandleIntermissionEntered()
         {
-            // HP 100% 회복
-            HealPlayerToFull();
+            // 이어하기 진입이면 부활 처리, 아니면 HP 회복
+            if (_stageManager != null && _stageManager.IsContinueMode)
+                RevivePlayer();
+            else
+                HealPlayerToFull();
 
-            // 인터미션 UI 열기
+            // 인터미션 UI 열기 (continue 여부는 IntermissionManager 내부에서 판단)
             if (_intermissionManager != null)
                 _intermissionManager.Open(_stageManager.RunStat, _stageManager);
             else
                 Debug.LogWarning("[ProgressionManager] IntermissionManager가 없음. 스탯 선택 UI 생략.");
+        }
+
+        // ── 플레이어 부활 ─────────────────────────────────────────────
+        private void RevivePlayer()
+        {
+            var player = FindObjectOfType<CharacterPresenterBase>(true); // includeInactive
+            if (player == null)
+            {
+                Debug.LogWarning("[ProgressionManager] 부활할 플레이어를 찾을 수 없음.");
+                return;
+            }
+            player.Revive();
+            Debug.Log("[ProgressionManager] 플레이어 부활 완료.");
         }
 
         // ── 플레이어 HP 회복 ─────────────────────────────────────────

@@ -48,6 +48,13 @@ namespace Game.Characters
             OnHpChanged?.Invoke(CurrentHp);
         }
 
+        /// <summary>IsAlive 여부에 관계없이 HP를 직접 설정한다. 이어하기 부활 전용.</summary>
+        public void Revive(float hp)
+        {
+            CurrentHp = Mathf.Clamp(hp, 0f, StatData.maxHp);
+            OnHpChanged?.Invoke(CurrentHp);
+        }
+
         // ── 무적 ──────────────────────────────────────────────────
         public void SetInvincible(bool value) => IsInvincible = value;
 

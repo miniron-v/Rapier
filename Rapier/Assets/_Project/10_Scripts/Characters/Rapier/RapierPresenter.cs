@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Game.Core;
+using Game.Core.Stage;
 using Game.Combat;
 using Game.Enemies;
 
@@ -127,10 +128,9 @@ namespace Game.Characters
             _skillTarget = waveManager?.GetNearestEnemy(transform.position);
 
             if (_skillTarget == null)
-            {
-                var bossRushManager = ServiceLocator.Get<BossRushManager>();
-                _skillTarget = bossRushManager?.GetCurrentBoss();
-            }
+                _skillTarget = ServiceLocator.Get<BossRushManager>()?.GetCurrentBoss();
+            if (_skillTarget == null)
+                _skillTarget = ServiceLocator.Get<ProgressionManager>()?.CurrentBoss;
 
             if (_skillTarget != null)
                 Debug.Log($"[RapierPresenter] 스킬 시퀀스 후보 캐싱: {_skillTarget.name}");
@@ -207,12 +207,10 @@ namespace Game.Characters
             var waveManager = ServiceLocator.Get<WaveManager>();
             if (waveManager != null)
                 nearest = waveManager.GetNearestEnemy(transform.position);
-
             if (nearest == null)
-            {
-                var bossRushManager = ServiceLocator.Get<BossRushManager>();
-                nearest = bossRushManager?.GetCurrentBoss();
-            }
+                nearest = ServiceLocator.Get<BossRushManager>()?.GetCurrentBoss();
+            if (nearest == null)
+                nearest = ServiceLocator.Get<ProgressionManager>()?.CurrentBoss;
 
             var dir = nearest != null
                 ? ((Vector2)nearest.transform.position - (Vector2)transform.position).normalized
