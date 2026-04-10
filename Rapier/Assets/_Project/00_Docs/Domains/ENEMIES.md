@@ -72,6 +72,61 @@ Chase → Windup → Hit → PostAttack → Chase (반복)
 - 각 프리팹 구성: `SpriteRenderer` + `Rigidbody2D` + `Collider2D` + 해당 `*BossPresenter` + 해당 `*StatData` 참조 + 필요한 `*AttackAction` 컴포넌트 (프리팹에 부착해야 하는 경우 각 `*BossPresenter.cs` 요구 사항 따름).
 - 저장 위치: `Assets/_Project/20_Prefabs/{BossName}_Boss.prefab`.
 
+### Gravekeeper 전용 미니언 (Phase 12-C 확정)
+
+- **프리팹**: `Assets/_Project/20_Prefabs/GravekeeperMinion.prefab`
+- **SO**: `Assets/_Project/30_ScriptableObjects/Enemies/GravekeeperMinionData.asset`
+- **기반 구조**: `Enemy_Template.prefab`(기존 NormalEnemy) 미러링. 컴포넌트: `SpriteRenderer` + `Rigidbody2D` + `Collider2D` + `NormalEnemyPresenter`.
+- **스프라이트**: 기존 NormalEnemy 스프라이트 재사용 (아트 교체는 추후).
+- **AttackAction**: `MeleeAttackAction` 1종만. `attackSequence`에 `[SerializeReference]`로 직렬화.
+- **임시 밸런스**:
+  - HP: 30
+  - ATK: 5
+  - Speed: 3
+  - 공격 주기/Windup: NormalEnemy 기본값(1.5s / 0.5s) 따름
+- **연결**: `GravekeeperBossPresenter._minionPrefab`, `_minionData`에 이 프리팹/SO를 Inspector 또는 에디터 유틸리티로 주입.
+- 밸런스는 이후 플레이 테스트로 조정.
+
+### 다중 스폰 보스 메커니즘 (Phase 12-C 확정)
+
+일부 보스는 동시에 여러 개체로 등장해야 한다(현재 대상: TwinPhantoms). OCP를 만족하면서 이를 지원하기 위해 다음 구조를 도입한다.
+
+**1. `BossStatData` 확장 필드 (범용 다중 스폰 데이터)**
+
+- `int spawnCount` — 이 보스를 몇 개체 스폰할지. 기본 1.
+- `Vector2[] spawnOffsets` — 스폰 시 기준 좌표(0,0)에서의 상대 오프셋 배열. 길이는 `spawnCount`와 동일해야 함.
+- 단체 보스(Titan 등)는 `spawnCount=1`, `spawnOffsets=[(0,0)]`.
+
+**2. `BossRushManager` 스폰 흐름**
+
+- `Spawn(bossIndex)` 호출 시 해당 SO의 `spawnCount`만큼 프리팹을 반복 인스턴스화.
+- 각 인스턴스는 `spawnOffsets[i]` 위치에 배치.
+- 스폰된 모든 인스턴스가 `IMultiBossSibling`을 구현하면, 스폰 직후 전체 리스트를 각 인스턴스에 `SetSiblings()`로 주입.
+- 해당 boss stage의 클리어 판정: **모든 인스턴스의 HP가 0**일 때 (하나라도 살아 있으면 진행 중).
+
+**3. `IMultiBossSibling` 인터페이스**
+
+```
+namespace Game.Enemies
+{
+    public interface IMultiBossSibling
+    {
+        void SetSiblings(IReadOnlyList<BossPresenterBase> siblings);
+    }
+}
+```
+
+- 구현 대상: 형제 인스턴스를 알아야 하는 Presenter(예: `TwinPhantomsBossPresenter` — partner 사망 시 생존자 강화 로직용).
+- TwinPhantomsBossPresenter는 `SetSiblings()`에서 자신을 제외한 나머지를 `_partner`(또는 리스트)로 저장.
+- 단체 보스는 이 인터페이스를 구현하지 않는다(ISP).
+
+**4. TwinPhantoms 설정값**
+
+- `spawnCount = 2`
+- `spawnOffsets = [(-2, 0), (2, 0)]`
+- 클리어 판정: 둘 다 사망 시.
+- 기존 Presenter의 "partner 사망 시 생존자 ATK/Speed 강화" 로직은 유지되며, `SetSiblings()`가 그 partner 참조를 주입한다.
+
 ### 패턴 예시
 
 #### Titan
