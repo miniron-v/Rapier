@@ -1,0 +1,108 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ffacc54a7c872044bb035941dd2a5dd3, type: 3}
+  m_Name: GravekeeperStatData
+  m_EditorClassIdentifier: Assembly-CSharp::Game.Enemies.BossStatData
+  enemyName: Gravekeeper
+  sprite: {fileID: 0}
+  maxHp: 2000
+  attackPower: 75
+  moveSpeed: 1.5
+  attackRange: 1.3
+  postAttackDelay: 0.4
+  attackSequence:
+  - rid: 2897679572369932382
+  - rid: 2897679572369932383
+  approachAngleVariance: 30
+  bossScale: 2.5
+  phase1Color: {r: 0.3, g: 0.6, b: 0.3, a: 1}
+  phase2Color: {r: 0.1, g: 0.9, b: 0.3, a: 1}
+  phase2SpeedMultiplier: 1.3
+  phase2AttackMultiplier: 1.25
+  phaseTransitionDuration: 1
+  phase2Sequence:
+  - rid: 2897679572369932384
+  - rid: 2897679572369932385
+  - rid: 2897679572369932386
+  - rid: 2897679572369932387
+  references:
+    version: 2
+    RefIds:
+    - rid: 2897679572369932382
+      type: {class: SummonAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
+      data:
+        windupDuration: 1
+        lockIndicatorDirection: 0
+        indicators: []
+        minionCount: 2
+        spawnRadius: 2
+    - rid: 2897679572369932383
+      type: {class: MeleeAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
+      data:
+        windupDuration: 0.9
+        lockIndicatorDirection: 1
+        indicators:
+        - shape: 0
+          angleOffset: 0
+          sectorData:
+            range: 4
+            angle: 90
+          rectData:
+            range: 0
+            width: 0
+        hitRange: 4
+    - rid: 2897679572369932384
+      type: {class: SummonAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
+      data:
+        windupDuration: 0.9
+        lockIndicatorDirection: 0
+        indicators: []
+        minionCount: 2
+        spawnRadius: 2
+    - rid: 2897679572369932385
+      type: {class: SummonAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
+      data:
+        windupDuration: 0.9
+        lockIndicatorDirection: 0
+        indicators: []
+        minionCount: 2
+        spawnRadius: 3
+    - rid: 2897679572369932386
+      type: {class: MeleeAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
+      data:
+        windupDuration: 0.9
+        lockIndicatorDirection: 1
+        indicators:
+        - shape: 0
+          angleOffset: 0
+          sectorData:
+            range: 4
+            angle: 90
+          rectData:
+            range: 0
+            width: 0
+        hitRange: 4
+    - rid: 2897679572369932387
+      type: {class: MeleeAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
+      data:
+        windupDuration: 0.9
+        lockIndicatorDirection: 1
+        indicators:
+        - shape: 0
+          angleOffset: 0
+          sectorData:
+            range: 4
+            angle: 90
+          rectData:
+            range: 0
+            width: 0
+        hitRange: 4

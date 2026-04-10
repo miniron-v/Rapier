@@ -168,6 +168,7 @@ Assets/
 - [ ] 새 캐릭터/적 추가 시 기존 코드를 수정하지 않아도 되는가? (OCP)
 - [ ] 자식 고유 상태가 Base에 노출되지 않는가? (DIP/OCP)
 - [ ] 런타임 가변값이 [NonSerialized] 필드에 캐싱되어 있는가?
+- [ ] **`UnityEngine.Input`(구 입력 시스템)을 사용하지 않았는가? New Input System(`UnityEngine.InputSystem`)만 허용.**
 
 ### Step 3: 자체 테스트
 
@@ -186,3 +187,45 @@ Assets/
 
 - **특정 기능 구현을 지시받았다면**: 해당 작업에만 집중하세요. 프롬프트에 명시된 도메인 문서(`Assets/_Project/00_Docs/Domains/*.md`)를 참조하세요.
 - **그 외의 경우**: `Assets/_Project/00_Docs/TEAM_LEAD.md`를 읽고 프로젝트 팀장 역할을 수행하세요.
+
+---
+
+## 11. Bash / 터미널 운영 규칙
+
+모든 Claude 인스턴스(팀장·작업 에이전트 공통)에 적용한다.
+
+- **`cd` 완전 금지.** 모든 경로는 절대 경로로 명시.
+- **git은 반드시 `git -C "<절대경로>" <subcommand>` 형태**로 호출.
+  - 나쁜 예: `cd C:/GitHub/Rapier && git status`
+  - 좋은 예: `git -C "C:/GitHub/Rapier" status`
+- 파일 도구(Read / Write / Edit / Grep / Glob)도 절대 경로 사용.
+
+---
+
+## 12. 멀티 터미널 에이전트 워크플로우
+
+Phase 단위 작업은 아래 흐름을 따른다.
+
+### 팀장 세션 역할 (이 터미널)
+1. 워크트리 생성 (`git worktree add`)
+2. 기획 확정 + 작업 에이전트용 초기 프롬프트 작성
+3. 사용자에게 "새 터미널을 열고 아래 경로에서 `claude`를 실행한 뒤 프롬프트를 붙여넣어 주세요" 안내
+
+### 작업 터미널 역할 (새 터미널)
+- 사용자가 직접 모니터링·개입 가능
+- 작업 완료 후 결과를 팀장 세션에 보고
+- **커밋까지만 수행. push / merge / worktree remove 금지.**
+
+### 팀장 세션 복귀
+4. 결과 검토 (CLAUDE.md §9 체크리스트)
+5. develop 머지
+
+### 초기 프롬프트 필수 포함 항목
+- 워크트리 절대 경로 및 브랜치
+- `§11 Bash 운영 규칙` 인용 (cd 금지, git -C 사용)
+- 작업 목표 (합의된 기획 인용, 추측 금지)
+- 참조 문서 목록 및 읽는 순서
+- 수정 허용/금지 폴더
+- §9 피드백 루프 수행 지시
+- 커밋 형식: `[Phase 12-X] 한국어 설명`
+- **push / merge / worktree remove / --amend 금지** 명시

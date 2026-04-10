@@ -1,0 +1,69 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ffacc54a7c872044bb035941dd2a5dd3, type: 3}
+  m_Name: TwinPhantomsStatData
+  m_EditorClassIdentifier: Assembly-CSharp::Game.Enemies.BossStatData
+  enemyName: TwinPhantoms
+  sprite: {fileID: 0}
+  maxHp: 1500
+  attackPower: 75
+  moveSpeed: 3
+  attackRange: 1.2
+  postAttackDelay: 0.3
+  attackSequence:
+  - rid: 2897679572369932400
+  - rid: 2897679572369932401
+  approachAngleVariance: 30
+  bossScale: 2
+  phase1Color: {r: 0.7, g: 0.7, b: 1, a: 1}
+  phase2Color: {r: 0.7, g: 0.7, b: 1, a: 1}
+  phase2SpeedMultiplier: 1
+  phase2AttackMultiplier: 1
+  phaseTransitionDuration: 1
+  phase2Sequence: []
+  _spawnCount: 2
+  _spawnOffsets:
+  - {x: -2, y: 0}
+  - {x: 2, y: 0}
+  references:
+    version: 2
+    RefIds:
+    - rid: 2897679572369932400
+      type: {class: MeleeAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
+      data:
+        windupDuration: 0.7
+        lockIndicatorDirection: 1
+        indicators:
+        - shape: 0
+          angleOffset: 0
+          sectorData:
+            range: 3.5
+            angle: 90
+          rectData:
+            range: 0
+            width: 0
+        hitRange: 3.5
+    - rid: 2897679572369932401
+      type: {class: MeleeAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
+      data:
+        windupDuration: 0.65
+        lockIndicatorDirection: 1
+        indicators:
+        - shape: 0
+          angleOffset: -30
+          sectorData:
+            range: 3.5
+            angle: 90
+          rectData:
+            range: 0
+            width: 0
+        hitRange: 3.5

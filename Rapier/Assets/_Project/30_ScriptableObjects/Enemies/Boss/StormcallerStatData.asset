@@ -1,0 +1,155 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ffacc54a7c872044bb035941dd2a5dd3, type: 3}
+  m_Name: StormcallerStatData
+  m_EditorClassIdentifier: Assembly-CSharp::Game.Enemies.BossStatData
+  enemyName: Stormcaller
+  sprite: {fileID: 0}
+  maxHp: 2200
+  attackPower: 80
+  moveSpeed: 1.8
+  attackRange: 6
+  postAttackDelay: 0.5
+  attackSequence:
+  - rid: 2897679572369932396
+  - rid: 2897679572369932397
+  approachAngleVariance: 30
+  bossScale: 2.5
+  phase1Color: {r: 0.4, g: 0.7, b: 1, a: 1}
+  phase2Color: {r: 0.2, g: 0.4, b: 1, a: 1}
+  phase2SpeedMultiplier: 1.4
+  phase2AttackMultiplier: 1.3
+  phaseTransitionDuration: 1
+  phase2Sequence:
+  - rid: 2897679572369932398
+  - rid: 2897679572369932399
+  references:
+    version: 2
+    RefIds:
+    - rid: 2897679572369932396
+      type: {class: MultiDirectionalAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
+      data:
+        windupDuration: 0.9
+        lockIndicatorDirection: 1
+        indicators:
+        - shape: 0
+          angleOffset: 0
+          sectorData:
+            range: 4
+            angle: 50
+          rectData:
+            range: 0
+            width: 0
+        - shape: 0
+          angleOffset: 90
+          sectorData:
+            range: 4
+            angle: 50
+          rectData:
+            range: 0
+            width: 0
+        - shape: 0
+          angleOffset: 180
+          sectorData:
+            range: 4
+            angle: 50
+          rectData:
+            range: 0
+            width: 0
+        - shape: 0
+          angleOffset: 270
+          sectorData:
+            range: 4
+            angle: 50
+          rectData:
+            range: 0
+            width: 0
+        hitRange: 4
+        damageMultiplier: 1
+    - rid: 2897679572369932397
+      type: {class: ProjectileAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
+      data:
+        windupDuration: 0.7
+        lockIndicatorDirection: 1
+        indicators:
+        - shape: 1
+          angleOffset: 0
+          sectorData:
+            range: 0
+            angle: 0
+          rectData:
+            range: 15
+            width: 0.9
+        projectileSpeed: 8
+        maxRange: 15
+        hitRadius: 0.45
+        damageMultiplier: 1
+        homingStrength: 0
+    - rid: 2897679572369932398
+      type: {class: MultiDirectionalAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
+      data:
+        windupDuration: 0.85
+        lockIndicatorDirection: 1
+        indicators:
+        - shape: 0
+          angleOffset: 0
+          sectorData:
+            range: 4
+            angle: 55
+          rectData:
+            range: 0
+            width: 0
+        - shape: 0
+          angleOffset: 90
+          sectorData:
+            range: 4
+            angle: 55
+          rectData:
+            range: 0
+            width: 0
+        - shape: 0
+          angleOffset: 180
+          sectorData:
+            range: 4
+            angle: 55
+          rectData:
+            range: 0
+            width: 0
+        - shape: 0
+          angleOffset: 270
+          sectorData:
+            range: 4
+            angle: 55
+          rectData:
+            range: 0
+            width: 0
+        hitRange: 4
+        damageMultiplier: 1.1
+    - rid: 2897679572369932399
+      type: {class: ProjectileAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
+      data:
+        windupDuration: 0.7
+        lockIndicatorDirection: 1
+        indicators:
+        - shape: 1
+          angleOffset: 0
+          sectorData:
+            range: 0
+            angle: 0
+          rectData:
+            range: 15
+            width: 0.9
+        projectileSpeed: 10
+        maxRange: 20
+        hitRadius: 0.45
+        damageMultiplier: 1.2
+        homingStrength: 45
