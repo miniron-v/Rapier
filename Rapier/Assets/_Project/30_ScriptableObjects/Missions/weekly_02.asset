@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7790d56ed53d822c43c3cf4ea9222796, type: 3}
+  m_Name: weekly_02
+  m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Missions.MissionData
+  _missionId: weekly_02
+  _missionType: 1
+  _description: "\uC0C8 \uC2A4\uD14C\uC774\uC9C0 \uB3C4\uB2EC \uB610\uB294 \uCD5C\uACE0
+    \uAE30\uB85D \uAC31\uC2E0"
+  _trackEvent: 6
+  _targetCount: 1
+  _reward:
+    gold: 0
+    gachaTicket: 0
+    reinforceMaterial: 0
+    runeGachaTicket: 3
+    epicEquipCount: 0
