@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rm \"Rapier/Assets/_Project/00_Docs/PROJECT_GUIDELINES.md\")",
+      "Bash(rm \"Rapier/Assets/_Project/00_Docs/Editor/AI_CONTEXT.cs\")",
+      "Bash(rm \"Rapier/Assets/_Project/00_Docs/PROJECT_GUIDELINES.md.meta\")",
+      "Bash(rm \"Rapier/Assets/_Project/00_Docs/Editor/AI_CONTEXT.cs.meta\")",
+      "Bash(rm \"Rapier/Assets/_Project/00_Docs/PROJECT_GUIDELINES.docx\")",
+      "Bash(rm \"Rapier/Assets/_Project/00_Docs/PROJECT_GUIDELINES.docx.meta\")",
+      "Bash(xargs grep:*)",
+      "Read(//c/GitHub/Rapier-phase12b2-equipment/Rapier/Assets/_Project/10_Scripts/Data/**)",
+      "Read(//c/GitHub/Rapier-phase12b2-equipment/Rapier/Assets/_Project/10_Scripts/UI/**)",
+      "Read(//c/GitHub/Rapier-phase12b2-equipment/Rapier/Assets/_Project/30_ScriptableObjects/**)",
+      "Bash(mkdir -p \"C:/GitHub/Rapier-phase12b2-equipment/Rapier/Assets/_Project/10_Scripts/Data/Equipment\")",
+      "Bash(mkdir -p \"C:/GitHub/Rapier-phase12b2-equipment/Rapier/Assets/_Project/10_Scripts/UI/Lobby/Equipment\")",
+      "Bash(mkdir -p \"C:/GitHub/Rapier-phase12b2-equipment/Rapier/Assets/_Project/30_ScriptableObjects/Equipment\")",
+      "Bash(python3:*)",
+      "Bash(cat)",
+      "Bash(bash /tmp/gen_meta.sh)",
+      "Bash(mkdir -p \"C:/GitHub/Rapier-phase12b3-meta/Rapier/Assets/_Project/10_Scripts/Data/Stats\")",
+      "Bash(mkdir -p \"C:/GitHub/Rapier-phase12b3-meta/Rapier/Assets/_Project/10_Scripts/Data/Save\")",
+      "Bash(mkdir -p \"C:/GitHub/Rapier-phase12b3-meta/Rapier/Assets/_Project/10_Scripts/Data/Missions\")",
+      "Bash(mkdir -p \"C:/GitHub/Rapier-phase12b3-meta/Rapier/Assets/_Project/10_Scripts/UI/Lobby/Mission\")",
+      "Bash(mkdir -p \"C:/GitHub/Rapier-phase12b3-meta/Rapier/Assets/_Project/30_ScriptableObjects/Missions\")",
+      "Read(//c/GitHub/Rapier-phase12b3-meta/**)",
+      "Bash(node -e ':*)"
+    ]
+  }
+}
