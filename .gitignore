@@ -98,5 +98,6 @@ Rapier/InitTestScene*.unity*
 # Auto-generated scenes by play mode tests
 /Rapier/[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
 
-# Private repository for asset
-/Rapier/Private/
+# Private repository (nested git repo with private assets: fonts, icons, etc.)
+# Managed as a separate repo: github.com/miniron-v/Rapier-Private
+/Rapier/Assets/Rapier-Private/
