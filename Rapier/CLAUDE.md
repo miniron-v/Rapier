@@ -106,14 +106,22 @@
 Assets/
 ├── Rapier-Private/          # 비공개 (Art, Audio, ThirdParty)
 └── _Project/                # 공개 저장소
-    ├── 00_Docs/             # 문서
-    ├── 10_Scripts/          # 스크립트 (Core, Input, Combat, Characters, Enemies, UI, Data)
-    ├── 20_Prefabs/          # 프리팹
-    ├── 30_ScriptableObjects/# SO 에셋
-    └── 40_Scenes/           # 씬
+    ├── Docs/                # 문서 (CLAUDE.md, TEAM_LEAD.md, Domains/, Editor/ 일회성 툴)
+    ├── Scripts/             # 스크립트
+    │   ├── Characters/      # Base/, Rapier/
+    │   ├── Combat/          # 전투 공용 인터페이스
+    │   ├── Core/            # Camera/, Interfaces/, Scene/, Services/, Stage/
+    │   ├── Data/            # Characters/, Enemies/, Equipment/, Missions/, Save/, Stats/
+    │   ├── DevTools/        # 런타임 디버그/셋업 유틸
+    │   ├── Enemies/         # Base/, Attacks/, Managers/, Boss/
+    │   ├── Input/
+    │   └── UI/              # HUD/, Intermission/, Lobby/
+    ├── Prefabs/             # Boss/, Enemies/, Player/
+    ├── ScriptableObjects/   # SO 에셋 (Characters/, Enemies/, Equipment/, Fonts/, Missions/, Skills/, Stats/)
+    └── Scenes/              # 씬 (Lobby, StageDemo, BossRushDemo 등)
 ```
 
-모든 프로젝트 에셋은 `_Project/` 하위에 위치.
+모든 프로젝트 에셋은 `_Project/` 하위에 위치. 폴더명에 숫자 prefix는 쓰지 않는다.
 
 ---
 
@@ -185,8 +193,8 @@ Assets/
 
 ## 10. 역할 분기
 
-- **특정 기능 구현을 지시받았다면**: 해당 작업에만 집중하세요. 프롬프트에 명시된 도메인 문서(`Assets/_Project/00_Docs/Domains/*.md`)를 참조하세요.
-- **그 외의 경우**: `Assets/_Project/00_Docs/TEAM_LEAD.md`를 읽고 프로젝트 팀장 역할을 수행하세요.
+- **특정 기능 구현을 지시받았다면**: 해당 작업에만 집중하세요. 프롬프트에 명시된 도메인 문서(`Assets/_Project/Docs/Domains/*.md`)를 참조하세요.
+- **그 외의 경우**: `Assets/_Project/Docs/TEAM_LEAD.md`를 읽고 프로젝트 팀장 역할을 수행하세요.
 
 ---
 
