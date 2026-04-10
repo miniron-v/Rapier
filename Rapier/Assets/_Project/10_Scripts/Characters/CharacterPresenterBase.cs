@@ -13,23 +13,31 @@ namespace Game.Characters
     ///
     /// [무적 구간]
     ///   일반 회피 : HandleSwipe → SetInvincible(true)
-    ///               OnDodgeDashComplete() → SetInvincible(false)
+    ///               OnDodgeDashComplete()에서, 후속 상태가 없으면 SetInvincible(false)
     ///   저스트 회피: HandleJustDodge → SetInvincible(true)
-    ///               OnSlowMotionEnd() → SetInvincible(false)
-    ///   자식이 각 콜백을 override하여 무적 해제 타이밍을 늦출 수 있음.
+    ///               OnSlowMotionEnd()에서, 고유 스킬이 이어지지 않으면 SetInvincible(false)
+    ///   고유 스킬이 이어지는 경우 자식이 스킬 종료 시점에 무적 해제를 책임진다.
     ///
     /// [저스트 회피 트리거]
     ///   _justDodgeAvailable: Swipe 시 true, 발동 또는 DodgeDash 완료 시 false.
     ///   "한 회피당 딱 한 번만" 저스트 회피 발동을 보장.
     ///
-    /// [공격 차단]
-    ///   CanAttack: _isDodging 기반. 회피 대시 구간에서 false.
-    ///   자식이 override하여 추가 조건 부여 가능.
+    /// [입력 차단 — INPUT.md §5]
+    ///   Tap은 다음 4개 상태 중 하나라도 활성이면 즉시 무시된다 (큐잉 없음):
+    ///     1) 회피 대시 중          : _isDodgeDashActive
+    ///     2) 저스트 회피 슬로우 중 : _isJustDodgeSlowActive
+    ///     3) 고유 스킬 발동~복귀   : _isSignatureSkillActive
+    ///     4) 차지 스킬 발동 중     : _isChargeSkillActive
+    ///   Swipe는 회피 쿨다운 중 차단된다.
     ///
-    /// [_isDodging]
-    ///   HandleSwipe → true
-    ///   OnDodgeDashComplete() → false (자식이 SetDodging(false) 호출 억제 가능)
-    ///   자식은 SetDodging(bool)으로 직접 제어.
+    ///   네 플래그 모두 Base가 소유하며, 차단 검사(IsTapBlocked)도 Base의
+    ///   HandleTap 초입에서 수행된다. 자식은 상태 진입/이탈 시 Begin*/End*
+    ///   훅으로만 신호를 보낼 수 있다 — 자식이 플래그 자체를 읽거나 쓰지 못하므로
+    ///   차단 규칙을 우회할 수 없다 (OCP 보장).
+    ///
+    /// [CanAttack]
+    ///   자식이 추가 공격 조건을 부여하고 싶을 때 override하는 확장점.
+    ///   Base 차단과 AND로 결합된다.
     ///
     /// [MoveState]
     ///   Free   : Walk 허용
@@ -88,22 +96,61 @@ namespace Game.Characters
             _moveDirection   = Vector2.zero;
         }
 
-        // ── 회피/공격 차단 플래그 ─────────────────────────────────
-        private bool _isDodging;
+        // ── 입력 차단 플래그 (Base 소유, 자식 접근 불가) ───────────
+        // Tap 차단 규칙(INPUT.md §5)을 Base 레벨에서 일관되게 집행하기 위해
+        // 네 개의 상태 플래그를 Base가 독점 소유한다. 자식 클래스는
+        // Begin*/End* 훅으로만 상태를 토글할 수 있으며, 플래그 자체를
+        // 읽거나 쓰지 못한다 — 이로써 차단 규칙의 OCP 우회가 원천 차단된다.
+        private bool _isDodgeDashActive;
+        private bool _isJustDodgeSlowActive;
+        private bool _isSignatureSkillActive;
+        private bool _isChargeSkillActive;
 
         /// <summary>
-        /// 회피 대시가 진행 중인지 여부.
-        /// HandleSwipe → true, OnDodgeDashComplete() → false.
-        /// 자식은 SetDodging()으로 직접 제어한다.
+        /// Tap 입력이 즉시 무시되어야 하는지 여부.
+        /// INPUT.md §5 네 가지 상태 중 하나라도 활성이면 true.
         /// </summary>
-        protected void SetDodging(bool value) => _isDodging = value;
+        private bool IsTapBlocked =>
+            _isDodgeDashActive      ||
+            _isJustDodgeSlowActive  ||
+            _isSignatureSkillActive ||
+            _isChargeSkillActive;
 
         /// <summary>
         /// 일반 공격 가능 여부.
-        /// 기본: 회피 대시 중(_isDodging)이면 false.
-        /// 자식이 override하여 추가 차단 조건 부여 가능.
+        /// 기본: 항상 true. Base의 Tap 차단은 HandleTap이 <see cref="IsTapBlocked"/>로 직접 수행하며,
+        /// CanAttack은 자식이 추가 공격 조건(예: 쿨다운, 특수 리소스 부족)을 부여하기 위한 확장점이다.
         /// </summary>
-        protected virtual bool CanAttack => !_isDodging;
+        protected virtual bool CanAttack => true;
+
+        // ── 자식이 사용하는 상태 토글 훅 ──────────────────────────
+        /// <summary>
+        /// 자식 캐릭터가 자신의 고유 스킬 시퀀스에 진입할 때 호출한다.
+        /// 호출 후 Tap 입력은 <see cref="EndSignatureSkill"/>가 호출될 때까지 차단된다.
+        /// </summary>
+        protected void BeginSignatureSkill() => _isSignatureSkillActive = true;
+
+        /// <summary>
+        /// 자식 캐릭터가 자신의 고유 스킬 시퀀스를 완전히 종료했을 때 호출한다.
+        /// </summary>
+        protected void EndSignatureSkill() => _isSignatureSkillActive = false;
+
+        /// <summary>
+        /// 자식 캐릭터가 차지 스킬을 비동기로 수행할 때 진입 시점에 호출한다.
+        /// 동기 차지 스킬은 Base가 자동으로 관리하므로 호출할 필요가 없다.
+        /// </summary>
+        protected void BeginChargeSkill() => _isChargeSkillActive = true;
+
+        /// <summary>
+        /// 자식 캐릭터가 차지 스킬(비동기)을 완전히 종료했을 때 호출한다.
+        /// </summary>
+        protected void EndChargeSkill() => _isChargeSkillActive = false;
+
+        /// <summary>
+        /// 고유 스킬 시퀀스가 현재 활성인지 자식이 읽기 전용으로 확인할 수 있는 창구.
+        /// OnDodgeDashComplete 등에서 "스킬 대기 중인지" 판단할 때 사용한다.
+        /// </summary>
+        protected bool IsSignatureSkillActive => _isSignatureSkillActive;
 
         // ── 저스트 회피 가용 플래그 ───────────────────────────────
         /// <summary>
@@ -176,7 +223,14 @@ namespace Game.Characters
         private void HandleTap(Vector2 screenPos)
         {
             if (Model == null || !Model.IsAlive) return;
+
+            // INPUT.md §5: 회피 대시 / 저스트 회피 슬로우 / 고유 스킬 / 차지 스킬
+            // 진행 중에는 Tap을 즉시 무시한다 (큐잉 없음).
+            // Base가 소유한 네 플래그로 검사하므로 자식이 우회할 수 없다.
+            if (IsTapBlocked) return;
+
             if (_isAttacking || !CanAttack) return;
+
             View.PlayAttack();
             StartCoroutine(AttackRoutine());
             OnTap(screenPos);
@@ -247,8 +301,8 @@ namespace Game.Characters
             var stage = ServiceLocator.Get<StageBuilder>();
             if (stage != null) DodgeDest = stage.ClampToStage(DodgeDest);
 
-            JustDodgeAvailable = true;
-            SetDodging(true);
+            JustDodgeAvailable     = true;
+            _isDodgeDashActive     = true;
             LockMovement();
             Model.SetInvincible(true);
 
@@ -297,15 +351,22 @@ namespace Game.Characters
 
         /// <summary>
         /// 회피 대시 완료 콜백.
-        /// 기본: SetDodging(false) + JustDodgeAvailable false + 무적 OFF + FreeMovement.
-        /// 자식(Rapier): 스킬 대기 중이면 SetDodging(false)와 무적 해제를 억제.
+        /// 기본: 회피 대시 플래그 OFF + JustDodgeAvailable false + 무적 OFF + FreeMovement.
+        /// 저스트 회피 슬로우나 고유 스킬이 이어지는 경우에도 "회피 대시 자체는" 끝난 것이므로
+        /// _isDodgeDashActive는 항상 false로 내린다. 무적/이동 잠금 유지 여부는 자식이 override로 결정한다.
         /// </summary>
         protected virtual void OnDodgeDashComplete()
         {
-            JustDodgeAvailable = false;
-            SetDodging(false);
-            Model.SetInvincible(false);
-            FreeMovement();
+            JustDodgeAvailable  = false;
+            _isDodgeDashActive  = false;
+
+            // 저스트 회피 슬로우나 고유 스킬이 진행 중이면 무적/이동 잠금을 유지해야 하므로
+            // 해당 플래그들이 모두 꺼진 경우에만 여기서 해제한다.
+            if (!_isJustDodgeSlowActive && !_isSignatureSkillActive)
+            {
+                Model.SetInvincible(false);
+                FreeMovement();
+            }
         }
 
         private IEnumerator DodgeCooldownRoutine()
@@ -371,9 +432,29 @@ namespace Game.Characters
             if (Model == null || !Model.IsAlive) return;
 
             bool fullyCharged = _isCharging && _holdDuration >= Model.StatData.chargeRequiredTime;
+            bool triggerSkill = fullyCharged || Model.IsJustDodgeReady;
 
-            if (fullyCharged || Model.IsJustDodgeReady)
-                OnSkillRelease(fullyCharged, Model.IsJustDodgeReady);
+            if (triggerSkill)
+            {
+                // 차지 스킬이 발동되는 동안 Tap을 차단한다.
+                // 동기 차지 스킬(현재 Rapier)은 OnSkillRelease 호출 사이에만 활성이면 충분.
+                // 향후 자식이 비동기 차지 스킬을 구현할 경우 자식 내부에서
+                // BeginChargeSkill()/EndChargeSkill()로 수명을 명시적으로 관리해야 한다.
+                bool chargeSkillLaunched = fullyCharged;
+                if (chargeSkillLaunched) _isChargeSkillActive = true;
+                try
+                {
+                    OnSkillRelease(fullyCharged, Model.IsJustDodgeReady);
+                }
+                finally
+                {
+                    // 자식이 비동기로 이어가려면 OnSkillRelease 내부에서 이미
+                    // BeginChargeSkill()을 다시 호출했을 테지만, 현재 정책상 동기 완료로 간주하고
+                    // 여기서 해제한다. 자식이 비동기를 원하면 EndChargeSkill()을 직접 호출하면 되고
+                    // 그 사이 시간 동안 Tap을 차단하려면 BeginSignatureSkill()을 사용해야 한다.
+                    if (chargeSkillLaunched) _isChargeSkillActive = false;
+                }
+            }
 
             _holdDuration = 0f;
             _isCharging   = false;
@@ -385,6 +466,12 @@ namespace Game.Characters
         private void HandleJustDodge(Vector2 direction)
         {
             if (Model == null || !Model.IsAlive) return;
+
+            // 슬로우모션 구간 동안 Tap을 차단한다.
+            // 자식이 OnJustDodge 안에서 BeginSignatureSkill을 호출해 스킬 시퀀스로 이어가면
+            // 슬로우 종료 후에도 차단이 계속되고, 그렇지 않으면 OnSlowMotionEnd에서 해제된다.
+            _isJustDodgeSlowActive = true;
+
             View.PlayDodge(direction);
             Model.SetJustDodgeReady(true);
             Model.SetInvincible(true);
@@ -398,6 +485,12 @@ namespace Game.Characters
 
         private void HandleDeath()
         {
+            // 차단 플래그 전부 해제 — 사망 이후 좀비 상태가 남아 입력이 끝까지 막히는 것을 방지.
+            _isDodgeDashActive      = false;
+            _isJustDodgeSlowActive  = false;
+            _isSignatureSkillActive = false;
+            _isChargeSkillActive    = false;
+
             View.PlayDeath();
             StopSlowMotion();
             OnDisable();
@@ -421,12 +514,17 @@ namespace Game.Characters
 
         /// <summary>
         /// 슬로우모션 종료 콜백.
-        /// 기본: 무적 OFF.
-        /// 자식(Rapier): 스킬 대시 중이면 억제.
+        /// 기본: 저스트 회피 슬로우 플래그 OFF + 고유 스킬이 이어지지 않으면 무적 OFF.
+        /// 자식은 override해서 추가 연출/상태 정리를 할 수 있지만, Tap 차단 플래그 관리는
+        /// Base가 담당하므로 자식이 따로 건드릴 필요가 없다.
         /// </summary>
         protected virtual void OnSlowMotionEnd()
         {
-            Model?.SetInvincible(false);
+            _isJustDodgeSlowActive = false;
+
+            // 고유 스킬 시퀀스가 이어지는 경우 무적은 스킬 종료 시점에 해제된다.
+            if (!_isSignatureSkillActive)
+                Model?.SetInvincible(false);
         }
 
         private void StopSlowMotion()

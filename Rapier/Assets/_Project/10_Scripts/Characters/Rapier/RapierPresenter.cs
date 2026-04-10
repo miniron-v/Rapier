@@ -11,17 +11,21 @@ namespace Game.Characters
     /// <summary>
     /// 레이피어 캐릭터 Presenter.
     ///
-    /// [플래그 구조 — 수정됨]
-    ///   _isSkillSequenceActive : OnJustDodge에서 타겟 확보 시 true.
-    ///                            스킬 복귀 완료 또는 조건 불충족 시 false.
-    ///   _dashSkillStarted      : DashSkillRoutine이 실제로 시작됐을 때 true.
-    ///                            OnDodgeDashComplete에서 억제 여부 판단에 사용.
+    /// [입력 차단 — Base가 단독 관리]
+    ///   회피 대시 / 저스트 회피 슬로우 / 차지 스킬 Tap 차단은 모두 Base가 플래그로 관리한다.
+    ///   Rapier는 고유 스킬 시퀀스에 한해 BeginSignatureSkill() / EndSignatureSkill() 훅으로만
+    ///   Base에 신호를 보낸다. 자식은 차단 플래그를 직접 읽거나 쓰지 않는다.
     ///
-    /// [버그 수정]
-    ///   기존: _isSkillSequenceActive만으로 OnDodgeDashComplete 억제
-    ///         → 저스트 회피 후 스킬 대시가 시작되지 않아도 억제되어 이동/공격 영구 잠금
-    ///   수정: _dashSkillStarted가 true일 때만 억제
-    ///         → 스킬 대시가 실제로 시작된 경우에만 잠금 유지
+    /// [고유 스킬 시퀀스]
+    ///   OnJustDodge : 타겟 확보 후 BeginSignatureSkill() — 슬로우 종료 후에도 Tap/무적/이동잠금 유지
+    ///   OnSkillRelease(justDodgeReady=true) : 타겟 생존 시 DashSkillRoutine 시작
+    ///     - 대시 → 공격 → 복귀 전 구간 무적/Tap 차단
+    ///     - 복귀 완료 시 EndSignatureSkill() + 무적 OFF + FreeMovement
+    ///   OnSlowMotionEnd : 타겟이 없어 스킬 시퀀스가 시작되지 않았고 사용자가 Hold를 안 했다면
+    ///     Base가 _isJustDodgeSlowActive를 내리며, BeginSignatureSkill이 호출되지 않았으므로
+    ///     RapierPresenter도 추가로 정리할 것이 없다.
+    ///   OnSkillRelease(fullyCharged=true): 차지 스킬은 동기 실행이며 Base가 _isChargeSkillActive로
+    ///     실행 구간을 자동 차단한다.
     /// </summary>
     public class RapierPresenter : CharacterPresenterBase, IDamageable, IPlayerCharacter
     {
@@ -38,18 +42,6 @@ namespace Game.Characters
 
         // ── 스킬 상태 ─────────────────────────────────────────────
         private EnemyPresenterBase _skillTarget;
-
-        /// <summary>
-        /// 저스트 회피 연계 스킬 대기/진행 중 플래그.
-        /// OnJustDodge에서 타겟 확보 시 true.
-        /// </summary>
-        private bool _isSkillSequenceActive;
-
-        /// <summary>
-        /// DashSkillRoutine이 실제로 StartCoroutine된 경우 true.
-        /// OnDodgeDashComplete에서 억제 여부를 결정하는 데만 사용.
-        /// </summary>
-        private bool _dashSkillStarted;
 
         // ── 스킬 공격 범위 인디케이터 ─────────────────────────────
         private GameObject     _skillRangeIndicator;
@@ -105,43 +97,14 @@ namespace Game.Characters
 
         public CharacterModel PublicModel => Model;
 
-        // ── CanAttack override ────────────────────────────────────
-        protected override bool CanAttack => base.CanAttack && !_isSkillSequenceActive;
-
         // ── DodgeDash 완료 콜백 ───────────────────────────────────
         protected override void OnDodgeDashComplete()
         {
+            // 저스트 회피가 일어나지 않은 평범한 회피라면 Base의 기본 처리로 충분.
+            // (Base는 _isJustDodgeSlowActive, _isSignatureSkillActive를 확인한 뒤
+            //  해당 구간이 아니면 무적/이동 잠금을 해제한다.)
+            base.OnDodgeDashComplete();
             ConsumeJustDodge();
-
-            // _dashSkillStarted: DashSkillRoutine이 실제로 시작된 경우에만 억제
-            // _isSkillSequenceActive만으로 억제하면, 스킬 대시가 시작 안 됐는데
-            // 잠금이 해제되지 않는 버그 발생
-            if (_dashSkillStarted)
-                return;
-
-            // 스킬 대기만 하고 대시가 안 시작된 경우 → 모두 해제
-            _isSkillSequenceActive = false;
-            SetDodging(false);
-            Model.SetInvincible(false);
-            FreeMovement();
-        }
-
-        // ── 슬로우 종료 콜백 ──────────────────────────────────────
-protected override void OnSlowMotionEnd()
-        {
-            // 대시 스킬이 실제 시작된 경우에만 무적 유지
-            if (_dashSkillStarted) return;
-
-            // 슬로우 종료 시 스킬 대기 상태도 함께 해제
-            // Hold 없이 슬로우가 끝난 경우 영구 잠금 방지
-            if (_isSkillSequenceActive)
-            {
-                _isSkillSequenceActive = false;
-                _skillTarget           = null;
-                Debug.Log("[RapierPresenter] 슬로우 종료 → 스킬 시퀀스 대기 해제");
-            }
-
-            Model?.SetInvincible(false);
         }
 
         // ── 저스트 회피 훅 ────────────────────────────────────────
@@ -158,8 +121,9 @@ protected override void OnSlowMotionEnd()
 
             if (_skillTarget != null)
             {
-                _isSkillSequenceActive = true;
-                _dashSkillStarted      = false; // 대시는 아직 시작 안 됨
+                // 고유 스킬 시퀀스 대기 — Base에게 Tap 차단/무적/이동잠금 유지를 요청.
+                BeginSignatureSkill();
+                LockMovement();
                 Debug.Log($"[RapierPresenter] 스킬 시퀀스 대기: {_skillTarget.name}");
             }
         }
@@ -169,28 +133,32 @@ protected override void OnSlowMotionEnd()
         {
             if (justDodgeReady && _skillTarget != null && _skillTarget.IsAlive)
             {
-                _dashSkillStarted = true; // 대시 실제 시작
+                // 대시 시퀀스 시작. BeginSignatureSkill은 이미 OnJustDodge에서 호출됨.
                 StartCoroutine(DashSkillRoutine(_skillTarget));
             }
             else if (fullyCharged)
             {
-                ResetSkillState();
+                // 저스트 회피로 진입했지만 타겟이 없거나, 순수 차지 스킬인 경우.
+                // 만약 저스트 회피 대기 상태가 있었다면(BeginSignatureSkill 호출됨) 정리한다.
+                if (IsSignatureSkillActive) EndSignatureSkillCleanup();
                 ExecuteChargeSkill();
             }
             else
             {
-                ResetSkillState();
+                // Hold 직후 Release지만 차지가 안 차고 저스트 회피 타겟도 없는 경우.
+                if (IsSignatureSkillActive) EndSignatureSkillCleanup();
             }
 
             _skillTarget = null;
         }
 
-        // ── 스킬 상태 초기화 헬퍼 ────────────────────────────────
-        private void ResetSkillState()
+        /// <summary>
+        /// 고유 스킬 시퀀스 종료 시 공통 뒷정리.
+        /// Base의 EndSignatureSkill을 호출하고 무적/이동잠금을 해제한다.
+        /// </summary>
+        private void EndSignatureSkillCleanup()
         {
-            _isSkillSequenceActive = false;
-            _dashSkillStarted      = false;
-            SetDodging(false);
+            EndSignatureSkill();
             Model.SetInvincible(false);
             FreeMovement();
         }
@@ -204,7 +172,7 @@ protected override void OnSlowMotionEnd()
 
             yield return StartCoroutine(DashTo(DodgeDest, _statData.skillReturnSpeed));
 
-            ResetSkillState();
+            EndSignatureSkillCleanup();
         }
 
         // ── 스킬 공격 ─────────────────────────────────────────────
