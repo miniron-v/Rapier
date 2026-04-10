@@ -10,65 +10,56 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ffacc54a7c872044bb035941dd2a5dd3, type: 3}
-  m_Name: SpecterStatData
+  m_Name: TwinPhantomsStatData
   m_EditorClassIdentifier: Assembly-CSharp::Game.Enemies.BossStatData
-  enemyName: Specter
-  sprite: {fileID: -2413806693520163455, guid: a86470a33a6bf42c4b3595704624658b, type: 3}
-  maxHp: 600
-  attackPower: 50
-  moveSpeed: 4.5
+  enemyName: TwinPhantoms
+  sprite: {fileID: 0}
+  maxHp: 1500
+  attackPower: 75
+  moveSpeed: 3
   attackRange: 1.2
-  postAttackDelay: 0.25
+  postAttackDelay: 0.3
   attackSequence:
-  - rid: 2897679572369932393
+  - rid: 2897679572369932400
+  - rid: 2897679572369932401
   approachAngleVariance: 30
-  bossScale: 1.8
-  phase1Color: {r: 0.5, g: 0.1, b: 0.9, a: 1}
-  phase2Color: {r: 0.8, g: 0, b: 1, a: 1}
-  phase2SpeedMultiplier: 1.4
-  phase2AttackMultiplier: 1.3
-  phaseTransitionDuration: 0.8
-  phase2Sequence:
-  - rid: 2897679572369932394
-  - rid: 2897679572369932395
+  bossScale: 2
+  phase1Color: {r: 0.7, g: 0.7, b: 1, a: 1}
+  phase2Color: {r: 0.7, g: 0.7, b: 1, a: 1}
+  phase2SpeedMultiplier: 1
+  phase2AttackMultiplier: 1
+  phaseTransitionDuration: 1
+  phase2Sequence: []
   references:
     version: 2
     RefIds:
-    - rid: 2897679572369932393
+    - rid: 2897679572369932400
       type: {class: MeleeAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
       data:
-        windupDuration: 0.55
+        windupDuration: 0.5
         lockIndicatorDirection: 1
         indicators:
         - shape: 0
           angleOffset: 0
           sectorData:
-            range: 1.4
-            angle: 80
+            range: 1.3
+            angle: 90
           rectData:
             range: 0
             width: 0
-        hitRange: 1.2
-    - rid: 2897679572369932394
-      type: {class: TeleportAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
-      data:
-        windupDuration: 0
-        lockIndicatorDirection: 0
-        indicators: []
-        teleportOffset: 1.3
-        fadeTime: 0.2
-    - rid: 2897679572369932395
+        hitRange: 1.3
+    - rid: 2897679572369932401
       type: {class: MeleeAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
       data:
-        windupDuration: 0.55
+        windupDuration: 0.45
         lockIndicatorDirection: 1
         indicators:
         - shape: 0
-          angleOffset: 0
+          angleOffset: -30
           sectorData:
-            range: 1.4
-            angle: 80
+            range: 1.3
+            angle: 90
           rectData:
             range: 0
             width: 0
-        hitRange: 1.2
+        hitRange: 1.3

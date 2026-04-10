@@ -1,0 +1,165 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ffacc54a7c872044bb035941dd2a5dd3, type: 3}
+  m_Name: BerserkerStatData
+  m_EditorClassIdentifier: Assembly-CSharp::Game.Enemies.BossStatData
+  enemyName: Berserker
+  sprite: {fileID: 0}
+  maxHp: 2000
+  attackPower: 90
+  moveSpeed: 3.5
+  attackRange: 1.3
+  postAttackDelay: 0.2
+  attackSequence:
+  - rid: 2897679572369932374
+  - rid: 2897679572369932375
+  - rid: 2897679572369932376
+  approachAngleVariance: 30
+  bossScale: 2.2
+  phase1Color: {r: 0.8, g: 0.2, b: 0.1, a: 1}
+  phase2Color: {r: 1, g: 0.05, b: 0.05, a: 1}
+  phase2SpeedMultiplier: 1.8
+  phase2AttackMultiplier: 1.4
+  phaseTransitionDuration: 1
+  phase2Sequence:
+  - rid: 2897679572369932377
+  - rid: 2897679572369932378
+  - rid: 2897679572369932379
+  - rid: 2897679572369932380
+  - rid: 2897679572369932381
+  references:
+    version: 2
+    RefIds:
+    - rid: 2897679572369932374
+      type: {class: MeleeAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
+      data:
+        windupDuration: 0.35
+        lockIndicatorDirection: 1
+        indicators:
+        - shape: 0
+          angleOffset: 0
+          sectorData:
+            range: 1.5
+            angle: 100
+          rectData:
+            range: 0
+            width: 0
+        hitRange: 1.5
+    - rid: 2897679572369932375
+      type: {class: MeleeAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
+      data:
+        windupDuration: 0.35
+        lockIndicatorDirection: 1
+        indicators:
+        - shape: 0
+          angleOffset: 40
+          sectorData:
+            range: 1.5
+            angle: 100
+          rectData:
+            range: 0
+            width: 0
+        hitRange: 1.5
+    - rid: 2897679572369932376
+      type: {class: MeleeAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
+      data:
+        windupDuration: 0.35
+        lockIndicatorDirection: 1
+        indicators:
+        - shape: 0
+          angleOffset: -40
+          sectorData:
+            range: 1.5
+            angle: 100
+          rectData:
+            range: 0
+            width: 0
+        hitRange: 1.5
+    - rid: 2897679572369932377
+      type: {class: MeleeAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
+      data:
+        windupDuration: 0.3
+        lockIndicatorDirection: 1
+        indicators:
+        - shape: 0
+          angleOffset: 0
+          sectorData:
+            range: 1.6
+            angle: 110
+          rectData:
+            range: 0
+            width: 0
+        hitRange: 1.6
+    - rid: 2897679572369932378
+      type: {class: MeleeAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
+      data:
+        windupDuration: 0.3
+        lockIndicatorDirection: 1
+        indicators:
+        - shape: 0
+          angleOffset: 50
+          sectorData:
+            range: 1.6
+            angle: 110
+          rectData:
+            range: 0
+            width: 0
+        hitRange: 1.6
+    - rid: 2897679572369932379
+      type: {class: MeleeAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
+      data:
+        windupDuration: 0.3
+        lockIndicatorDirection: 1
+        indicators:
+        - shape: 0
+          angleOffset: -50
+          sectorData:
+            range: 1.6
+            angle: 110
+          rectData:
+            range: 0
+            width: 0
+        hitRange: 1.6
+    - rid: 2897679572369932380
+      type: {class: MeleeAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
+      data:
+        windupDuration: 0.3
+        lockIndicatorDirection: 1
+        indicators:
+        - shape: 0
+          angleOffset: 0
+          sectorData:
+            range: 1.6
+            angle: 120
+          rectData:
+            range: 0
+            width: 0
+        hitRange: 1.6
+    - rid: 2897679572369932381
+      type: {class: ChargeAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
+      data:
+        windupDuration: 0.6
+        lockIndicatorDirection: 1
+        indicators:
+        - shape: 1
+          angleOffset: 0
+          sectorData:
+            range: 0
+            angle: 0
+          rectData:
+            range: 10
+            width: 1.5
+        chargeSpeed: 16
+        chargeHitRange: 1.8
+        chargeDamageMultiplier: 2.2
+        chargeMaxDistance: 20
+        grogyDuration: 2
