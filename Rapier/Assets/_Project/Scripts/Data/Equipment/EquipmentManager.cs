@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Game.Core;
+using Game.Data.Save;
 using UnityEngine;
 
 namespace Game.Data.Equipment
@@ -9,9 +11,9 @@ namespace Game.Data.Equipment
     /// 장착/해제/룬 서비스. 인벤토리 및 캐릭터별 장착 세트를 관리한다.
     /// Phase 13-B: Init() 시 ServiceLocator 에 등록하여 씬 간 공유.
     /// Dispose() 시 ServiceLocator 에서 해제.
-    /// B3 연결 전까지 IEquipmentSaveProvider 스텁은 null 허용(저장 스킵).
+    /// IEquipmentSaveProvider (Game.Data.Save) 를 직접 구현하여 SaveManager 에 제공한다.
     /// </summary>
-    public class EquipmentManager
+    public class EquipmentManager : Game.Data.Save.IEquipmentSaveProvider
     {
         // ── 이벤트 ──────────────────────────────────────────────────────────
 
@@ -52,8 +54,8 @@ namespace Game.Data.Equipment
         {
             _saveProvider = saveProvider;
 
-            // 이미 다른 인스턴스가 등록된 경우 중복 등록 방지 (로그는 ServiceLocator가 출력)
-            var existing = ServiceLocator.Get<EquipmentManager>();
+            // 이미 다른 인스턴스가 등록된 경우 중복 등록 방지 (경고 없이 조회)
+            var existing = ServiceLocator.TryGet<EquipmentManager>();
             if (existing != null && existing != this)
             {
                 // 기존 인스턴스가 남아있음 — 새 인스턴스로 교체하지 않고 자신을 폐기
@@ -69,7 +71,7 @@ namespace Game.Data.Equipment
         /// </summary>
         public void Dispose()
         {
-            var registered = ServiceLocator.Get<EquipmentManager>();
+            var registered = ServiceLocator.TryGet<EquipmentManager>();
             if (registered == this)
                 ServiceLocator.Unregister<EquipmentManager>();
         }
@@ -220,6 +222,93 @@ namespace Game.Data.Equipment
             _saveProvider.SaveInventory(_equipmentInventory, _runeInventory);
             foreach (var set in _characterSets.Values)
                 _saveProvider.SaveCharacterEquipment(set);
+        }
+
+        // ── IEquipmentSaveProvider (Game.Data.Save) 구현 ────────────────────
+
+        /// <summary>
+        /// 현재 보유 장비 인벤토리를 직렬화 가능한 <see cref="EquipmentSaveEntry"/> 목록으로 반환한다.
+        /// 직렬화는 호출 즉시 현재 메모리 상태를 반영한다.
+        /// </summary>
+        public List<EquipmentSaveEntry> SerializeOwnedEquipment()
+        {
+            var result = new List<EquipmentSaveEntry>(_equipmentInventory.Count);
+            foreach (var instance in _equipmentInventory)
+            {
+                if (instance == null) continue;
+
+                var entry = new EquipmentSaveEntry
+                {
+                    instanceId  = instance.InstanceId,
+                    dataAssetId = instance.Data != null ? instance.Data.name : "",
+                    grade       = instance.Data != null ? (int)instance.Data.Grade : 0,
+                    runeAssetIds = instance.EquippedRunes != null
+                        ? instance.EquippedRunes
+                            .Where(r => r != null)
+                            .Select(r => r.name)
+                            .ToList()
+                        : new List<string>()
+                };
+                result.Add(entry);
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// 캐릭터별 장착 상태를 직렬화 가능한 형태로 반환한다.
+        /// key = 캐릭터 ID, value = 해당 세트에서 장착된 EquipmentInstance 의 instanceId 목록.
+        /// 직렬화는 호출 즉시 현재 메모리 상태를 반영한다.
+        /// </summary>
+        public Dictionary<string, List<string>> SerializeEquippedMap()
+        {
+            var map = new Dictionary<string, List<string>>(_characterSets.Count);
+            foreach (var (characterId, set) in _characterSets)
+            {
+                var ids = new List<string>();
+                foreach (var kv in set.GetAllEquipped())
+                {
+                    if (kv.Value != null)
+                        ids.Add(kv.Value.InstanceId);
+                }
+                map[characterId] = ids;
+            }
+            return map;
+        }
+
+        /// <summary>
+        /// 저장 데이터에서 장비 목록을 역직렬화하여 인벤토리를 복원한다.
+        /// <para>
+        /// ⚠ 현재 미구현 (TODO Phase 14): EquipmentItemData SO 레지스트리가 도입되기 전까지
+        /// 본문은 no-op 입니다. 저장 데이터는 기록되지만 로드 시 인벤토리가 복원되지 않습니다.
+        /// Unity Console 에서 이 경고를 확인하면 정상 동작 범위입니다.
+        /// </para>
+        /// </summary>
+        public void DeserializeOwnedEquipment(List<EquipmentSaveEntry> entries)
+        {
+            if (entries == null) return;
+            // TODO(Phase 14): EquipmentItemData 레지스트리 도입 후 복원 구현.
+            // 현재는 SO 레지스트리가 없으므로 dataAssetId 로 EquipmentItemData 를 복원할 수 없다.
+            // 장비 인벤토리는 빈 상태로 유지된다.
+            if (entries.Count > 0)
+                Debug.LogWarning($"[EquipmentManager] DeserializeOwnedEquipment: {entries.Count}개 항목이 있지만 " +
+                                 "SO 레지스트리 미구현으로 복원 불가 (Phase 14 에서 처리 예정). " +
+                                 "장비 인벤토리는 비어있는 상태로 시작됩니다.");
+        }
+
+        /// <summary>
+        /// 저장 데이터에서 장착 상태를 역직렬화하여 캐릭터 세트를 복원한다.
+        /// <para>
+        /// ⚠ 현재 미구현 (TODO Phase 14): DeserializeOwnedEquipment 와 동일한 이유로 no-op.
+        /// 인스턴스 ID 로 EquipmentInstance 를 찾으려면 인벤토리가 먼저 복원되어야 한다.
+        /// </para>
+        /// </summary>
+        public void DeserializeEquippedMap(Dictionary<string, List<string>> map)
+        {
+            if (map == null || map.Count == 0) return;
+            // TODO(Phase 14): DeserializeOwnedEquipment 완성 후 instanceId 로 인스턴스를 조회하여
+            // _characterSets 에 재구성한다.
+            Debug.LogWarning("[EquipmentManager] DeserializeEquippedMap: 장착 상태 복원 미구현 (Phase 14 예정). " +
+                             "모든 캐릭터 장착 슬롯이 비어있는 상태로 시작됩니다.");
         }
     }
 }

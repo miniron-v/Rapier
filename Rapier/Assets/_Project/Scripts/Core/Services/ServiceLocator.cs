@@ -31,6 +31,13 @@ public static T Get<T>() where T : class
             return null;
         }
 
+        /// <summary>서비스를 가져온다. 없으면 null 반환 (경고 없음).</summary>
+        public static T TryGet<T>() where T : class
+        {
+            _services.TryGetValue(typeof(T), out var service);
+            return service as T;
+        }
+
         /// <summary>서비스를 해제한다. 씬 정리 시 반드시 호출.</summary>
         public static void Unregister<T>() where T : class
         {
