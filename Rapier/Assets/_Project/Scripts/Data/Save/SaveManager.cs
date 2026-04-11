@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
@@ -106,11 +107,11 @@ namespace Game.Data.Save
                 _current = new SaveData();
             }
 
-            // 장비 역직렬화
+            // 장비 역직렬화 (equippedMap 은 List → Dictionary 변환 후 주입)
             if (_equipProvider != null)
             {
                 _equipProvider.DeserializeOwnedEquipment(_current.ownedEquipment);
-                _equipProvider.DeserializeEquippedMap(_current.equippedMap);
+                _equipProvider.DeserializeEquippedMap(EquippedMapToDictionary(_current.equippedMap));
             }
 
             // 마이그레이션: 버전 미만이면 단계별 업그레이드 후 재저장
@@ -152,11 +153,11 @@ namespace Game.Data.Save
                 return;
             }
 
-            // 장비 직렬화
+            // 장비 직렬화 (equippedMap 은 Dictionary → List 변환 후 저장)
             if (_equipProvider != null)
             {
                 _current.ownedEquipment = _equipProvider.SerializeOwnedEquipment();
-                _current.equippedMap    = _equipProvider.SerializeEquippedMap();
+                _current.equippedMap    = DictionaryToEquippedMap(_equipProvider.SerializeEquippedMap());
             }
 
             // 메타 필드 갱신
@@ -190,6 +191,37 @@ namespace Game.Data.Save
 
             // TODO (Phase 14+): _syncService.PushAsync(_current.userId, _current) で서버 동기화
             // 현재는 LocalOnlySaveSyncService → Disabled 반환으로 무시
+        }
+
+        // ── 직렬화 어댑터 ─────────────────────────────────────────
+        // JsonUtility 는 Dictionary 를 지원하지 않으므로 List<EquippedMapEntry> 로 영속화하고
+        // EquipmentManager 와의 경계에서만 Dictionary 로 변환한다.
+
+        private static List<EquippedMapEntry> DictionaryToEquippedMap(Dictionary<string, List<string>> dict)
+        {
+            var list = new List<EquippedMapEntry>();
+            if (dict == null) return list;
+            foreach (var kv in dict)
+            {
+                list.Add(new EquippedMapEntry
+                {
+                    characterId = kv.Key,
+                    instanceIds = kv.Value ?? new List<string>(),
+                });
+            }
+            return list;
+        }
+
+        private static Dictionary<string, List<string>> EquippedMapToDictionary(List<EquippedMapEntry> list)
+        {
+            var dict = new Dictionary<string, List<string>>();
+            if (list == null) return dict;
+            foreach (var entry in list)
+            {
+                if (entry == null || string.IsNullOrEmpty(entry.characterId)) continue;
+                dict[entry.characterId] = entry.instanceIds ?? new List<string>();
+            }
+            return dict;
         }
     }
 }

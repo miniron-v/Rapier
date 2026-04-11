@@ -32,8 +32,11 @@ namespace Game.Data.Save
 
         // ── 장비 ───────────────────────────────────────────────────
         public List<EquipmentSaveEntry>  ownedEquipment  = new();
-        /// <summary>key = characterId, value = 슬롯별 장비 instanceId 목록</summary>
-        public Dictionary<string, List<string>> equippedMap = new();
+        /// <summary>
+        /// 캐릭터별 장착 상태. JsonUtility 는 Dictionary 를 직렬화하지 못하므로
+        /// List&lt;EquippedMapEntry&gt; 로 저장하고, SaveManager 경계에서 Dictionary 와 상호 변환한다.
+        /// </summary>
+        public List<EquippedMapEntry> equippedMap = new();
 
         // ── 진행 ───────────────────────────────────────────────────
         public int            highestStage     = 0;
@@ -74,6 +77,13 @@ namespace Game.Data.Save
         public int    grade        = 0;    // EquipmentGrade enum int
         /// <summary>룬 소켓에 장착된 룬 에셋 이름 목록</summary>
         public List<string> runeAssetIds = new();
+    }
+
+    [Serializable]
+    public class EquippedMapEntry
+    {
+        public string       characterId = "";
+        public List<string> instanceIds = new();
     }
 
     [Serializable]
