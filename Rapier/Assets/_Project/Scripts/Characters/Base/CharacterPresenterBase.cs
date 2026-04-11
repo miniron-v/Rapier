@@ -2,11 +2,13 @@ using System;
 using System.Collections;
 using UnityEngine;
 using Game.Core;
+using Game.Core.Stage;
 using Game.Input;
 using Game.Combat;
 using Game.Enemies;
 using Game.Data.Equipment;
 using Game.Data.MetaStats;
+using Game.Data.RunStats;
 
 namespace Game.Characters
 {
@@ -87,6 +89,10 @@ namespace Game.Characters
         protected CharacterModel    Model   { get; private set; }
         protected ICharacterView    View    { get; private set; }
         protected GestureRecognizer Gesture { get; private set; }
+
+        // ── RunStat 구독 관리 ─────────────────────────────────────
+        // 구독한 컨테이너를 보관 — OnDisable / OnDestroy 에서 동일 인스턴스 해제에 사용
+        private RunStatContainer _subscribedRunStat;
 
         // ── MoveState ─────────────────────────────────────────────
         protected enum MoveState { Free, Locked }
@@ -203,7 +209,7 @@ namespace Game.Characters
         // ── 초기화 ────────────────────────────────────────────────
         protected void Init(CharacterStatData statData, ICharacterView view)
         {
-            // Phase 13-B: MetaStat 주입 — ServiceLocator 에서 EquipmentManager 조회
+            // MetaStat 주입 — ServiceLocator 에서 EquipmentManager 조회
             MetaStatContainer metaContainer = null;
             var equipmentManager = ServiceLocator.Get<EquipmentManager>();
             if (equipmentManager != null)
@@ -217,12 +223,32 @@ namespace Game.Characters
                 Debug.LogWarning("[CharacterPresenterBase] EquipmentManager 미등록 — 장비 스탯 없이 baseline 진행");
             }
 
-            Model = new CharacterModel(statData, metaContainer);
+            // RunStat 주입 — ServiceLocator 에서 StageManager 조회
+            // StageManager 미등록(로비 등) 이면 runStat = null 로 RunStat 없이 진행
+            RunStatContainer runStatContainer = null;
+            var stageManager = ServiceLocator.Get<StageManager>();
+            if (stageManager != null)
+            {
+                runStatContainer = stageManager.RunStat;
+            }
+            else
+            {
+                Debug.LogWarning("[CharacterPresenterBase] StageManager 미등록 — RunStat 없이 baseline 진행 (로비 등 정상)");
+            }
+
+            Model = new CharacterModel(statData, metaContainer, runStatContainer);
             View  = view;
 
             Model.OnHpChanged     += ratio => View.UpdateHpGauge(ratio / Model.MaxHp);
             Model.OnDeath         += HandleDeath;
             Model.OnChargeChanged += View.UpdateChargeGauge;
+
+            // RunStat 픽 이벤트 구독 (스테이지 진입 시에만; 로비에선 null 이므로 no-op)
+            if (runStatContainer != null)
+            {
+                runStatContainer.OnStatChanged += HandleRunStatChanged;
+                _subscribedRunStat = runStatContainer;
+            }
         }
 
         // ── 이벤트 구독 / 해제 ────────────────────────────────────
@@ -230,6 +256,15 @@ namespace Game.Characters
 
         protected virtual void OnDisable()
         {
+            // RunStat 구독 해제는 Gesture 유무와 독립적으로 먼저 수행.
+            // Init(Awake) 과 Gesture 초기화(Start) 사이에 OnDisable 이 발생할 경우,
+            // Gesture null early-return 이 RunStat 해제를 skip 하지 않도록.
+            if (_subscribedRunStat != null)
+            {
+                _subscribedRunStat.OnStatChanged -= HandleRunStatChanged;
+                _subscribedRunStat = null;
+            }
+
             if (Gesture == null) return;
             Gesture.OnTap           -= HandleTap;
             Gesture.OnSwipe         -= HandleSwipe;
@@ -239,6 +274,17 @@ namespace Game.Characters
             Gesture.OnRelease       -= HandleRelease;
             Gesture.OnJustDodge     -= HandleJustDodge;
             StopSlowMotion();
+        }
+
+        protected virtual void OnDestroy()
+        {
+            // OnDisable 이 먼저 호출되면 _subscribedRunStat 은 이미 null → no-op
+            // 파괴 경로에서 OnDisable 가 호출되지 않는 경우 방어
+            if (_subscribedRunStat != null)
+            {
+                _subscribedRunStat.OnStatChanged -= HandleRunStatChanged;
+                _subscribedRunStat = null;
+            }
         }
 
         // ── 입력 처리 ─────────────────────────────────────────────
@@ -734,6 +780,13 @@ namespace Game.Characters
             Gizmos.matrix = oldMatrix;
             Gizmos.color  = Color.red;
             Gizmos.DrawSphere(new Vector3(_lastAttackCenter.x, _lastAttackCenter.y, 0f), 0.1f);
+        }
+
+        // ── RunStat 이벤트 핸들러 ────────────────────────────────
+        private void HandleRunStatChanged()
+        {
+            Model?.RecomputeFinalStats();
+            // View HP 게이지는 Model.OnHpChanged 가 자동 갱신 (Init 에서 이미 구독됨)
         }
 
         // ── 자식 클래스 override 지점 ─────────────────────────────

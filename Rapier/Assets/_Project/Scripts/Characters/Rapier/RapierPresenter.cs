@@ -72,8 +72,9 @@ namespace Game.Characters
             ServiceLocator.Register(this);
         }
 
-        private void OnDestroy()
+        protected override void OnDestroy()
         {
+            base.OnDestroy();
             ServiceLocator.Unregister<IPlayerCharacter>();
             ServiceLocator.Unregister<RapierPresenter>();
             ClearAllMarks();
@@ -223,7 +224,7 @@ namespace Game.Characters
             {
                 var enemy = hit.GetComponent<EnemyPresenterBase>();
                 if (enemy == null || !enemy.IsAlive) continue;
-                enemy.TakeDamage(_statData.attackPower, dir);
+                enemy.TakeDamage(Model.AttackPower, dir);
                 AddMark(enemy);
                 hitCount++;
             }
@@ -283,7 +284,7 @@ namespace Game.Characters
                 var stacks = kvp.Value;
                 if (!enemy.IsAlive) continue;
 
-                float damage = stacks * _statData.attackPower * _statData.chargeMarkMultiplier;
+                float damage = stacks * Model.AttackPower * _statData.chargeMarkMultiplier;
                 var   dir    = ((Vector2)enemy.transform.position - (Vector2)transform.position).normalized;
                 enemy.TakeDamage(damage, dir);
                 Debug.Log($"[RapierPresenter] 차지 스킬 — {enemy.name}: {stacks}중첩 × {damage:F0} 데미지");
