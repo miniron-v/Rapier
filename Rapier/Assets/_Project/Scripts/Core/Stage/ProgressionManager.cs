@@ -121,8 +121,10 @@ namespace Game.Core.Stage
             {
                 _currentBossPresenter.OnPhaseChanged += HandleBossPhaseChanged;
 
-                _currentBossRoomIndex++;
-                int totalBossRooms = _stageManager != null ? _stageManager.TotalBossRooms : 0;
+                // StageManager.BossesDefeated(처치 수) 기반으로 현재 보스 방 번호를 계산한다.
+                // 사망 후 이어하기로 같은 보스 방에 재진입해도 누적 증가하지 않는다.
+                _currentBossRoomIndex = _stageManager != null ? _stageManager.BossesDefeated + 1 : _currentBossRoomIndex + 1;
+                int totalBossRooms    = _stageManager != null ? _stageManager.TotalBossRooms       : 0;
                 string bossDisplayName = room.bossStatData?.enemyName
                     ?? room.displayName
                     ?? room.bossPrefab.name;
