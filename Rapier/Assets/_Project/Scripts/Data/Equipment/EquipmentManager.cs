@@ -40,19 +40,29 @@ namespace Game.Data.Equipment
         // 캐릭터 ID → 장착 세트
         private readonly Dictionary<string, CharacterEquipmentSet> _characterSets = new();
 
-        // B3 저장 프로바이더 (null이면 저장 스킵)
-        private IEquipmentSaveProvider _saveProvider;
+        // B3 저장 프로바이더 (null이면 저장 스킵). Legacy Game.Data.Equipment.IEquipmentSaveProvider.
+        private Game.Data.Equipment.IEquipmentSaveProvider _saveProvider;
+
+        // Phase 14: SO 레지스트리 (Deserialize 에서 assetId → SO 조회)
+        private EquipmentDatabase _database;
 
         // ── 초기화 ───────────────────────────────────────────────────────────
 
         /// <summary>
-        /// 저장 프로바이더를 주입하고 ServiceLocator 에 자신을 등록한다.
+        /// 저장 프로바이더와 SO 레지스트리를 주입하고 ServiceLocator 에 자신을 등록한다.
         /// 씬 간 EquipmentManager 인스턴스를 공유하려면 반드시 이 메서드를 호출한다.
-        /// B3 완성 전까지 saveProvider 는 null 가능.
+        /// <para>
+        /// <paramref name="saveProvider"/> 는 legacy 파라미터 (현재 미사용, null 권장).
+        /// <paramref name="database"/> 가 null 이면 Deserialize 단계에서 모든 항목이 스킵된다 (경고만, 예외 없음).
+        /// </para>
         /// </summary>
-        public void Init(IEquipmentSaveProvider saveProvider = null)
+        public void Init(Game.Data.Equipment.IEquipmentSaveProvider saveProvider = null, EquipmentDatabase database = null)
         {
             _saveProvider = saveProvider;
+            _database     = database;
+
+            if (_database == null)
+                Debug.LogWarning("[EquipmentManager] EquipmentDatabase is null — all deserialize will skip.");
 
             // 이미 다른 인스턴스가 등록된 경우 중복 등록 방지 (경고 없이 조회)
             var existing = ServiceLocator.TryGet<EquipmentManager>();
@@ -206,6 +216,18 @@ namespace Game.Data.Equipment
 
         // ── 내부 헬퍼 ────────────────────────────────────────────────────────
 
+        /// <summary>
+        /// Deserialize 전용 내부 장착 경로. OnEquipped 이벤트를 발행하지 않는다.
+        /// MetaStatProvider 는 CharacterPresenterBase.Init 시점에 1회 BuildContainer 를 호출하므로
+        /// 초기화 페이즈에서는 이벤트 발행이 불필요하다 (§7-5).
+        /// </summary>
+        private void EquipInternal(CharacterEquipmentSet set, EquipmentInstance instance)
+        {
+            // CharacterEquipmentSet.Equip 은 기존 슬롯을 교체하고 이전 인스턴스를 반환.
+            // Deserialize 페이즈에서는 이미 Clear 했으므로 displaced == null 이 정상.
+            set.Equip(instance);
+        }
+
         private CharacterEquipmentSet GetOrCreateSet(string characterId)
         {
             if (!_characterSets.TryGetValue(characterId, out var set))
@@ -241,7 +263,7 @@ namespace Game.Data.Equipment
                 {
                     instanceId  = instance.InstanceId,
                     dataAssetId = instance.Data != null ? instance.Data.name : "",
-                    grade       = instance.Data != null ? (int)instance.Data.Grade : 0,
+                    grade       = (int)instance.Grade,
                     runeAssetIds = instance.EquippedRunes != null
                         ? instance.EquippedRunes
                             .Where(r => r != null)
@@ -278,37 +300,115 @@ namespace Game.Data.Equipment
         /// <summary>
         /// 저장 데이터에서 장비 목록을 역직렬화하여 인벤토리를 복원한다.
         /// <para>
-        /// ⚠ 현재 미구현 (TODO Phase 14): EquipmentItemData SO 레지스트리가 도입되기 전까지
-        /// 본문은 no-op 입니다. 저장 데이터는 기록되지만 로드 시 인벤토리가 복원되지 않습니다.
-        /// Unity Console 에서 이 경고를 확인하면 정상 동작 범위입니다.
+        /// §7-3 흐름: 인벤토리 초기화 → 각 엔트리를 DB 조회 → EquipmentInstance 재구성 → 추가.
+        /// SO 에셋 누락 시 해당 엔트리만 스킵 (나머지 복원 계속). 크래시 없음.
         /// </para>
         /// </summary>
         public void DeserializeOwnedEquipment(List<EquipmentSaveEntry> entries)
         {
+            // 1. 기존 상태 초기화 (빈 세이브 로드 포함 안전)
+            _equipmentInventory.Clear();
+
+            // 2. null/empty 방어
             if (entries == null) return;
-            // TODO(Phase 14): EquipmentItemData 레지스트리 도입 후 복원 구현.
-            // 현재는 SO 레지스트리가 없으므로 dataAssetId 로 EquipmentItemData 를 복원할 수 없다.
-            // 장비 인벤토리는 빈 상태로 유지된다.
-            if (entries.Count > 0)
-                Debug.LogWarning($"[EquipmentManager] DeserializeOwnedEquipment: {entries.Count}개 항목이 있지만 " +
-                                 "SO 레지스트리 미구현으로 복원 불가 (Phase 14 에서 처리 예정). " +
-                                 "장비 인벤토리는 비어있는 상태로 시작됩니다.");
+
+            int restored = 0;
+
+            // 3. 각 엔트리 복원
+            foreach (var entry in entries)
+            {
+                if (entry == null) continue;
+
+                // DB 조회
+                var foundData = _database?.FindEquipment(entry.dataAssetId);
+                if (foundData == null)
+                {
+                    Debug.LogWarning($"[EquipmentManager] Unknown equipment '{entry.dataAssetId}' — skipped.");
+                    continue;
+                }
+
+                // EquipmentInstance 재구성 (내부 복원 생성자 사용 — §7-4: 저장값 Grade 우선)
+                var grade    = (EquipmentGrade)entry.grade;
+                var instance = new EquipmentInstance(entry.instanceId, foundData, grade);
+
+                // 룬 소켓 복원
+                if (entry.runeAssetIds != null)
+                {
+                    int socketCount = instance.EquippedRunes.Length;
+                    int loopCount   = Math.Min(entry.runeAssetIds.Count, socketCount);
+                    for (int i = 0; i < loopCount; i++)
+                    {
+                        string runeId = entry.runeAssetIds[i];
+                        if (string.IsNullOrEmpty(runeId)) continue;
+
+                        var rune = _database?.FindRune(runeId);
+                        if (rune == null)
+                        {
+                            Debug.LogWarning($"[EquipmentManager] Unknown rune '{runeId}' on equipment '{entry.dataAssetId}' — socket cleared.");
+                            // 해당 소켓은 null (장비 자체는 유지)
+                        }
+                        else
+                        {
+                            instance.EquipRune(i, rune);
+                        }
+                    }
+                }
+
+                _equipmentInventory.Add(instance);
+                restored++;
+            }
+
+            // 4. 복원 결과 로그
+            Debug.Log($"[EquipmentManager] Restored {restored}/{entries.Count} equipment items.");
         }
 
         /// <summary>
         /// 저장 데이터에서 장착 상태를 역직렬화하여 캐릭터 세트를 복원한다.
         /// <para>
-        /// ⚠ 현재 미구현 (TODO Phase 14): DeserializeOwnedEquipment 와 동일한 이유로 no-op.
-        /// 인스턴스 ID 로 EquipmentInstance 를 찾으려면 인벤토리가 먼저 복원되어야 한다.
+        /// §7-5 흐름: 세트 초기화 → 캐릭터 존재 확인 → instanceId 로 인벤토리 조회 → EquipInternal 로 조용히 배치.
+        /// OnEquipped 이벤트는 발행하지 않음 (MetaStatProvider 가 Init 시점 1회 BuildContainer 호출).
         /// </para>
         /// </summary>
         public void DeserializeEquippedMap(Dictionary<string, List<string>> map)
         {
+            // 1. 모든 CharacterEquipmentSet 초기화 (빈 슬롯으로)
+            foreach (var set in _characterSets.Values)
+            {
+                foreach (EquipmentSlotType slot in System.Enum.GetValues(typeof(EquipmentSlotType)))
+                    set.Unequip(slot);
+            }
+
+            // 2. null/empty 방어
             if (map == null || map.Count == 0) return;
-            // TODO(Phase 14): DeserializeOwnedEquipment 완성 후 instanceId 로 인스턴스를 조회하여
-            // _characterSets 에 재구성한다.
-            Debug.LogWarning("[EquipmentManager] DeserializeEquippedMap: 장착 상태 복원 미구현 (Phase 14 예정). " +
-                             "모든 캐릭터 장착 슬롯이 비어있는 상태로 시작됩니다.");
+
+            // 3. 각 (characterId, instanceIdList) 처리
+            foreach (var (characterId, instanceIdList) in map)
+            {
+                // 미구현 캐릭터 스킵
+                if (!_characterSets.ContainsKey(characterId))
+                {
+                    Debug.LogWarning($"[EquipmentManager] Character '{characterId}' not implemented — equipped map entry skipped.");
+                    continue;
+                }
+
+                if (instanceIdList == null) continue;
+
+                var targetSet = _characterSets[characterId];
+                foreach (var instanceId in instanceIdList)
+                {
+                    if (string.IsNullOrEmpty(instanceId)) continue;
+
+                    var found = _equipmentInventory.FirstOrDefault(i => i.InstanceId == instanceId);
+                    if (found == null)
+                    {
+                        Debug.LogWarning($"[EquipmentManager] Equipped instance '{instanceId}' not in owned inventory — slot skipped.");
+                        continue;
+                    }
+
+                    // 이벤트 발행 없이 조용히 슬롯 배치 (EquipInternal)
+                    EquipInternal(targetSet, found);
+                }
+            }
         }
     }
 }

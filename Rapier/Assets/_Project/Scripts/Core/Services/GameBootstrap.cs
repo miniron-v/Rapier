@@ -38,11 +38,18 @@ namespace Game.Core.Services
 
             try
             {
+                // 1-a. (Phase 14 신규) EquipmentDatabase SO 로드.
+                //      Resources/EquipmentDatabase.asset 에 위치해야 한다.
+                //      실패 시 경고 후 null 로 진행 — EquipmentManager 가 빈 DB 로 동작.
+                var db = Resources.Load<EquipmentDatabase>("EquipmentDatabase");
+                if (db == null)
+                    Debug.LogWarning("[GameBootstrap] EquipmentDatabase not found in Resources — Deserialize will skip all entries.");
+
                 // 2. EquipmentManager 생성 및 ServiceLocator 등록.
                 //    saveProvider 파라미터는 구(legacy) IEquipmentSaveProvider 인터페이스용이며,
                 //    Phase 13-B 배선은 SaveManager.SetEquipmentProvider(em) 을 통해 수행된다.
                 var em = new EquipmentManager();
-                em.Init(saveProvider: null);
+                em.Init(saveProvider: null, database: db);
 
                 // 3. SaveManager 생성 및 장비 프로바이더 배선
                 var sm = new SaveManager();

@@ -16,12 +16,20 @@ namespace Game.Data.Equipment
         // 룬 슬롯은 SO 등급에서 결정된 개수만큼 허용. null = 비어있음.
         [NonSerialized] private RuneItemData[] _equippedRunes;
 
+        // 런타임 Grade 오버라이드 (저장값 우선 — §7-4). null 이면 SO 원본값 사용.
+        [NonSerialized] private EquipmentGrade? _runtimeGrade;
+
         /// <summary>인스턴스 고유 ID</summary>
         public string InstanceId => _instanceId;
         /// <summary>장비 SO 정의</summary>
         public EquipmentItemData Data => _data;
         /// <summary>현재 장착된 룬 배열 (인덱스 = 소켓 번호)</summary>
         public RuneItemData[] EquippedRunes => _equippedRunes;
+        /// <summary>
+        /// 런타임 등급. 저장된 값이 있으면 저장값을, 없으면 SO 원본 Grade 를 반환한다.
+        /// 강화/재감정 시스템에서 저장값이 SO 원본과 달라질 수 있다 (§7-4).
+        /// </summary>
+        public EquipmentGrade Grade => _runtimeGrade ?? (_data != null ? _data.Grade : EquipmentGrade.Normal);
 
         /// <summary>새 장비 인스턴스를 생성한다.</summary>
         public EquipmentInstance(EquipmentItemData data)
@@ -29,6 +37,20 @@ namespace Game.Data.Equipment
             _instanceId    = Guid.NewGuid().ToString();
             _data          = data;
             _equippedRunes = new RuneItemData[data.RuneSocketCount];
+        }
+
+        /// <summary>
+        /// 저장 데이터로부터 장비 인스턴스를 복원한다 (Phase 14 Deserialize 전용).
+        /// instanceId 와 grade 를 저장값으로 세팅하고, 룬 배열은 소켓 수만큼 초기화한다.
+        /// </summary>
+        internal EquipmentInstance(string instanceId, EquipmentItemData data, EquipmentGrade runtimeGrade)
+        {
+            _instanceId    = instanceId;
+            _data          = data;
+            _runtimeGrade  = runtimeGrade;
+            // 소켓 수는 저장값 Grade 기준으로 결정 (SO 원본 Grade 아님)
+            int socketCount = EquipmentGradeHelper.GetRuneSocketCount(runtimeGrade);
+            _equippedRunes  = new RuneItemData[socketCount];
         }
 
         /// <summary>지정 소켓에 룬을 장착한다. 범위 초과 시 false 반환.</summary>
