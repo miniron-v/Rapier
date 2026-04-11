@@ -55,14 +55,20 @@ namespace Game.Characters
         public event Action OnPlayerDeath;
 
         // ── 슬로우모션 설정 ───────────────────────────────────────
-        [Header("Just Dodge Slow Motion")]
-        [SerializeField] private AnimationCurve slowCurve = new AnimationCurve(
+        [Header("Just Dodge Slow Motion — Hold (감속·유지)")]
+        [SerializeField] private AnimationCurve holdCurve = new AnimationCurve(
             new Keyframe(0.00f, 1.00f),
-            new Keyframe(0.50f, 0.15f),
-            new Keyframe(0.75f, 0.05f),
-            new Keyframe(1.00f, 1.00f)
+            new Keyframe(0.06f, 0.10f),  // 약 0.15초 이내에 0.1배속으로 급강하
+            new Keyframe(1.00f, 0.10f)   // 이후 끝까지 0.1배속 유지
         );
-        [SerializeField] private float slowDuration = 3f;
+        [SerializeField] private float holdDuration = 2.4f;
+
+        [Header("Just Dodge Slow Motion — Exit (복귀)")]
+        [SerializeField] private AnimationCurve exitCurve = new AnimationCurve(
+            new Keyframe(0.00f, 0.10f),
+            new Keyframe(1.00f, 1.00f)   // 0.1배속에서 정상으로 복귀
+        );
+        [SerializeField] private float exitDuration = 0.6f;
 
         // ── 회피 대시 Ease 커브 ───────────────────────────────────
         [Header("Dodge Dash Ease (x=진행비율 0→1, y=속도배율 0→1)")]
@@ -372,7 +378,7 @@ namespace Game.Characters
             float elapsed = 0f;
             while (elapsed < cooldown)
             {
-                elapsed             += Time.unscaledDeltaTime;
+                elapsed             += Time.deltaTime;
                 _dodgeCooldownTimer  = Mathf.Max(0f, cooldown - elapsed);
                 Model.SetDodgeCooldownRatio(Mathf.Clamp01(elapsed / cooldown));
                 yield return null;
@@ -473,7 +479,7 @@ namespace Game.Characters
             if (_slowCoroutine != null) StopCoroutine(_slowCoroutine);
             _slowCoroutine = StartCoroutine(SlowMotionRoutine());
 
-            ServiceLocator.Get<CameraFollow>()?.TriggerZoomPunch();
+            ServiceLocator.Get<CameraFollow>()?.TriggerZoomIn();
             OnJustDodge(direction);
         }
 
@@ -485,11 +491,24 @@ namespace Game.Characters
             _isSignatureSkillActive = false;
             _isChargeSkillActive    = false;
 
-            View.PlayDeath();
+            // View.PlayDeath()가 gameObject.SetActive(false)를 호출하면 코루틴이 강제 중단된다.
+            // AttackRoutine이 중단되면 _isAttacking·인디케이터가 정리되지 않아 좀비 상태가 남으므로,
+            // SetActive(false) 전에 먼저 정리한다.
+            _isAttacking = false;
+            HideAttackRangeIndicator();
+            OnBeforeDeath();          // 자식이 자신의 인디케이터/상태를 정리하는 훅
+
             StopSlowMotion();
+            View.PlayDeath();
             OnDisable();
             OnPlayerDeath?.Invoke();
         }
+
+        /// <summary>
+        /// 사망 처리 직전 훅. View.PlayDeath()(→ SetActive(false)) 호출 전에 실행된다.
+        /// 자식은 override 해서 자신의 인디케이터·코루틴·상태를 정리한다.
+        /// </summary>
+        protected virtual void OnBeforeDeath() { }
 
         /// <summary>
         /// 이어하기 전용 부활. HP 복구 + View 재활성화 + 제스처 재구독.
@@ -525,13 +544,41 @@ namespace Game.Characters
         // ── 슬로우모션 ────────────────────────────────────────────
         private IEnumerator SlowMotionRoutine()
         {
+            // Phase 1 (Hold): holdCurve를 끝까지 재생한다.
+            // 스킬 발동 여부와 무관하게 항상 완주 — 커브를 끊지 않는다.
             float elapsed = 0f;
-            while (elapsed < slowDuration)
+            while (elapsed < holdDuration)
             {
                 elapsed += Time.unscaledDeltaTime;
-                Time.timeScale = slowCurve.Evaluate(Mathf.Clamp01(elapsed / slowDuration));
+                Time.timeScale = holdCurve.Evaluate(Mathf.Clamp01(elapsed / holdDuration));
                 yield return null;
             }
+
+            // Bridge: holdCurve 완료 시점에 스킬이 아직 진행 중이면
+            // holdCurve 끝 배속(0.10x)을 유지하며 스킬 종료를 대기한다.
+            if (_isSignatureSkillActive)
+            {
+                float holdEndScale = holdCurve.Evaluate(1f);
+                while (_isSignatureSkillActive)
+                {
+                    Time.timeScale = holdEndScale;
+                    yield return null;
+                }
+            }
+
+            // Phase 2 (Exit): 스킬 발동권을 즉시 만료시키고 exitCurve로 복귀한다.
+            // 이 시점 이후에는 Hold/Release로 고유 스킬을 발동할 수 없다.
+            Model?.SetJustDodgeReady(false);
+            ServiceLocator.Get<CameraFollow>()?.TriggerZoomReturn(exitDuration);
+
+            elapsed = 0f;
+            while (elapsed < exitDuration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                Time.timeScale = exitCurve.Evaluate(Mathf.Clamp01(elapsed / exitDuration));
+                yield return null;
+            }
+
             Time.timeScale = 1f;
             _slowCoroutine = null;
             OnSlowMotionEnd();
@@ -551,7 +598,8 @@ namespace Game.Characters
         /// </summary>
         protected virtual void OnSlowMotionEnd()
         {
-            Model?.SetJustDodgeReady(false);
+            // SetJustDodgeReady(false)는 Exit 구간 진입 시점(SlowMotionRoutine Phase 2)에서
+            // 이미 호출되었으므로 여기서는 생략한다.
 
             _isJustDodgeSlowActive = false;
 

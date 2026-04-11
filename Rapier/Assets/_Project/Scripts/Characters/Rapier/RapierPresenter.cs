@@ -143,6 +143,14 @@ namespace Game.Characters
                 _skillTarget = null;
         }
 
+        // ── 사망 전처리 훅 ───────────────────────────────────────
+        protected override void OnBeforeDeath()
+        {
+            if (_skillRangeIndicator != null)
+                _skillRangeIndicator.SetActive(false);
+            _skillTarget = null;
+        }
+
         // ── 스킬 발동 훅 ──────────────────────────────────────────
         /// <summary>
         /// Hold → Release 시 Base 에서 호출된다.

@@ -7,9 +7,10 @@ namespace Game.Core
     /// 카메라가 대상 Transform을 부드럽게 추적한다.
     /// 2D 전용 — Z축은 카메라 원래 값을 유지한다.
     ///
-    /// [줌 펀치]
-    ///   TriggerZoomPunch() 호출 시 orthographicSize를 zoomCurve에 따라 변화.
-    ///   unscaledTime 기반 — 슬로우모션 중에도 정상 동작.
+    /// [줌 연출 — Just Dodge 2단계]
+    ///   TriggerZoomIn()     : 저스트 회피 발동 시 호출. 줌인 후 값을 유지한다.
+    ///   TriggerZoomReturn() : 슬로우 Exit 시작 시 호출. 현재 줌에서 기본 크기로 복귀한다.
+    ///   두 메서드 모두 unscaledDeltaTime 기반 — 슬로우모션 중에도 정상 동작.
     /// </summary>
     public class CameraFollow : MonoBehaviour
     {
@@ -23,16 +24,19 @@ namespace Game.Core
         [Tooltip("카메라 오프셋 (월드 좌표 기준)")]
         [SerializeField] private Vector2 _offset = Vector2.zero;
 
-        [Header("줌 펀치 (Just Dodge)")]
-        [Tooltip("x=시간 정규화(0~1), y=orthographicSize 배율(1=기본, 0.85=15% 줌인)")]
-        [SerializeField] private AnimationCurve zoomCurve = new AnimationCurve(
+        [Header("줌 — 진입 (Just Dodge 발동 시)")]
+        [Tooltip("x=진행 비율(0→1), y=orthographicSize 배율(1=기본, 0.85=15% 줌인). 끝 값에서 유지된다.")]
+        [SerializeField] private AnimationCurve zoomInCurve = new AnimationCurve(
             new Keyframe(0.00f, 1.00f),   // 시작: 기본 크기
-            new Keyframe(0.15f, 0.85f),   // 빠르게 줌인
-            new Keyframe(0.75f, 0.88f),   // 줌 유지
-            new Keyframe(1.00f, 1.00f)    // 서서히 복귀
+            new Keyframe(1.00f, 0.85f)    // 줌인 완료
         );
-        [Tooltip("줌 펀치 지속 시간 (실제 시간, 초). slowDuration과 맞추는 것을 권장.")]
-        [SerializeField] private float zoomDuration = 3f;
+        [Tooltip("줌인 지속 시간 (실제 시간, 초). 이후 끝 배율을 유지한다.")]
+        [SerializeField] private float zoomInDuration = 0.25f;
+
+        [Header("줌 — 복귀 (슬로우 Exit 시작 시)")]
+        [Tooltip("x=진행 비율(0→1). 현재 크기에서 기본 크기로 보간하는 Ease 커브.")]
+        [SerializeField] private AnimationCurve zoomReturnEase = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
+        // duration은 런타임에 TriggerZoomReturn(duration) 으로 전달 — exitDuration과 자동 동기화
 
         // ── 내부 상태 ─────────────────────────────────────────────
         private Camera    _cam;
@@ -71,23 +75,56 @@ namespace Game.Core
         /// <summary>런타임에서 추적 대상을 교체한다.</summary>
         public void SetTarget(Transform target) => _target = target;
 
-        /// <summary>Just Dodge 발동 시 줌 펀치 연출을 시작한다.</summary>
-        public void TriggerZoomPunch()
+        /// <summary>
+        /// Just Dodge 발동 시 호출. zoomInCurve에 따라 줌인하고 끝 배율을 유지한다.
+        /// 슬로우 Exit 시작 전까지 유지 — TriggerZoomReturn이 복귀를 담당한다.
+        /// </summary>
+        public void TriggerZoomIn()
         {
             if (_cam == null) return;
             if (_zoomCoroutine != null) StopCoroutine(_zoomCoroutine);
-            _zoomCoroutine = StartCoroutine(ZoomPunchRoutine());
+            _zoomCoroutine = StartCoroutine(ZoomInRoutine());
         }
 
-        private IEnumerator ZoomPunchRoutine()
+        /// <summary>
+        /// 슬로우 Exit 구간 시작 시 호출. 현재 orthographicSize에서 기본 크기로 복귀한다.
+        /// duration은 CharacterPresenterBase의 exitDuration과 일치하도록 전달한다.
+        /// </summary>
+        public void TriggerZoomReturn(float duration)
         {
-            float elapsed = 0f;
+            if (_cam == null) return;
+            if (_zoomCoroutine != null) StopCoroutine(_zoomCoroutine);
+            _zoomCoroutine = StartCoroutine(ZoomReturnRoutine(duration));
+        }
 
-            while (elapsed < zoomDuration)
+        private IEnumerator ZoomInRoutine()
+        {
+            float elapsed    = 0f;
+            float endSize    = _baseOrthoSize * zoomInCurve.Evaluate(1f);
+
+            while (elapsed < zoomInDuration)
             {
                 elapsed += Time.unscaledDeltaTime;
-                float t = Mathf.Clamp01(elapsed / zoomDuration);
-                _cam.orthographicSize = _baseOrthoSize * zoomCurve.Evaluate(t);
+                float t = Mathf.Clamp01(elapsed / zoomInDuration);
+                _cam.orthographicSize = _baseOrthoSize * zoomInCurve.Evaluate(t);
+                yield return null;
+            }
+
+            // 줌인 완료 후 슬로우가 끝날 때까지 값을 유지한다.
+            _cam.orthographicSize = endSize;
+            _zoomCoroutine = null;
+        }
+
+        private IEnumerator ZoomReturnRoutine(float duration)
+        {
+            float startSize = _cam.orthographicSize;
+            float elapsed   = 0f;
+
+            while (elapsed < duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / duration);
+                _cam.orthographicSize = Mathf.Lerp(startSize, _baseOrthoSize, zoomReturnEase.Evaluate(t));
                 yield return null;
             }
 
