@@ -241,7 +241,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Game.Enemies.GravekeeperBossPresenter
   _minionPrefab: {fileID: 6120333069583485520, guid: b5344eff9523f4c48bc1407e0c2d8db5, type: 3}
-  _minionData: {fileID: 11400000, guid: a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6, type: 2}
+  _minionData: {fileID: 11400000, guid: ca4f9015dce0e174bb8e8bc4df76b9b0, type: 2}
 --- !u!1 &3435659265497099014
 GameObject:
   m_ObjectHideFlags: 0
