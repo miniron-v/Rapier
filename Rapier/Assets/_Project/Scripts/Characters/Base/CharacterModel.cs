@@ -29,13 +29,31 @@ namespace Game.Characters
         [System.NonSerialized] private float _finalAttackPower;
         /// <summary>MetaStat + RunStat 반영 최종 이동속도.</summary>
         [System.NonSerialized] private float _finalMoveSpeed;
+        /// <summary>
+        /// 회피 쿨다운 최종값 = StatData.dodgeCooldown × meta.DodgeCdrMultiplier × run.DodgeCdrMultiplier.
+        /// STATS.md §3-2 소스별 독립 곱연산.
+        /// </summary>
+        [System.NonSerialized] private float _finalDodgeCooldown;
+        /// <summary>
+        /// 차지 시간 최종값 = StatData.chargeRequiredTime × meta.ChargeTimeMultiplier × run.ChargeTimeMultiplier.
+        /// STATS.md §3-2 소스별 독립 곱연산.
+        /// </summary>
+        [System.NonSerialized] private float _finalChargeRequiredTime;
+        /// <summary>스킬 데미지 배수 = 1 + meta.SkillDamagePercent (가산형 누적). RunStat 미포함.</summary>
+        [System.NonSerialized] private float _skillDamageMultiplier;
 
         /// <summary>최종 최대 HP (MetaStat + RunStat 포함).</summary>
-        public float MaxHp          => _finalMaxHp;
+        public float MaxHp                  => _finalMaxHp;
         /// <summary>최종 공격력 (MetaStat + RunStat 포함).</summary>
-        public float AttackPower    => _finalAttackPower;
+        public float AttackPower            => _finalAttackPower;
         /// <summary>최종 이동속도 (MetaStat + RunStat 포함).</summary>
-        public float MoveSpeed      => _finalMoveSpeed;
+        public float MoveSpeed              => _finalMoveSpeed;
+        /// <summary>최종 회피 쿨다운 (감소율 적용 후). STATS.md §3-2.</summary>
+        public float DodgeCooldown          => _finalDodgeCooldown;
+        /// <summary>최종 차지 요구 시간 (감소율 적용 후). STATS.md §3-2.</summary>
+        public float ChargeRequiredTime     => _finalChargeRequiredTime;
+        /// <summary>스킬 데미지 배수 (1.0 = 보너스 없음). 차지 스킬 데미지 계산 시 곱한다.</summary>
+        public float SkillDamageMultiplier  => _skillDamageMultiplier;
 
         // ── 런타임 상태 ────────────────────────────────────────────
         public float CurrentHp          { get; private set; }
@@ -116,14 +134,15 @@ namespace Game.Characters
         }
 
         /// <summary>
-        /// STATS.md §3 계산식으로 _finalMaxHp / _finalAttackPower / _finalMoveSpeed 를 갱신한다.
+        /// STATS.md §3 계산식으로 모든 final 필드를 갱신한다.
         /// HP 처리 없이 순수 계산만 수행. 생성자 및 RecomputeFinalStats 에서 호출.
         /// RunStat 깡합은 현재 프로토타입에서 0 이므로 생략 (STATS.md §3 참조).
         /// </summary>
         private void ComputeFinalsOnly()
         {
-            // 계산식: metaFinal = (base + metaFlat) × (1 + metaPercent) [MetaStatContainer.ComputeXxx 구현]
-            //         final = metaFinal × (1 + runPercent)
+            // 가산형 §3-1
+            // 계산식: metaFinal = (base + metaFlat) × (1 + metaPercent)
+            //         final     = metaFinal × (1 + runPercent)
             float metaHp  = _meta?.ComputeHp(StatData.maxHp)       ?? StatData.maxHp;
             float metaAtk = _meta?.ComputeAtk(StatData.attackPower) ?? StatData.attackPower;
             float metaMs  = _meta?.ComputeMs(StatData.moveSpeed)    ?? StatData.moveSpeed;
@@ -131,6 +150,19 @@ namespace Game.Characters
             _finalMaxHp       = metaHp  * (1f + (_runStat?.HpPercent  ?? 0f));
             _finalAttackPower = metaAtk * (1f + (_runStat?.AtkPercent ?? 0f));
             _finalMoveSpeed   = metaMs  * (1f + (_runStat?.MsPercent  ?? 0f));
+
+            // 감소율형 §3-2 — base × Π_i(1 − metaP_i) × Π_j(1 − runP_j)
+            // MetaStatContainer / RunStatContainer 가 각각 multiplier 를 누적 보관한다.
+            _finalDodgeCooldown = StatData.dodgeCooldown
+                * (_meta?.DodgeCdrMultiplier    ?? 1f)
+                * (_runStat?.DodgeCdrMultiplier ?? 1f);
+
+            _finalChargeRequiredTime = StatData.chargeRequiredTime
+                * (_meta?.ChargeTimeMultiplier    ?? 1f)
+                * (_runStat?.ChargeTimeMultiplier ?? 1f);
+
+            // 스킬 데미지 배수 (가산형 누적, RunStat 미포함 — STATS.md §2 표)
+            _skillDamageMultiplier = 1f + (_meta?.SkillDamagePercent ?? 0f);
         }
 
         // ── HP ────────────────────────────────────────────────────

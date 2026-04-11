@@ -8,17 +8,21 @@ namespace Game.Data.RunStats
     /// 런 중 누적되는 일회성 스탯 컨테이너.
     /// 메모리 only — 직렬화/저장 금지 (STATS.md §1, §4).
     /// 스테이지 클리어 또는 로비 복귀 시 Reset()으로 소멸.
+    /// 감소율형(DodgeCDR / ChargeTimeReduction)은 소스별 독립 곱연산 (STATS.md §3-2).
     /// </summary>
     public class RunStatContainer
     {
-        // ── 7종 RunStat % 누적 (STATS.md §2, DesignDoc §8-2) ──────
+        // ── 5종 RunStat % 가산형 누적 (STATS.md §2) ────────────────
         [NonSerialized] private float _hpPercent;
         [NonSerialized] private float _atkPercent;
         [NonSerialized] private float _msPercent;
-        [NonSerialized] private float _dodgeCdrPercent;
-        [NonSerialized] private float _chargeTimeReductionPercent;
         [NonSerialized] private float _invincibilityPercent;
         [NonSerialized] private float _critChancePercent;
+
+        // ── 감소율형 — 소스별 독립 곱연산 (STATS.md §3-2) ───────────
+        // 초기값 1f. Apply 시 *= (1 − value), Reset 시 = 1f.
+        [NonSerialized] private float _dodgeCdrMultiplier    = 1f;
+        [NonSerialized] private float _chargeTimeMultiplier  = 1f;
 
         // ── 읽기 전용 프로퍼티 (외부 노출) ──────────────────────────
         /// <summary>최대 HP에 곱할 RunStat % 합 (예: 0.25 = +25%).</summary>
@@ -27,11 +31,20 @@ namespace Game.Data.RunStats
         public float AtkPercent                   => _atkPercent;
         /// <summary>이동속도에 곱할 RunStat % 합.</summary>
         public float MsPercent                    => _msPercent;
-        /// <summary>회피 쿨다운 감소율 합 (양수 = 쿨다운 단축).</summary>
-        public float DodgeCdrPercent              => _dodgeCdrPercent;
-        /// <summary>차지 시간 단축율 합.</summary>
-        public float ChargeTimeReductionPercent   => _chargeTimeReductionPercent;
-        /// <summary>무적 시간 증가율 합.</summary>
+
+        /// <summary>
+        /// 회피 쿨다운 감소 누적 곱 multiplier.
+        /// 기본값 1f. 0.8 이면 20% 감소. CharacterModel 에서 base × multiplier 로 적용.
+        /// </summary>
+        public float DodgeCdrMultiplier           => _dodgeCdrMultiplier;
+
+        /// <summary>
+        /// 차지 시간 감소 누적 곱 multiplier.
+        /// 기본값 1f. 0.512 이면 20% 감소 3회 누적 상태. CharacterModel 에서 base × multiplier 로 적용.
+        /// </summary>
+        public float ChargeTimeMultiplier         => _chargeTimeMultiplier;
+
+        /// <summary>무적 시간 증가율 합 (양수 = 증가).</summary>
         public float InvincibilityPercent         => _invincibilityPercent;
         /// <summary>크리티컬 확률 합 (0~1 범위, 합산 후 클램프 권장).</summary>
         public float CritChancePercent            => _critChancePercent;
@@ -41,21 +54,22 @@ namespace Game.Data.RunStats
 
         /// <summary>
         /// 선택된 RunStat 종류에 따라 해당 수치를 누적한다.
+        /// 감소율형(DodgeCdrPercent / ChargeTimeReductionPercent)은 곱연산.
         /// </summary>
         public void Apply(RunStatType type, float value)
         {
             switch (type)
             {
-                case RunStatType.HpPercent:                  _hpPercent                   += value; break;
-                case RunStatType.AtkPercent:                 _atkPercent                  += value; break;
-                case RunStatType.MsPercent:                  _msPercent                   += value; break;
-                case RunStatType.DodgeCdrPercent:            _dodgeCdrPercent             += value; break;
-                case RunStatType.ChargeTimeReductionPercent: _chargeTimeReductionPercent  += value; break;
-                case RunStatType.InvincibilityPercent:       _invincibilityPercent        += value; break;
-                case RunStatType.CritChancePercent:          _critChancePercent           += value; break;
+                case RunStatType.HpPercent:                  _hpPercent          += value; break;
+                case RunStatType.AtkPercent:                 _atkPercent         += value; break;
+                case RunStatType.MsPercent:                  _msPercent          += value; break;
+                case RunStatType.DodgeCdrPercent:            _dodgeCdrMultiplier   *= (1f - value); break;
+                case RunStatType.ChargeTimeReductionPercent: _chargeTimeMultiplier *= (1f - value); break;
+                case RunStatType.InvincibilityPercent:       _invincibilityPercent += value; break;
+                case RunStatType.CritChancePercent:          _critChancePercent  += value; break;
             }
             OnStatChanged?.Invoke();
-            Debug.Log($"[RunStatContainer] {type} +{value:P0} 누적. 현재: {GetValue(type):P0}");
+            Debug.Log($"[RunStatContainer] {type} +{value:P0} 누적. 현재: {GetValue(type):F4}");
         }
 
         /// <summary>
@@ -63,19 +77,20 @@ namespace Game.Data.RunStats
         /// </summary>
         public void Reset()
         {
-            _hpPercent                  = 0f;
-            _atkPercent                 = 0f;
-            _msPercent                  = 0f;
-            _dodgeCdrPercent            = 0f;
-            _chargeTimeReductionPercent = 0f;
-            _invincibilityPercent       = 0f;
-            _critChancePercent          = 0f;
+            _hpPercent            = 0f;
+            _atkPercent           = 0f;
+            _msPercent            = 0f;
+            _dodgeCdrMultiplier   = 1f;
+            _chargeTimeMultiplier = 1f;
+            _invincibilityPercent = 0f;
+            _critChancePercent    = 0f;
             OnStatChanged?.Invoke();
             Debug.Log("[RunStatContainer] 모든 RunStat 초기화.");
         }
 
         /// <summary>
         /// 특정 종류의 현재 누적값을 반환한다.
+        /// 감소율형은 multiplier 값을 그대로 반환한다 (1f = 감소 없음, 0.512 = 0.8^3).
         /// </summary>
         public float GetValue(RunStatType type)
         {
@@ -84,8 +99,8 @@ namespace Game.Data.RunStats
                 RunStatType.HpPercent                  => _hpPercent,
                 RunStatType.AtkPercent                 => _atkPercent,
                 RunStatType.MsPercent                  => _msPercent,
-                RunStatType.DodgeCdrPercent            => _dodgeCdrPercent,
-                RunStatType.ChargeTimeReductionPercent => _chargeTimeReductionPercent,
+                RunStatType.DodgeCdrPercent            => _dodgeCdrMultiplier,   // multiplier 값
+                RunStatType.ChargeTimeReductionPercent => _chargeTimeMultiplier, // multiplier 값
                 RunStatType.InvincibilityPercent       => _invincibilityPercent,
                 RunStatType.CritChancePercent          => _critChancePercent,
                 _                                       => 0f,
@@ -94,11 +109,12 @@ namespace Game.Data.RunStats
 
         /// <summary>
         /// 현재 누적 RunStat 전체를 한 줄 문자열로 반환한다. 디버그 전용.
+        /// 감소율형은 multiplier 값을 출력 (1.0 = 감소 없음).
         /// </summary>
         public string GetSummaryLog()
         {
             return $"HP+{_hpPercent:P0} | ATK+{_atkPercent:P0} | MS+{_msPercent:P0} | " +
-                   $"회피CDR+{_dodgeCdrPercent:P0} | 차지시간-{_chargeTimeReductionPercent:P0} | " +
+                   $"회피CDR multiplier={_dodgeCdrMultiplier:F4} | 차지시간 multiplier={_chargeTimeMultiplier:F4} | " +
                    $"무적+{_invincibilityPercent:P0} | 크리+{_critChancePercent:P0}";
         }
 

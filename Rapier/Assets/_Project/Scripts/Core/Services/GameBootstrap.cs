@@ -13,14 +13,14 @@ namespace Game.Core.Services
     /// 동일하게 동작하므로 씬별 수동 배선이 불필요하다.
     /// </para>
     /// <para>
-    /// 배선 순서 (PROGRESSION.md §5 "라이프사이클" 참조):
+    /// 배선 순서 (EQUIPMENT.md §7-6):
     /// 1. 중복 가드 — SaveManager 가 이미 ServiceLocator 에 등록되어 있으면 조기 return.
-    /// 2. EquipmentManager 생성 → Init(saveProvider: em) 으로 자기 자신을 IEquipmentSaveProvider 로 주입.
-    /// 3. SaveManager 생성 → SetEquipmentProvider(em).
-    /// 4. 파일 존재 여부 사전 캡처 (Load 이후엔 판정 불가).
-    /// 5. SaveManager.Load() 호출.
-    /// 6. 파일이 없었으면 즉시 SaveManager.Save() 1회 호출 (최초 save.json 생성).
-    /// 7. ServiceLocator.Register(sm).
+    /// 2. EquipmentDatabase SO 로드.
+    /// 3. EquipmentManager 생성.
+    /// 4. SaveManager 생성 → SetEquipmentProvider(em).
+    /// 5. em.Init(saveManager: sm, database: db) — Equip → TrySave → sm.Save() 체인 연결.
+    /// 6. 파일 존재 여부 사전 캡처 → sm.Load() → 없었으면 sm.Save() 최초 파일 생성.
+    /// 7. ServiceLocator.Register(sm). (em 은 Init 내부에서 등록됨)
     /// </para>
     /// </summary>
     public static class GameBootstrap
@@ -38,31 +38,32 @@ namespace Game.Core.Services
 
             try
             {
-                // 1-a. (Phase 14 신규) EquipmentDatabase SO 로드.
-                //      Resources/EquipmentDatabase.asset 에 위치해야 한다.
-                //      실패 시 경고 후 null 로 진행 — EquipmentManager 가 빈 DB 로 동작.
+                // 2. EquipmentDatabase SO 로드.
+                //    Resources/EquipmentDatabase.asset 에 위치해야 한다.
+                //    실패 시 경고 후 null 로 진행 — EquipmentManager 가 빈 DB 로 동작.
                 var db = Resources.Load<EquipmentDatabase>("EquipmentDatabase");
                 if (db == null)
                     Debug.LogWarning("[GameBootstrap] EquipmentDatabase not found in Resources — Deserialize will skip all entries.");
 
-                // 2. EquipmentManager 생성 및 ServiceLocator 등록.
-                //    saveProvider 파라미터는 구(legacy) IEquipmentSaveProvider 인터페이스용이며,
-                //    Phase 13-B 배선은 SaveManager.SetEquipmentProvider(em) 을 통해 수행된다.
+                // 3. EquipmentManager 생성 (Init 은 sm 준비 후 호출)
                 var em = new EquipmentManager();
-                em.Init(saveProvider: null, database: db);
 
-                // 3. SaveManager 생성 및 장비 프로바이더 배선
+                // 4. SaveManager 생성 및 장비 프로바이더 배선
                 var sm = new SaveManager();
                 sm.SetEquipmentProvider(em);
 
-                // 4. Load 전에 파일 존재 여부를 캡처 (Load 이후엔 파일이 생성되어 판정 불가)
+                // 5. em.Init — sm 주입 후 호출해야 Equip → TrySave → sm.Save() 체인이 즉시 유효.
+                //    Init 내부에서 ServiceLocator.Register(em) 수행.
+                em.Init(saveManager: sm, database: db);
+
+                // 6. Load 전에 파일 존재 여부를 캡처 (Load 이후엔 파일이 생성되어 판정 불가)
                 string savePath = Path.Combine(Application.persistentDataPath, "save.json");
                 bool fileExisted = File.Exists(savePath);
 
-                // 5. Load — 파일 없으면 defaults, 있으면 역직렬화 + 마이그레이션
+                // Load — 파일 없으면 defaults, 있으면 역직렬화 + 마이그레이션
                 sm.Load();
 
-                // 6. 최초 실행: save.json 이 없었으면 즉시 1회 저장하여 파일 생성
+                // 최초 실행: save.json 이 없었으면 즉시 1회 저장하여 파일 생성
                 if (!fileExisted)
                 {
                     sm.Save();

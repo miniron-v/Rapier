@@ -9,8 +9,8 @@ namespace Game.Data.Equipment
 {
     /// <summary>
     /// 장착/해제/룬 서비스. 인벤토리 및 캐릭터별 장착 세트를 관리한다.
-    /// Phase 13-B: Init() 시 ServiceLocator 에 등록하여 씬 간 공유.
-    /// Dispose() 시 ServiceLocator 에서 해제.
+    /// Phase 15-A: Init(saveManager, database) 로 SaveManager 직접 배선.
+    /// Equip/Unequip/EquipRune/UnequipRune 내부에서 TrySave → SaveManager.Save() 체인.
     /// IEquipmentSaveProvider (Game.Data.Save) 를 직접 구현하여 SaveManager 에 제공한다.
     /// </summary>
     public class EquipmentManager : Game.Data.Save.IEquipmentSaveProvider
@@ -47,8 +47,8 @@ namespace Game.Data.Equipment
         // 캐릭터 ID → 장착 세트
         private readonly Dictionary<string, CharacterEquipmentSet> _characterSets = new();
 
-        // B3 저장 프로바이더 (null이면 저장 스킵). Legacy Game.Data.Equipment.IEquipmentSaveProvider.
-        private Game.Data.Equipment.IEquipmentSaveProvider _saveProvider;
+        // SaveManager 주입 필드 (null이면 저장 스킵).
+        private Game.Data.Save.SaveManager _saveManager;
 
         // Phase 14: SO 레지스트리 (Deserialize 에서 assetId → SO 조회)
         private EquipmentDatabase _database;
@@ -56,24 +56,24 @@ namespace Game.Data.Equipment
         // Phase 14: 현재 프로젝트에 구현된 캐릭터 ID 화이트리스트.
         // equippedMap 복원 시 이 집합에 없는 키는 "미구현" 으로 판정되어 스킵된다 (§7-5 방어 로직).
         // 향후 Warrior/Assassin/Ranger 추가 시 여기에 등록할 것.
-        // 대소문자 무시: SaveData.lastCharacterId="rapier" vs LobbyHudSetup="Rapier" 혼재 대응.
+        // PascalCase 리터럴 정책으로 통일 — OrdinalIgnoreCase 비교자 불필요.
         private static readonly HashSet<string> _implementedCharacters
-            = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Rapier" };
+            = new HashSet<string> { "Rapier" };
 
         // ── 초기화 ───────────────────────────────────────────────────────────
 
         /// <summary>
-        /// 저장 프로바이더와 SO 레지스트리를 주입하고 ServiceLocator 에 자신을 등록한다.
+        /// SaveManager 와 SO 레지스트리를 주입하고 ServiceLocator 에 자신을 등록한다.
         /// 씬 간 EquipmentManager 인스턴스를 공유하려면 반드시 이 메서드를 호출한다.
         /// <para>
-        /// <paramref name="saveProvider"/> 는 legacy 파라미터 (현재 미사용, null 권장).
+        /// <paramref name="saveManager"/> 는 Equip/Unequip 시 TrySave → Save() 체인에 사용된다.
         /// <paramref name="database"/> 가 null 이면 Deserialize 단계에서 모든 항목이 스킵된다 (경고만, 예외 없음).
         /// </para>
         /// </summary>
-        public void Init(Game.Data.Equipment.IEquipmentSaveProvider saveProvider = null, EquipmentDatabase database = null)
+        public void Init(Game.Data.Save.SaveManager saveManager = null, EquipmentDatabase database = null)
         {
-            _saveProvider = saveProvider;
-            _database     = database;
+            _saveManager = saveManager;
+            _database    = database;
 
             if (_database == null)
                 Debug.LogWarning("[EquipmentManager] EquipmentDatabase is null — all deserialize will skip.");
@@ -260,10 +260,7 @@ namespace Game.Data.Equipment
 
         private void TrySave()
         {
-            if (_saveProvider == null) return;
-            _saveProvider.SaveInventory(_equipmentInventory, _runeInventory);
-            foreach (var set in _characterSets.Values)
-                _saveProvider.SaveCharacterEquipment(set);
+            _saveManager?.Save();
         }
 
         // ── IEquipmentSaveProvider (Game.Data.Save) 구현 ────────────────────

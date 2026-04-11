@@ -27,7 +27,7 @@ namespace Game.Data.Save
         public long   schemaCreatedAt = 0;
 
         // ── 캐릭터 ─────────────────────────────────────────────────
-        public string             lastCharacterId  = "rapier";
+        public string             lastCharacterId  = "Rapier";
         public List<CharacterSaveEntry> characters = new();
 
         // ── 장비 ───────────────────────────────────────────────────

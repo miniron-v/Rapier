@@ -4,10 +4,10 @@ using Game.Data.Equipment;
 namespace Game.Data.MetaStats
 {
     /// <summary>
-    /// MetaStat 깡합 + % 합 관리 컨테이너.
-    /// §6-3 계산식:
-    ///   최종 = (기본값 + MetaStat 깡합) × (1 + MetaStat % 합)
-    ///   (RunStat 적용은 12-D 영역)
+    /// MetaStat 깡합 + % 합 + 감소율 곱셈 누적 컨테이너.
+    /// STATS.md §3 계산식:
+    ///   가산형 최종 = (기본값 + MetaStat 깡합) × (1 + MetaStat % 합)
+    ///   감소율형 최종 = 기본값 × Π_i(1 − metaP_i)  (소스별 독립 곱연산)
     /// MonoBehaviour 미사용. Presenter가 생성 후 CharacterModel에 주입.
     /// </summary>
     public class MetaStatContainer
@@ -17,22 +17,24 @@ namespace Game.Data.MetaStats
         private float _flatAtk;
         private float _flatMs;
 
-        // ── %(Percent) 누적 ─────────────────────────────────────────
+        // ── %(Percent) 가산형 누적 ──────────────────────────────────
         private float _percentHp;
         private float _percentAtk;
         private float _percentMs;
-        private float _percentDodgeCdr;
-        private float _percentChargeTimeRed;
         private float _percentInvincBonus;
         private float _percentCritChance;
         private float _percentCritDamage;
-        private float _percentCdr;
         private float _percentSkillDamage;
+
+        // ── 감소율형 — 소스별 독립 곱연산 (STATS.md §3-2) ───────────
+        // 초기값 1f. Apply 시 *= (1 − p), Remove 시 /= (1 − p).
+        private float _dodgeCdrMultiplier     = 1f;
+        private float _chargeTimeMultiplier   = 1f;
 
         /// <summary>MetaStat 변경 시 발행. 구독자(HUD 등)는 재계산 후 갱신.</summary>
         public event Action OnStatChanged;
 
-        // ── 최종 능력치 계산 (§6-3) ────────────────────────────────
+        // ── 최종 능력치 계산 (§3-1) ────────────────────────────────
 
         /// <summary>최종 HP = (기본값 + MetaStat 깡합) × (1 + MetaStat % 합)</summary>
         public float ComputeHp(float baseHp)
@@ -46,18 +48,24 @@ namespace Game.Data.MetaStats
         public float ComputeMs(float baseMs)
             => (baseMs + _flatMs) * (1f + _percentMs);
 
-        /// <summary>회피 쿨다운 감소율 합산 (%).</summary>
-        public float DodgeCdrPercent        => _percentDodgeCdr;
-        /// <summary>차지 시간 단축율 합산 (%).</summary>
-        public float ChargeTimeRedPercent   => _percentChargeTimeRed;
+        /// <summary>
+        /// 회피 쿨다운 감소 누적 곱 multiplier.
+        /// 기본값 1f. 0.8 이면 20% 감소. CharacterModel 에서 base × multiplier 로 적용.
+        /// </summary>
+        public float DodgeCdrMultiplier     => _dodgeCdrMultiplier;
+
+        /// <summary>
+        /// 차지 시간 감소 누적 곱 multiplier.
+        /// 기본값 1f. 0.95 이면 5% 감소. CharacterModel 에서 base × multiplier 로 적용.
+        /// </summary>
+        public float ChargeTimeMultiplier   => _chargeTimeMultiplier;
+
         /// <summary>무적 시간 증가율 합산 (%).</summary>
         public float InvincBonusPercent     => _percentInvincBonus;
         /// <summary>크리티컬 확률 합산 (%).</summary>
         public float CritChancePercent      => _percentCritChance;
         /// <summary>크리티컬 데미지 합산 (%).</summary>
         public float CritDamagePercent      => _percentCritDamage;
-        /// <summary>쿨타임 감소 합산 (%).</summary>
-        public float CdrPercent             => _percentCdr;
         /// <summary>스킬 데미지 증가 합산 (%).</summary>
         public float SkillDamagePercent     => _percentSkillDamage;
 
@@ -75,12 +83,14 @@ namespace Game.Data.MetaStats
             _percentHp           += data.PercentHp;
             _percentAtk          += data.PercentAtk;
             _percentMs           += data.PercentMs;
-            _percentDodgeCdr     += data.PercentDodgeCdr;
-            _percentChargeTimeRed+= data.PercentChargeTimeRed;
+            // 감소율형 — 소스별 독립 곱연산
+            if (data.PercentDodgeCdr < 1f)
+                _dodgeCdrMultiplier   *= (1f - data.PercentDodgeCdr);
+            if (data.PercentChargeTimeRed < 1f)
+                _chargeTimeMultiplier *= (1f - data.PercentChargeTimeRed);
             _percentInvincBonus  += data.PercentInvincBonus;
             _percentCritChance   += data.PercentCritChance;
             _percentCritDamage   += data.PercentCritDamage;
-            _percentCdr          += data.PercentCdr;
             _percentSkillDamage  += data.PercentSkillDamage;
 
             OnStatChanged?.Invoke();
@@ -98,12 +108,14 @@ namespace Game.Data.MetaStats
             _percentHp           -= data.PercentHp;
             _percentAtk          -= data.PercentAtk;
             _percentMs           -= data.PercentMs;
-            _percentDodgeCdr     -= data.PercentDodgeCdr;
-            _percentChargeTimeRed-= data.PercentChargeTimeRed;
+            // 감소율형 — div-by-zero 방어: p >= 1이면 나눗셈 스킵
+            if (data.PercentDodgeCdr < 1f)
+                _dodgeCdrMultiplier   /= (1f - data.PercentDodgeCdr);
+            if (data.PercentChargeTimeRed < 1f)
+                _chargeTimeMultiplier /= (1f - data.PercentChargeTimeRed);
             _percentInvincBonus  -= data.PercentInvincBonus;
             _percentCritChance   -= data.PercentCritChance;
             _percentCritDamage   -= data.PercentCritDamage;
-            _percentCdr          -= data.PercentCdr;
             _percentSkillDamage  -= data.PercentSkillDamage;
 
             OnStatChanged?.Invoke();
@@ -114,9 +126,10 @@ namespace Game.Data.MetaStats
         {
             _flatHp = _flatAtk = _flatMs = 0f;
             _percentHp = _percentAtk = _percentMs = 0f;
-            _percentDodgeCdr = _percentChargeTimeRed = 0f;
+            _dodgeCdrMultiplier   = 1f;
+            _chargeTimeMultiplier = 1f;
             _percentInvincBonus = _percentCritChance = 0f;
-            _percentCritDamage = _percentCdr = _percentSkillDamage = 0f;
+            _percentCritDamage = _percentSkillDamage = 0f;
             OnStatChanged?.Invoke();
         }
 
@@ -158,10 +171,12 @@ namespace Game.Data.MetaStats
                     _percentMs   += percent;
                     break;
                 case StatType.DodgeCDR:
-                    _percentDodgeCdr     += percent;
+                    // 감소율형 — 소스별 독립 곱연산
+                    if (percent < 1f) _dodgeCdrMultiplier   *= (1f - percent);
                     break;
                 case StatType.ChargeTimeReduction:
-                    _percentChargeTimeRed += percent;
+                    // 감소율형 — 소스별 독립 곱연산
+                    if (percent < 1f) _chargeTimeMultiplier *= (1f - percent);
                     break;
                 case StatType.InvincibilityBonus:
                     _percentInvincBonus  += percent;
@@ -171,9 +186,6 @@ namespace Game.Data.MetaStats
                     break;
                 case StatType.CritDamage:
                     _percentCritDamage   += percent;
-                    break;
-                case StatType.CDR:
-                    _percentCdr          += percent;
                     break;
                 case StatType.SkillDamage:
                     _percentSkillDamage  += percent;

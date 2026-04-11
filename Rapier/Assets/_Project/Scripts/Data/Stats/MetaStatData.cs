@@ -14,8 +14,8 @@ namespace Game.Data.MetaStats
     public class MetaStatData : ScriptableObject
     {
         [Header("대상 캐릭터")]
-        [Tooltip("캐릭터 식별 ID (예: rapier)")]
-        [SerializeField] private string _characterId = "rapier";
+        [Tooltip("캐릭터 식별 ID (예: Rapier). PascalCase 리터럴 정책 준수.")]
+        [SerializeField] private string _characterId = "Rapier";
 
         [Header("깡(Flat) 보너스")]
         [SerializeField] private float _flatHp              = 0f;
@@ -31,7 +31,6 @@ namespace Game.Data.MetaStats
         [SerializeField] private float _percentInvincBonus     = 0f;
         [SerializeField] private float _percentCritChance      = 0f;
         [SerializeField] private float _percentCritDamage      = 0f;
-        [SerializeField] private float _percentCdr             = 0f;
         [SerializeField] private float _percentSkillDamage     = 0f;
 
         // ── 읽기 전용 프로퍼티 ─────────────────────────────────────
@@ -47,7 +46,6 @@ namespace Game.Data.MetaStats
         public float  PercentInvincBonus    => _percentInvincBonus;
         public float  PercentCritChance     => _percentCritChance;
         public float  PercentCritDamage     => _percentCritDamage;
-        public float  PercentCdr            => _percentCdr;
         public float  PercentSkillDamage    => _percentSkillDamage;
     }
 }

@@ -22,7 +22,7 @@ MonoBehaviour:
     flatValue: 0
     percentValue: 0.3
   _subStats:
-  - statType: 8
+  - statType: 4
     flatValue: 0
     percentValue: 0.1
   - statType: 6

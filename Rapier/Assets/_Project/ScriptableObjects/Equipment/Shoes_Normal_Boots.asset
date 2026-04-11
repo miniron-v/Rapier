@@ -10,21 +10,15 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a874dbde24cd43b99864e8a8abe5bcad, type: 3}
-  m_Name: Top_Rare_IronArmor
+  m_Name: Shoes_Normal_Boots
   m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Equipment.EquipmentItemData
-  _itemName: "\uCCA0\uC81C \uCC30\uAD50"
-  _description: "\uD2BC\uD2BC\uD55C \uCCA0\uAC11. HP\uB97C \uB300\uD3ED \uC99D\uAC00\uC2DC\uD0A8\uB2E4."
+  _itemName: "\uAD6C\uBCF4 \uAD70\uD654"
+  _description: "\uBC1C\uB180\uB9BC\uC744 \uAC00\uBCCD\uAC8C \uD558\uB294 \uACBD\uB7C9 \uAD70\uD654."
   _icon: {fileID: 0}
-  _slotType: 2
-  _grade: 1
+  _slotType: 4
+  _grade: 0
   _mainStat:
-    statType: 0
-    flatValue: 150
-    percentValue: 0
-  _subStats:
-  - statType: 2
+    statType: 2
     flatValue: 0
-    percentValue: 0.05
-  - statType: 4
-    flatValue: 0
-    percentValue: 0.03
+    percentValue: 0.08
+  _subStats: []

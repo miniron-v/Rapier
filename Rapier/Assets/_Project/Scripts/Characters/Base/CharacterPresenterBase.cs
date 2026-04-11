@@ -215,8 +215,8 @@ namespace Game.Characters
             if (equipmentManager != null)
             {
                 var provider = new EquipmentMetaStatProvider(equipmentManager);
-                // CharacterStatData 에 characterId 필드 없음 → "rapier" 고정 (현재 1종만 구현)
-                metaContainer = provider.BuildContainer("rapier");
+                // CharacterStatData 에 characterId 필드 없음 → "Rapier" 고정 (현재 1종만 구현, PascalCase 리터럴 정책)
+                metaContainer = provider.BuildContainer("Rapier");
             }
             else
             {
@@ -417,7 +417,7 @@ namespace Game.Characters
 
         private IEnumerator DodgeCooldownRoutine()
         {
-            float cooldown = Model.StatData.dodgeCooldown;
+            float cooldown = Model.DodgeCooldown;
             _dodgeCooldownTimer = cooldown;
             Model.SetDodgeCooldownRatio(0f);
 
@@ -469,7 +469,7 @@ namespace Game.Characters
             if (Model == null || !Model.IsAlive) return;
             _holdDuration = duration;
             _isCharging   = true;
-            Model.SetChargeRatio(Mathf.Clamp01(duration / Model.StatData.chargeRequiredTime));
+            Model.SetChargeRatio(Mathf.Clamp01(duration / Model.ChargeRequiredTime));
             OnHold(duration);
         }
 
@@ -477,7 +477,7 @@ namespace Game.Characters
         {
             if (Model == null || !Model.IsAlive) return;
 
-            bool fullyCharged = _isCharging && _holdDuration >= Model.StatData.chargeRequiredTime;
+            bool fullyCharged = _isCharging && _holdDuration >= Model.ChargeRequiredTime;
             bool triggerSkill = fullyCharged || Model.IsJustDodgeReady;
 
             if (triggerSkill)
