@@ -27,7 +27,7 @@ MonoBehaviour:
   attackOffset: 1
   markDamage: 5
   markMaxStack: 5
-  skillDashSpeed: 3
+  skillDashSpeed: 6
   skillReturnSpeed: 3
   chargeMarkMultiplier: 1.5
   skillAttackWidth: 2
