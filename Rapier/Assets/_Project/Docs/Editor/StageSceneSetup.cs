@@ -29,7 +29,7 @@ namespace Game.Editor
     ///   Player          — Rapier_Player 프리팹
     ///   Main Camera     — Camera + CameraFollow (_target = Player)
     ///   [UI] Canvas     — IntermissionManager + IntermissionView + DeathPopupView + StageClearView
-    ///   BossRushHudCanvas — BossRushHudSetup.CreateHud() 재사용
+    ///   BossHudCanvas — BossHudSetup.CreateHud() 재사용
     ///   EventSystem
     ///
     /// [RoomNode 배열 (8방)]
@@ -345,14 +345,14 @@ namespace Game.Editor
             EditorUtility.SetDirty(progressionManager);
             EditorUtility.SetDirty(stageBuilder);
 
-            // ── 씬 저장 (BossRushHudSetup 호출 전에 경로 확정) ────
+            // ── 씬 저장 (BossHudSetup 호출 전에 경로 확정) ───────
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene, SCENE_SAVE_PATH);
 
-            // ── BossRushHudCanvas 생성 (재사용) ───────────────────
-            // BossRushManager가 없으므로 HP 자동 업데이트는 Phase 12-E에서 연결.
+            // ── BossHudCanvas 생성 (재사용) ───────────────────────
+            // ProgressionManager가 씬에 있으므로 SetBossHud() 자동 와이어링됨.
             // 씬이 이미 StageDemo.unity 경로로 저장됐으므로 여기서 저장해도 동일 파일.
-            BossRushHudSetup.CreateHud();
+            BossHudSetup.CreateHud();
 
             Selection.activeGameObject = coreGo;
 
