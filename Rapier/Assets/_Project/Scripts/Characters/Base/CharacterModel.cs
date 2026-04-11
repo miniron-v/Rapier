@@ -1,3 +1,4 @@
+using Game.Data.MetaStats;
 using UnityEngine;
 
 namespace Game.Characters
@@ -5,11 +6,31 @@ namespace Game.Characters
     /// <summary>
     /// 캐릭터 런타임 상태 데이터.
     /// MonoBehaviour 미사용. Presenter가 생성하고 소유한다.
+    ///
+    /// Phase 13-B: <see cref="MetaStatContainer"/> 를 생성자에 주입하면
+    /// MaxHp / MaxAtk / MaxMs 가 장비 스탯이 반영된 최종값으로 계산된다.
+    /// SO 원본(StatData) 은 불변 유지.
     /// </summary>
     public class CharacterModel
     {
         // ── 스탯 참조 ──────────────────────────────────────────────
+        /// <summary>SO 원본 스탯. 런타임 불변.</summary>
         public CharacterStatData StatData { get; }
+
+        // ── 최종 스탯 (MetaStat 반영, [NonSerialized] 캐싱) ────────
+        /// <summary>장비 MetaStat 반영 최종 최대 HP. MetaStat 없으면 StatData.maxHp 와 동일.</summary>
+        [System.NonSerialized] private float _finalMaxHp;
+        /// <summary>장비 MetaStat 반영 최종 공격력.</summary>
+        [System.NonSerialized] private float _finalAttackPower;
+        /// <summary>장비 MetaStat 반영 최종 이동속도.</summary>
+        [System.NonSerialized] private float _finalMoveSpeed;
+
+        /// <summary>최종 최대 HP (장비 스탯 포함).</summary>
+        public float MaxHp          => _finalMaxHp;
+        /// <summary>최종 공격력 (장비 스탯 포함).</summary>
+        public float AttackPower    => _finalAttackPower;
+        /// <summary>최종 이동속도 (장비 스탯 포함).</summary>
+        public float MoveSpeed      => _finalMoveSpeed;
 
         // ── 런타임 상태 ────────────────────────────────────────────
         public float CurrentHp          { get; private set; }
@@ -25,10 +46,27 @@ namespace Game.Characters
         public event System.Action<float> OnChargeChanged;        // 0~1
         public event System.Action<float> OnDodgeCooldownChanged; // 0~1
 
+        /// <summary>
+        /// 기본 생성자. MetaStat 없이 SO 원본값으로 초기화한다.
+        /// </summary>
         public CharacterModel(CharacterStatData statData)
+            : this(statData, null) { }
+
+        /// <summary>
+        /// MetaStat 주입 생성자. 장비 스탯이 반영된 최종값으로 초기화한다.
+        /// </summary>
+        /// <param name="statData">SO 원본 스탯 (불변).</param>
+        /// <param name="meta">장비/룬 MetaStat 컨테이너. null 이면 원본값 그대로 사용.</param>
+        public CharacterModel(CharacterStatData statData, MetaStatContainer meta)
         {
-            StatData          = statData;
-            CurrentHp         = statData.maxHp;
+            StatData = statData;
+
+            // 최종 스탯 계산: (base + metaFlat) × (1 + metaPercent)
+            _finalMaxHp       = meta?.ComputeHp(statData.maxHp)       ?? statData.maxHp;
+            _finalAttackPower = meta?.ComputeAtk(statData.attackPower) ?? statData.attackPower;
+            _finalMoveSpeed   = meta?.ComputeMs(statData.moveSpeed)    ?? statData.moveSpeed;
+
+            CurrentHp          = _finalMaxHp;
             DodgeCooldownRatio = 1f; // 시작 시 즉시 사용 가능
         }
 
@@ -44,14 +82,14 @@ namespace Game.Characters
         public void Heal(float amount)
         {
             if (!IsAlive) return;
-            CurrentHp = Mathf.Min(StatData.maxHp, CurrentHp + amount);
+            CurrentHp = Mathf.Min(_finalMaxHp, CurrentHp + amount);
             OnHpChanged?.Invoke(CurrentHp);
         }
 
         /// <summary>IsAlive 여부에 관계없이 HP를 직접 설정한다. 이어하기 부활 전용.</summary>
         public void Revive(float hp)
         {
-            CurrentHp = Mathf.Clamp(hp, 0f, StatData.maxHp);
+            CurrentHp = Mathf.Clamp(hp, 0f, _finalMaxHp);
             OnHpChanged?.Invoke(CurrentHp);
         }
 

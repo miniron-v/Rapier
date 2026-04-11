@@ -1,3 +1,4 @@
+using Game.Data.Save;
 using UnityEngine;
 
 namespace Game.UI.Lobby
@@ -43,6 +44,9 @@ namespace Game.UI.Lobby
         [SerializeField] private MissionTabView   _missionTabView;
         [SerializeField] private SettingsTabView  _settingsTabView;
 
+        // Phase 13-B: SaveManager 주입 (HomeTabPresenter 에서 스테이지 번호 조회용)
+        private SaveManager _saveManager;
+
         // 마지막 선택 탭 저장 키
         private const string KEY_LAST_TAB = "Lobby_LastTab";
 
@@ -66,7 +70,8 @@ namespace Game.UI.Lobby
             SettingsTabView  settingsTabView,
             HomeTabPresenter      homePresenter,
             CharacterTabPresenter characterPresenter,
-            SettingsTabPresenter  settingsPresenter)
+            SettingsTabPresenter  settingsPresenter,
+            SaveManager           saveManager = null)
         {
             _tabView            = tabView;
             _homeTabView        = homeTabView;
@@ -77,9 +82,10 @@ namespace Game.UI.Lobby
             _homePresenter      = homePresenter;
             _characterPresenter = characterPresenter;
             _settingsPresenter  = settingsPresenter;
+            _saveManager        = saveManager;
 
             // 각 탭 Presenter 초기화
-            _homePresenter?.Init(_homeTabView);
+            _homePresenter?.Init(_homeTabView, _saveManager);
             _characterPresenter?.Init(_characterTabView);
             _settingsPresenter?.Init(_settingsTabView);
         }
@@ -95,7 +101,8 @@ namespace Game.UI.Lobby
             }
 
             // 자식 Presenter 초기화 — _view는 비직렬화 필드이므로 런타임에 재주입
-            _homePresenter?.Init(_homeTabView);
+            // _saveManager 는 Inspector 배선 없을 수 있으므로 null 허용 (Init() 에서 주입)
+            _homePresenter?.Init(_homeTabView, _saveManager);
             _characterPresenter?.Init(_characterTabView);
             _settingsPresenter?.Init(_settingsTabView);
         }

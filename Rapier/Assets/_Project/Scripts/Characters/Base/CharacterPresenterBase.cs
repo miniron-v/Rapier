@@ -5,6 +5,8 @@ using Game.Core;
 using Game.Input;
 using Game.Combat;
 using Game.Enemies;
+using Game.Data.Equipment;
+using Game.Data.MetaStats;
 
 namespace Game.Characters
 {
@@ -201,10 +203,24 @@ namespace Game.Characters
         // ── 초기화 ────────────────────────────────────────────────
         protected void Init(CharacterStatData statData, ICharacterView view)
         {
-            Model = new CharacterModel(statData);
+            // Phase 13-B: MetaStat 주입 — ServiceLocator 에서 EquipmentManager 조회
+            MetaStatContainer metaContainer = null;
+            var equipmentManager = ServiceLocator.Get<EquipmentManager>();
+            if (equipmentManager != null)
+            {
+                var provider = new EquipmentMetaStatProvider(equipmentManager);
+                // CharacterStatData 에 characterId 필드 없음 → "rapier" 고정 (현재 1종만 구현)
+                metaContainer = provider.BuildContainer("rapier");
+            }
+            else
+            {
+                Debug.LogWarning("[CharacterPresenterBase] EquipmentManager 미등록 — 장비 스탯 없이 baseline 진행");
+            }
+
+            Model = new CharacterModel(statData, metaContainer);
             View  = view;
 
-            Model.OnHpChanged     += ratio => View.UpdateHpGauge(ratio / statData.maxHp);
+            Model.OnHpChanged     += ratio => View.UpdateHpGauge(ratio / Model.MaxHp);
             Model.OnDeath         += HandleDeath;
             Model.OnChargeChanged += View.UpdateChargeGauge;
         }
@@ -283,7 +299,7 @@ namespace Game.Characters
             {
                 var damageable = hit.GetComponent<IDamageable>();
                 if (damageable == null || !damageable.IsAlive) continue;
-                damageable.TakeDamage(stat.attackPower, dir);
+                damageable.TakeDamage(Model.AttackPower, dir);
                 OnHitDamageable(damageable);
                 hitCount++;
             }
@@ -409,7 +425,7 @@ namespace Game.Characters
             if (CurrentMoveState == MoveState.Free && _moveDirection.sqrMagnitude > 0.01f)
             {
                 var nextPos = (Vector2)transform.position
-                            + _moveDirection * (Model.StatData.moveSpeed * Time.deltaTime);
+                            + _moveDirection * (Model.MoveSpeed * Time.deltaTime);
 
                 var stage = ServiceLocator.Get<StageBuilder>();
                 if (stage != null) nextPos = stage.ClampToStage(nextPos);
