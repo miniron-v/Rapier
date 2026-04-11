@@ -24,8 +24,11 @@ namespace Game.UI.Lobby
     /// </summary>
     public class CharacterTabPresenter : MonoBehaviour
     {
+        // LobbyHudSetup(에디터 시점) 에서 InitEquipmentPanel 로 주입 후
+        // 씬 저장 시 유지되어야 하므로 [SerializeField] 필수.
+        [SerializeField] private EquipmentPanelPresenter _equipmentPanel;
+
         private CharacterTabView _view;
-        private EquipmentPanelPresenter _equipmentPanel;
 
         /// <summary>LobbyPresenter가 초기화 시 호출한다.</summary>
         public void Init(CharacterTabView view)

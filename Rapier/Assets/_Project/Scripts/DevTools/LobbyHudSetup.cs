@@ -156,6 +156,8 @@ namespace Game.DevTools
             EditorUtility.SetDirty(lobbyManager);
             EditorUtility.SetDirty(lobbyPresenter);
             EditorUtility.SetDirty(tabView);
+            EditorUtility.SetDirty(charPresenter);    // _equipmentPanel [SerializeField] 직렬화 보장
+            EditorUtility.SetDirty(equipPresenter);   // _view [SerializeField] 직렬화 보장
             UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(
                 UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene());
 
