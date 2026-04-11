@@ -62,17 +62,13 @@
 ## 4. 적용 위치
 
 - **MetaStat 구성**: `EquipmentMetaStatProvider` (`IMetaStatProvider` 구현) — `EquipmentManager` 의 장착 상태를 읽어 `MetaStatContainer` 를 빌드. 자세한 파이프라인은 `EQUIPMENT.md §4` 참조.
-- **주입 지점**: `CharacterPresenterBase.Init(statData, view)` — 씬 진입 시 1회. `ServiceLocator.Get<EquipmentManager>()` 로 현재 장착 상태 조회 후 `MetaStatContainer` 를 `CharacterModel` 생성에 주입.
-- **RunStat 적용 위치**: `RunStatContainer` — 인터미션 방에서 선택 시 누적. `ProgressionManager` 가 컨테이너 보유.
-- **최종 스탯 계산**: `RunStatContainer.CalculateFinalHp(base, meta, run)` 와 같이 MetaStatContainer 와 RunStatContainer 가 **합산 지점에서만 만난다**. 두 컨테이너를 섞지 않는다.
-- **호출 시점**:
-  - 인게임 씬 진입 시: MetaStat 1회 계산 → CharacterModel 주입
-  - RunStat 추가 시 (인터미션 방 선택): 매번 재계산
-  - 외부에서는 항상 캐싱된 최종값을 읽는다
-
-- **소멸**:
-  - 스테이지 클리어/이탈 → `RunStatContainer.Clear()`
-  - 다음 게임 시작 시 RunStat은 빈 상태에서 시작
+- **RunStat 소유**: `StageManager._runStat` (메모리 only). `IntermissionManager` 가 참조를 공유해 `RunStatContainer.Apply()` 로 누적. 스테이지 클리어 / 로비 복귀 시 `Reset()`.
+- **주입 지점**: `CharacterPresenterBase.Init(statData, view)` — 씬 진입 시 1회. `ServiceLocator` 에서 `EquipmentManager` / `StageManager` 조회 → `MetaStatContainer` + `RunStatContainer` 를 **둘 다** `CharacterModel` 생성에 주입. `StageManager` 미등록(로비 등) 이면 RunStat 없이 진행.
+- **최종 스탯 계산**: `CharacterModel` 내부에서 §3 계산식을 적용하여 `_finalMaxHp / _finalAttackPower / _finalMoveSpeed` 를 캐싱. MetaStat / RunStat 두 컨테이너는 이 계산 지점에서만 만난다 — 섞지 않는다.
+- **갱신 트리거**: `CharacterPresenterBase.Init` 에서 `RunStatContainer.OnStatChanged` 를 구독 → 픽이 들어올 때마다 `CharacterModel.RecomputeFinalStats()` 호출. 구독은 `OnDisable` / `OnDestroy` 에서 **반드시 해제 쌍** 유지 (§5 참조). MetaStat 은 인게임 중 변경 없음 — 스냅샷으로 충분.
+- **HP 처리 정책**: RunStat HP% 픽으로 `MaxHp` 가 증가하면 **증가분만큼 `CurrentHp` 를 Heal** 한다 (인터미션이 보상 겸 회복 의미를 갖도록). 감소 시에는 `CurrentHp` 를 새 `MaxHp` 로 Clamp.
+- **스탯 소비 경로**: 모든 런타임 스탯 읽기는 `Model.MaxHp / Model.AttackPower / Model.MoveSpeed` 경유. `CharacterStatData` (SO) 를 직접 읽으면 MetaStat / RunStat 가 누락된다. 스킬·차지 공격 포함 전 경로 통일.
+- **소멸**: 스테이지 클리어/로비 복귀 시 `StageManager` 가 `RunStatContainer.Reset()` 호출 → 다음 런은 0 부터 시작.
 
 ---
 
@@ -81,4 +77,5 @@
 - **MetaStat 변경 → JSON 저장 필수.** 인메모리만 유지하면 종료 시 소실.
 - **RunStat 변경 → 저장 금지.** 메모리에서만 관리.
 - 최종 능력치는 `[NonSerialized]` 캐싱 필드에 저장. SO에 직접 쓰지 않는다.
-- 능력치 변경 이벤트(`OnStatChanged`)를 발행하여 HUD 등이 구독하도록 한다.
+- **RunStat 구독 해제 쌍 필수**: `CharacterPresenterBase` 가 `OnStatChanged` 를 구독하면 `OnDisable` / `OnDestroy` / 씬 전환 모든 종료 경로에 해제가 있어야 한다. 누락 시 씬 재진입 후 중복 구독 → 이벤트 중복 발행.
+- HUD 등은 `CharacterModel` 의 `OnHpChanged` 또는 `RunStatContainer.OnStatChanged` 를 직접 구독.
