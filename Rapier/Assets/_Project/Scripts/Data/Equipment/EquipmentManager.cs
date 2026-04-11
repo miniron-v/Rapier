@@ -46,6 +46,13 @@ namespace Game.Data.Equipment
         // Phase 14: SO 레지스트리 (Deserialize 에서 assetId → SO 조회)
         private EquipmentDatabase _database;
 
+        // Phase 14: 현재 프로젝트에 구현된 캐릭터 ID 화이트리스트.
+        // equippedMap 복원 시 이 집합에 없는 키는 "미구현" 으로 판정되어 스킵된다 (§7-5 방어 로직).
+        // 향후 Warrior/Assassin/Ranger 추가 시 여기에 등록할 것.
+        // 대소문자 무시: SaveData.lastCharacterId="rapier" vs LobbyHudSetup="Rapier" 혼재 대응.
+        private static readonly HashSet<string> _implementedCharacters
+            = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Rapier" };
+
         // ── 초기화 ───────────────────────────────────────────────────────────
 
         /// <summary>
@@ -384,8 +391,8 @@ namespace Game.Data.Equipment
             // 3. 각 (characterId, instanceIdList) 처리
             foreach (var (characterId, instanceIdList) in map)
             {
-                // 미구현 캐릭터 스킵
-                if (!_characterSets.ContainsKey(characterId))
+                // 미구현 캐릭터 스킵 (화이트리스트 기반 — §7-5)
+                if (!_implementedCharacters.Contains(characterId))
                 {
                     Debug.LogWarning($"[EquipmentManager] Character '{characterId}' not implemented — equipped map entry skipped.");
                     continue;
@@ -393,7 +400,8 @@ namespace Game.Data.Equipment
 
                 if (instanceIdList == null) continue;
 
-                var targetSet = _characterSets[characterId];
+                // 유효한 캐릭터 — 세트가 없으면 생성 (Bootstrap 최초 Load 시 _characterSets 가 비어있음)
+                var targetSet = GetOrCreateSet(characterId);
                 foreach (var instanceId in instanceIdList)
                 {
                     if (string.IsNullOrEmpty(instanceId)) continue;
