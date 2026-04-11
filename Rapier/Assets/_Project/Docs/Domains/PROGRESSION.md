@@ -66,6 +66,20 @@
 - 다음 방 미리보기는 **없음** (긴장감 유지)
 - 인터미션 방은 진행 카운트에 포함되지 않음
 
+### BossHudView 통합
+
+`ProgressionManager` 는 보스 스폰 시 씬의 `BossHudView` (`[SerializeField] private BossHudView _bossHud`) 에 아래를 호출하여 HUD 를 구동한다.
+
+| 시점 | 호출 |
+|------|------|
+| 보스 스폰 | `_bossHud.SetupBoss(bossName, bp, stageIndex, totalBossRooms)` |
+| 페이즈 변경 | `_bossHud.UpdatePhase(phase)` |
+| 마지막 보스 처치 | `_bossHud.ShowResult(true)` |
+| 플레이어 사망 | `_bossHud.ShowResult(false)` |
+| 이어하기 진입 | `_bossHud.HideVictoryPanel()` + `_bossHud.HideResultPanel()` |
+
+`BossHudView` 는 씬 오브젝트에서 직접 연결하거나, `BossHudSetup` 에디터 툴(`Rapier/Boss HUD/Rebuild Boss HUD`)의 Rebuild 로 자동 와이어링된다.
+
 ---
 
 ## 5. 저장 시스템 (JSON)

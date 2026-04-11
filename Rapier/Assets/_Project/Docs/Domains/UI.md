@@ -26,14 +26,17 @@
 - 데이터 소스: `ServiceLocator.Get<IPlayerCharacter>().PublicModel` — `CharacterModel.OnHpChanged(float currentHp)` 이벤트 구독. 이벤트 파라미터가 절대값이므로 그대로 포맷에 사용.
 - WorldSpace Canvas 이므로 Safe Area 영향권 밖.
 
-### BossRushHudView
+### BossHudView
 
+- ProgressionManager, BossRushManager 등 보스 스폰 드라이버가 공용으로 사용하는 HUD.
 - 상단 `BossHpArea` (Screen Space Overlay). 보스 HP 바 + 보스 이름 + 페이즈 + 스테이지 번호.
 - **보스 HP 숫자 표기 (Phase 13-A)**: `_bossHpFill` 옆에 `TextMeshProUGUI _bossHpText` 배치. **현재 HP 만** 정수로 표시.
 - `EnemyModel.OnHpChanged(float ratio)` 이벤트는 비율만 주므로, View 에서 `_bossModel.CurrentHp` 를 직접 읽어 갱신.
 - 결과 패널: ALL CLEAR(노랑) / GAME OVER(빨강).
 - `_toLobbyButton` → `SceneController.LoadLobby()`.
-- `Init(...)` 메서드로 BossRushHudSetup이 주입.
+- `Init(...)` 메서드로 BossHudSetup이 주입.
+- `OnNextStageRequested` 이벤트로 다음 스테이지 요청을 외부에 위임 (HUD 는 매니저 타입을 모른다).
+- 공개 메서드: `SetupBoss`, `UpdatePhase`, `ShowVictoryPanel`, `HideVictoryPanel`, `ShowResult`, `HideResultPanel`.
 
 ### Safe Area 대응 (Phase 13-A)
 
@@ -41,7 +44,7 @@
 
 - 신규 컴포넌트: `Scripts/UI/Common/SafeAreaFitter.cs` — `Screen.safeArea` 를 읽어 대상 `RectTransform` 의 anchor 를 매 프레임(또는 해상도 변경 시) 재계산.
 - 적용 대상:
-  - `BossRushHudCanvas` (StageDemo, BossRushDemo 공통 — 상단 `BossHpArea` 노치 회피)
+  - `BossHudCanvas` (StageDemo, BossRushDemo 공통 — 상단 `BossHpArea` 노치 회피)
   - `[UI]` Canvas (StageDemo — `VirtualJoystick` 하단 제스처바 회피, Intermission/Death/StageClear 팝업 중앙 정렬)
   - `LobbyCanvas`
 - **적용 제외**: `PlayerHudCanvas` (World Space, 무관).
@@ -76,7 +79,7 @@
 
 | 툴 | 메뉴 |
 |----|------|
-| BossRushHudSetup | 자동: BossRushManager._hudView 연결 + EventSystem 생성 |
+| BossHudSetup | `Rapier/Boss HUD/Create Boss HUD`, `Rebuild Boss HUD`. 레거시 `BossRushHudCanvas` 도 Rebuild 시 자동 제거. BossRushManager + ProgressionManager 양쪽 발견 시 모두 와이어링. |
 | LobbyHudSetup | `Rapier/Lobby/Create Lobby HUD`, `Rebuild Lobby HUD` |
 
 ### Setup 툴 작성 시 체크리스트
