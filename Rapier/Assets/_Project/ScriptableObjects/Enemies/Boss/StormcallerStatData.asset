@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Game.Enemies.BossStatData
   enemyName: Stormcaller
   sprite: {fileID: 0}
-  maxHp: 2200
+  maxHp: 800
   attackPower: 80
   moveSpeed: 1.8
   attackRange: 6
@@ -32,6 +32,9 @@ MonoBehaviour:
   phase2Sequence:
   - rid: 2897679572369932398
   - rid: 2897679572369932399
+  _spawnCount: 1
+  _spawnOffsets:
+  - {x: 0, y: 0}
   references:
     version: 2
     RefIds:

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Game.Enemies.BossStatData
   enemyName: TwinPhantoms
   sprite: {fileID: 0}
-  maxHp: 1500
+  maxHp: 1200
   attackPower: 75
   moveSpeed: 3
   attackRange: 1.2

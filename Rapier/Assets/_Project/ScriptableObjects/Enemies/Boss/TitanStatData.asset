@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Game.Enemies.BossStatData
   enemyName: Titan
   sprite: {fileID: -712631045867808456, guid: b670ab75dde984907b8570040daa08c5, type: 3}
-  maxHp: 1200
+  maxHp: 1500
   attackPower: 80
   moveSpeed: 1.8
   attackRange: 4
@@ -35,6 +35,9 @@ MonoBehaviour:
   - rid: 7513602140748120200
   - rid: 7513602140748120201
   - rid: 7513602140748120202
+  _spawnCount: 1
+  _spawnOffsets:
+  - {x: 0, y: 0}
   references:
     version: 2
     RefIds:

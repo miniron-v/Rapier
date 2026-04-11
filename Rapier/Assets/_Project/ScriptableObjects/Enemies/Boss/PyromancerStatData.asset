@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Game.Enemies.BossStatData
   enemyName: Pyromancer
   sprite: {fileID: 0}
-  maxHp: 2000
+  maxHp: 800
   attackPower: 80
   moveSpeed: 1.2
   attackRange: 8
@@ -33,6 +33,9 @@ MonoBehaviour:
   - rid: 2897679572369932390
   - rid: 2897679572369932391
   - rid: 2897679572369932392
+  _spawnCount: 1
+  _spawnOffsets:
+  - {x: 0, y: 0}
   references:
     version: 2
     RefIds:
