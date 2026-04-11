@@ -1,7 +1,7 @@
 #if UNITY_EDITOR
 using UnityEditor;
 using UnityEngine;
-using Game.Core.Services;
+using Game.Core;
 using Game.Data.Equipment;
 
 namespace Game.DevTools

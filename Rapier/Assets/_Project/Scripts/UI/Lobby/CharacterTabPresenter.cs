@@ -1,4 +1,4 @@
-using Game.Core.Services;
+using Game.Core;
 using Game.Data.Equipment;
 using Game.UI.Lobby.Equipment;
 using UnityEngine;
