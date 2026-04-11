@@ -102,6 +102,14 @@ namespace Game.Editor
             cvGo.AddComponent<GraphicRaycaster>();
 
             // ── 상단 보스 HP 영역 ──────────────────────────────────
+            // [레이아웃 원칙]
+            //  - 모든 자식은 단일 anchor(=min==max) + 고정 sizeDelta 로 배치.
+            //    anchor stretch + anchoredPosition 병용은 RectTransform 상호작용이
+            //    꼬여 예측이 어려우므로 단순화한다.
+            //  - topBar 총 높이 200. 내부 Y 배치(상단 원점, pivot top 기준):
+            //      [-10 ~ -70] BossName(좌) / Phase(우)  60
+            //      [-80 ~ -110] StageText                 30
+            //      [-140 ~ -180] HpBg                     40   (하단에서 20 띄움)
             var topBar = CreatePanel(cvGo.transform, "BossHpArea", BG_DARK, sq);
             var topRt  = topBar.GetComponent<RectTransform>();
             topRt.anchorMin        = new Vector2(0f, 1f);
@@ -109,38 +117,42 @@ namespace Game.Editor
             topRt.pivot            = new Vector2(0.5f, 1f);
             topRt.offsetMin        = Vector2.zero;
             topRt.offsetMax        = Vector2.zero;
-            topRt.sizeDelta        = new Vector2(0f, 160f);
+            topRt.sizeDelta        = new Vector2(0f, 200f);
             topRt.anchoredPosition = Vector2.zero;
 
             var bossNameGo = CreateTMPText(topBar.transform, "BossNameText", "BOSS NAME", 48, FontStyles.Bold, Color.white);
             var bossNameRt = bossNameGo.GetComponent<RectTransform>();
             bossNameRt.anchorMin        = new Vector2(0f, 1f);
-            bossNameRt.anchorMax        = new Vector2(0.6f, 1f);
+            bossNameRt.anchorMax        = new Vector2(0f, 1f);
             bossNameRt.pivot            = new Vector2(0f, 1f);
-            bossNameRt.offsetMin        = new Vector2(40f, 0f);
-            bossNameRt.offsetMax        = Vector2.zero;
-            bossNameRt.sizeDelta        = new Vector2(0f, 60f);
+            bossNameRt.sizeDelta        = new Vector2(700f, 60f);
             bossNameRt.anchoredPosition = new Vector2(40f, -10f);
+            bossNameGo.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.MidlineLeft;
 
             var phaseGo = CreateTMPText(topBar.transform, "BossPhaseText", "PHASE 1", 36, FontStyles.Bold, Color.white);
             var phaseRt = phaseGo.GetComponent<RectTransform>();
-            phaseRt.anchorMin        = new Vector2(0.6f, 1f);
+            phaseRt.anchorMin        = new Vector2(1f, 1f);
             phaseRt.anchorMax        = new Vector2(1f, 1f);
             phaseRt.pivot            = new Vector2(1f, 1f);
-            phaseRt.offsetMin        = Vector2.zero;
-            phaseRt.offsetMax        = new Vector2(-40f, 0f);
-            phaseRt.sizeDelta        = new Vector2(0f, 60f);
+            phaseRt.sizeDelta        = new Vector2(400f, 60f);
             phaseRt.anchoredPosition = new Vector2(-40f, -10f);
             phaseGo.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.MidlineRight;
 
+            var stageGo = CreateTMPText(topBar.transform, "StageText", "STAGE 1 / 2", 28, FontStyles.Normal, new Color(0.8f, 0.8f, 0.8f));
+            var stageRt = stageGo.GetComponent<RectTransform>();
+            stageRt.anchorMin        = new Vector2(0.5f, 1f);
+            stageRt.anchorMax        = new Vector2(0.5f, 1f);
+            stageRt.pivot            = new Vector2(0.5f, 1f);
+            stageRt.sizeDelta        = new Vector2(800f, 30f);
+            stageRt.anchoredPosition = new Vector2(0f, -80f);
+            stageGo.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+
             var hpBgGo = CreatePanel(topBar.transform, "BossHpBg", HP_BG_COLOR, sq);
             var hpBgRt = hpBgGo.GetComponent<RectTransform>();
-            hpBgRt.anchorMin        = new Vector2(0f, 0f);
-            hpBgRt.anchorMax        = new Vector2(1f, 0f);
+            hpBgRt.anchorMin        = new Vector2(0.5f, 0f);
+            hpBgRt.anchorMax        = new Vector2(0.5f, 0f);
             hpBgRt.pivot            = new Vector2(0.5f, 0f);
-            hpBgRt.offsetMin        = new Vector2(30f, 0f);
-            hpBgRt.offsetMax        = new Vector2(-30f, 0f);
-            hpBgRt.sizeDelta        = new Vector2(0f, 40f);
+            hpBgRt.sizeDelta        = new Vector2(1020f, 40f);
             hpBgRt.anchoredPosition = new Vector2(0f, 20f);
 
             var hpFillGo  = CreatePanel(hpBgGo.transform, "BossHpFill", HP_FILL_COLOR, sq);
@@ -164,15 +176,6 @@ namespace Game.Editor
             bossHpTextRt.offsetMin        = bossHpTextRt.offsetMax = Vector2.zero;
             bossHpTextRt.anchoredPosition = Vector2.zero;
             bossHpTextGo.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
-
-            var stageGo = CreateTMPText(topBar.transform, "StageText", "STAGE 1 / 2", 28, FontStyles.Normal, new Color(0.8f, 0.8f, 0.8f));
-            var stageRt = stageGo.GetComponent<RectTransform>();
-            stageRt.anchorMin        = new Vector2(0f, 0f);
-            stageRt.anchorMax        = new Vector2(1f, 0f);
-            stageRt.pivot            = new Vector2(0.5f, 1f);
-            stageRt.sizeDelta        = new Vector2(0f, 35f);
-            stageRt.anchoredPosition = new Vector2(0f, 62f);
-            stageGo.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
 
             // ── 승리 패널 ─────────────────────────────────────────
             var victoryPanel   = CreatePanel(cvGo.transform, "VictoryPanel", PANEL_BG_COLOR, sq);
