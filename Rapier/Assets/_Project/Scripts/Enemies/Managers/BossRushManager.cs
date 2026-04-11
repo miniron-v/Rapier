@@ -12,8 +12,8 @@ namespace Game.Enemies
     ///
     /// [흐름]
     ///   Start → 첫 보스 스폰 + 플레이어 사망 구독
-    ///   보스(군) 전원 사망 → BossRushHudView에 승리 패널 표시
-    ///   "다음 스테이지" 버튼 → SpawnNextBoss()
+    ///   보스(군) 전원 사망 → BossHudView에 승리 패널 표시
+    ///   "다음 스테이지" 버튼 → SpawnNextBoss() (BossHudView.OnNextStageRequested 구독)
     ///   모든 보스 처치 → ShowResult(true) [ALL CLEAR]
     ///   플레이어 사망  → ShowResult(false) [GAME OVER]
     ///
@@ -28,9 +28,10 @@ namespace Game.Enemies
     ///   spawnPosition: 보스 스폰 기준 위치
     ///
     /// [이벤트 구독/해제 짝]
-    ///   플레이어 OnPlayerDeath : SubscribePlayerDeath (Start) / UnsubscribePlayerDeath (OnDestroy)
-    ///   보스    OnDeath        : SpawnBossRoutine (스폰 시) / ClearActiveBossInstances (다음 스폰 직전/OnDestroy)
-    ///   보스    OnPhaseChanged : SpawnBossRoutine (스폰 시) / ClearActiveBossInstances (다음 스폰 직전/OnDestroy)
+    ///   플레이어 OnPlayerDeath          : SubscribePlayerDeath (Start) / UnsubscribePlayerDeath (OnDestroy)
+    ///   보스    OnDeath                 : SpawnBossRoutine (스폰 시) / ClearActiveBossInstances (다음 스폰 직전/OnDestroy)
+    ///   보스    OnPhaseChanged          : SpawnBossRoutine (스폰 시) / ClearActiveBossInstances (다음 스폰 직전/OnDestroy)
+    ///   HUD    OnNextStageRequested    : InitHudView (+= SpawnNextBoss) / InitHudView 재호출 or OnDestroy (-= SpawnNextBoss)
     /// </summary>
     public class BossRushManager : MonoBehaviour
     {
@@ -40,7 +41,7 @@ namespace Game.Enemies
         [SerializeField] private Vector2        _spawnPosition = Vector2.zero;
 
         [Header("참조")]
-        [SerializeField] private BossRushHudView _hudView;
+        [SerializeField] private BossHudView _hudView;
 
         // ── 내부 상태 ─────────────────────────────────────────────
         private int                          _currentStageIndex  = -1;
@@ -73,6 +74,8 @@ namespace Game.Enemies
         {
             ClearActiveBossInstances();
             UnsubscribePlayerDeath();
+            if (_hudView != null)
+                _hudView.OnNextStageRequested -= SpawnNextBoss;
             ServiceLocator.Unregister<BossRushManager>();
         }
 
@@ -88,10 +91,17 @@ namespace Game.Enemies
             return null;
         }
 
-        /// <summary>BossRushHudSetup이 호출하는 HudView 주입 메서드.</summary>
-        public void InitHudView(BossRushHudView hudView)
+        /// <summary>BossHudSetup이 호출하는 HudView 주입 메서드.</summary>
+        public void InitHudView(BossHudView hudView)
         {
+            // 기존 구독 해제 (중복 방지)
+            if (_hudView != null)
+                _hudView.OnNextStageRequested -= SpawnNextBoss;
+
             _hudView = hudView;
+
+            if (_hudView != null)
+                _hudView.OnNextStageRequested += SpawnNextBoss;
         }
 
         /// <summary>"다음 스테이지" 버튼에서 호출.</summary>
