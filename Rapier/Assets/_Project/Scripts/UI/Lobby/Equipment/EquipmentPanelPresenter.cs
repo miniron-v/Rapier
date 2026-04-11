@@ -16,19 +16,38 @@ namespace Game.UI.Lobby.Equipment
 
         // ── Private Fields ───────────────────────────────────────────────────
 
+        private bool _isInitialized;
         private EquipmentManager _manager;
         private string _characterId;
 
         // 현재 선택된 슬롯 (인벤토리에서 아이템 선택 시 이 슬롯에 장착)
         private EquipmentSlotType? _selectedSlot;
 
+        // ── Properties ──────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Init 이 한 번 이상 호출되었는지 여부. 단방향 플래그 (true → false 전환 없음).
+        /// CharacterTabPresenter 가 중복 초기화를 방지하기 위해 사용한다.
+        /// </summary>
+        public bool IsInitialized => _isInitialized;
+
         // ── 초기화 ───────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// 런타임 생성 시 View 참조를 외부에서 주입한다 (LobbyHudSetup 에서 호출).
+        /// </summary>
+        /// <param name="view">연결할 EquipmentPanelView.</param>
+        public void InitReferences(EquipmentPanelView view)
+        {
+            _view = view;
+        }
 
         /// <summary>수동 DI. B1 또는 12-E에서 호출한다.</summary>
         public void Init(EquipmentManager manager, string characterId)
         {
-            _manager     = manager;
-            _characterId = characterId;
+            _manager        = manager;
+            _characterId    = characterId;
+            _isInitialized  = true;
         }
 
         // ── Unity Lifecycle ──────────────────────────────────────────────────

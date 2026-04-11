@@ -44,6 +44,25 @@ namespace Game.UI.Lobby.Equipment
 
         // ── Public Methods ───────────────────────────────────────────────────
 
+        /// <summary>
+        /// 런타임 생성 시 SerializeField 참조를 외부에서 주입한다 (LobbyHudSetup 에서 호출).
+        /// </summary>
+        /// <param name="itemIcon">아이템 아이콘 Image.</param>
+        /// <param name="gradeBackground">등급 배경 Image.</param>
+        /// <param name="itemNameText">아이템 이름 TMP 텍스트.</param>
+        /// <param name="mainStatText">메인 스탯 TMP 텍스트.</param>
+        /// <param name="itemButton">아이템 클릭 Button.</param>
+        public void InitReferences(Image itemIcon, Image gradeBackground,
+                                   TextMeshProUGUI itemNameText, TextMeshProUGUI mainStatText,
+                                   Button itemButton)
+        {
+            _itemIcon        = itemIcon;
+            _gradeBackground = gradeBackground;
+            _itemNameText    = itemNameText;
+            _mainStatText    = mainStatText;
+            _itemButton      = itemButton;
+        }
+
         /// <summary>장비 인스턴스를 기반으로 UI를 갱신한다.</summary>
         public void Refresh(EquipmentInstance instance)
         {

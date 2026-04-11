@@ -33,6 +33,18 @@ namespace Game.Data.Equipment
         // ── Public API ─────────────────────────────────────────────────────────
 
         /// <summary>
+        /// 데이터베이스에 등록된 모든 <see cref="EquipmentItemData"/> 를 열거한다.
+        /// 디버그 메뉴(AddDebugEquipmentMenu) 등 전체 순회가 필요한 경우에 사용한다.
+        /// </summary>
+        public System.Collections.Generic.IEnumerable<EquipmentItemData> AllEquipment => _equipment;
+
+        /// <summary>
+        /// 데이터베이스에 등록된 모든 <see cref="RuneItemData"/> 를 열거한다.
+        /// 디버그 메뉴(AddDebugEquipmentMenu) 등 전체 순회가 필요한 경우에 사용한다.
+        /// </summary>
+        public System.Collections.Generic.IEnumerable<RuneItemData> AllRunes => _runes;
+
+        /// <summary>
         /// 에셋 이름(<paramref name="assetId"/>) 으로 <see cref="EquipmentItemData"/> 를 조회한다.
         /// 등록되지 않은 ID 이면 <c>null</c> 을 반환한다.
         /// </summary>

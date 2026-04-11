@@ -42,6 +42,23 @@ namespace Game.UI.Lobby.Equipment
             InitSlotViews();
         }
 
+        // ── Public 초기화 ────────────────────────────────────────────────────
+
+        /// <summary>
+        /// 런타임 생성 시 SerializeField 참조를 외부에서 주입한다 (LobbyHudSetup 에서 호출).
+        /// Awake 보다 먼저 호출되어야 하므로 AddComponent 직후 즉시 호출할 것.
+        /// </summary>
+        /// <param name="slots">8개 슬롯 뷰 목록 (순서: Weapon/Hat/Top/Bottom/Shoes/Gloves/Necklace/Ring).</param>
+        /// <param name="inventoryContent">인벤토리 아이템의 부모 Transform.</param>
+        /// <param name="inventoryItemPrefab">인벤토리 아이템 복제 템플릿.</param>
+        public void InitReferences(List<EquipmentSlotView> slots, Transform inventoryContent,
+                                   InventoryItemView inventoryItemPrefab)
+        {
+            _slotViews           = slots ?? new List<EquipmentSlotView>();
+            _inventoryContent    = inventoryContent;
+            _inventoryItemPrefab = inventoryItemPrefab;
+        }
+
         // ── IEquipmentPanelView 메서드 ──────────────────────────────────────
 
         /// <inheritdoc/>

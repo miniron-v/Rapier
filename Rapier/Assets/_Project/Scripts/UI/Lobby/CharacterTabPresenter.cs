@@ -1,3 +1,6 @@
+using Game.Core.Services;
+using Game.Data.Equipment;
+using Game.UI.Lobby.Equipment;
 using UnityEngine;
 
 namespace Game.UI.Lobby
@@ -22,11 +25,21 @@ namespace Game.UI.Lobby
     public class CharacterTabPresenter : MonoBehaviour
     {
         private CharacterTabView _view;
+        private EquipmentPanelPresenter _equipmentPanel;
 
         /// <summary>LobbyPresenter가 초기화 시 호출한다.</summary>
         public void Init(CharacterTabView view)
         {
             _view = view;
+        }
+
+        /// <summary>
+        /// 런타임 생성 시 EquipmentPanelPresenter 참조를 주입한다 (LobbyHudSetup 에서 호출).
+        /// </summary>
+        /// <param name="equipmentPanel">장비 패널 Presenter.</param>
+        public void InitEquipmentPanel(EquipmentPanelPresenter equipmentPanel)
+        {
+            _equipmentPanel = equipmentPanel;
         }
 
         // ── 탭 전환 진입점 (LobbyPresenter가 호출) ───────────────
@@ -35,6 +48,15 @@ namespace Game.UI.Lobby
         {
             if (_view == null) return;
             _view.SetupCharacterSlots();
+
+            if (_equipmentPanel == null) return;
+            if (!_equipmentPanel.IsInitialized)
+            {
+                var manager = ServiceLocator.TryGet<EquipmentManager>();
+                if (manager != null)
+                    _equipmentPanel.Init(manager, "Rapier");
+            }
+            _equipmentPanel.Show();
         }
 
         /// <summary>탭이 숨겨질 때 LobbyPresenter가 호출한다.</summary>

@@ -43,6 +43,24 @@ namespace Game.UI.Lobby.Equipment
 
         // ── Public Methods ───────────────────────────────────────────────────
 
+        /// <summary>
+        /// 런타임 생성 시 SerializeField 참조를 외부에서 주입한다 (LobbyHudSetup 에서 호출).
+        /// </summary>
+        /// <param name="itemIcon">장비 아이콘 Image.</param>
+        /// <param name="gradeBorder">등급 테두리 Image.</param>
+        /// <param name="emptyIcon">빈 슬롯 아이콘 Image.</param>
+        /// <param name="runeSocketIcons">룬 소켓 아이콘 목록 (최대 3개).</param>
+        /// <param name="slotButton">슬롯 클릭 Button.</param>
+        public void InitReferences(Image itemIcon, Image gradeBorder, Image emptyIcon,
+                                   List<Image> runeSocketIcons, Button slotButton)
+        {
+            _itemIcon        = itemIcon;
+            _gradeBorder     = gradeBorder;
+            _emptyIcon       = emptyIcon;
+            _runeSocketIcons = runeSocketIcons ?? new List<Image>();
+            _slotButton      = slotButton;
+        }
+
         /// <summary>슬롯 타입을 초기화한다.</summary>
         public void Init(EquipmentSlotType slotType)
         {
