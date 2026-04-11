@@ -10,6 +10,22 @@ namespace Game.Data.Save
     [Serializable]
     public class SaveData
     {
+        // ── 스키마 버전 상수 ────────────────────────────────────────
+        /// <summary>현재 스키마 버전. SaveMigrator 단계와 반드시 쌍으로 유지.</summary>
+        public const int CurrentSchemaVersion = 1;
+
+        // ── 메타 (계정 연동 대비) ───────────────────────────────────
+        /// <summary>스키마 버전. 로드 후 마이그레이션 시 CurrentSchemaVersion 으로 승격.</summary>
+        public int    version         = 0;
+        /// <summary>계정 연동 후 서버 식별자. 미연동 시 빈 문자열.</summary>
+        public string userId          = "";
+        /// <summary>기기 고유값. 최초 Save 시 SystemInfo.deviceUniqueIdentifier 로 채움.</summary>
+        public string deviceId        = "";
+        /// <summary>Unix epoch(ms). 모든 Save() 호출 직전에 갱신.</summary>
+        public long   lastSavedAt     = 0;
+        /// <summary>최초 Save 시점. 이후 변경 금지. 마이그레이션 디버깅용.</summary>
+        public long   schemaCreatedAt = 0;
+
         // ── 캐릭터 ─────────────────────────────────────────────────
         public string             lastCharacterId  = "rapier";
         public List<CharacterSaveEntry> characters = new();
