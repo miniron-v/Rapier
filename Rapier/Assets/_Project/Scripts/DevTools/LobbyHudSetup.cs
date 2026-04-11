@@ -259,11 +259,6 @@ namespace Game.DevTools
             // 밝기 슬라이더
             var (brightLabel, brightSlider) = CreateLabeledSlider(panel, "밝기", 0.42f, 0.50f);
 
-            // B3 SaveManagerHook 안내 레이블
-            CreateLabel(panel, "※ B3 완료 후 SaveManager를 연결하세요\n(_saveManagerHook 슬롯)",
-                        24, TextAlignmentOptions.Center, new Color(0.7f, 0.7f, 0.4f, 0.7f),
-                        new Vector2(0f, 0.05f), new Vector2(1f, 0.18f));
-
             view.Init(bgmSlider, sfxSlider, vibToggle, brightSlider);
             return view;
         }

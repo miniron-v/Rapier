@@ -35,6 +35,11 @@ namespace Game.UI.Lobby
         {
             _view        = view;
             _saveManager = saveManager;
+
+            if (_saveManager == null)
+                Debug.LogWarning("[HomeTabPresenter] SaveManager 미주입 — " +
+                                 "GameBootstrap 가 Lobby 진입 전에 실행되었는지 확인할 것. " +
+                                 "폴백으로 기본 표시.");
         }
 
         // ── 탭 전환 진입점 (LobbyPresenter가 호출) ───────────────

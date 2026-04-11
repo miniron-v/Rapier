@@ -1,3 +1,4 @@
+using Game.Core;
 using Game.Data.Save;
 using UnityEngine;
 
@@ -100,8 +101,12 @@ namespace Game.UI.Lobby
                 _tabHandlers[i] = () => HandleTabButtonClicked(captured);
             }
 
+            // GameBootstrap 이 BeforeSceneLoad 에서 SaveManager 를 등록했으므로
+            // Awake 시점에는 반드시 ServiceLocator 에 존재한다.
+            // Inspector 에서 직접 주입되지 않은 경우 ServiceLocator 에서 자동 회수.
+            _saveManager ??= ServiceLocator.Get<SaveManager>();
+
             // 자식 Presenter 초기화 — _view는 비직렬화 필드이므로 런타임에 재주입
-            // _saveManager 는 Inspector 배선 없을 수 있으므로 null 허용 (Init() 에서 주입)
             _homePresenter?.Init(_homeTabView, _saveManager);
             _characterPresenter?.Init(_characterTabView);
             _settingsPresenter?.Init(_settingsTabView);
