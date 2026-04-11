@@ -67,6 +67,12 @@ namespace Game.Enemies
         private void Start()
         {
             SubscribePlayerDeath();
+
+            // SerializeField 로 씬에서 주입된 _hudView 의 다음 스테이지 이벤트 구독.
+            // InitHudView 는 런타임 HudView 교체 시나리오용이며, 일반 경로는 이 구독으로 커버된다.
+            if (_hudView != null)
+                _hudView.OnNextStageRequested += SpawnNextBoss;
+
             SpawnNextBoss();
         }
 
