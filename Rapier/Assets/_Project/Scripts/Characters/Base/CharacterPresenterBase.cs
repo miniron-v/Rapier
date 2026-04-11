@@ -223,32 +223,16 @@ namespace Game.Characters
                 Debug.LogWarning("[CharacterPresenterBase] EquipmentManager 미등록 — 장비 스탯 없이 baseline 진행");
             }
 
-            // RunStat 주입 — ServiceLocator 에서 StageManager 조회
-            // StageManager 미등록(로비 등) 이면 runStat = null 로 RunStat 없이 진행
-            RunStatContainer runStatContainer = null;
-            var stageManager = ServiceLocator.Get<StageManager>();
-            if (stageManager != null)
-            {
-                runStatContainer = stageManager.RunStat;
-            }
-            else
-            {
-                Debug.LogWarning("[CharacterPresenterBase] StageManager 미등록 — RunStat 없이 baseline 진행 (로비 등 정상)");
-            }
-
-            Model = new CharacterModel(statData, metaContainer, runStatContainer);
+            // RunStat 은 Start 에서 지연 주입한다.
+            // 이유: StageManager 도 MonoBehaviour 이고 Awake 순서가 비결정적이므로
+            // Init(Awake) 시점의 ServiceLocator.Get<StageManager>() 는 null 일 수 있다.
+            // Start 는 모든 Awake 이후 호출되므로 안전하다.
+            Model = new CharacterModel(statData, metaContainer, null);
             View  = view;
 
             Model.OnHpChanged     += ratio => View.UpdateHpGauge(ratio / Model.MaxHp);
             Model.OnDeath         += HandleDeath;
             Model.OnChargeChanged += View.UpdateChargeGauge;
-
-            // RunStat 픽 이벤트 구독 (스테이지 진입 시에만; 로비에선 null 이므로 no-op)
-            if (runStatContainer != null)
-            {
-                runStatContainer.OnStatChanged += HandleRunStatChanged;
-                _subscribedRunStat = runStatContainer;
-            }
         }
 
         // ── 이벤트 구독 / 해제 ────────────────────────────────────
@@ -804,15 +788,33 @@ namespace Game.Characters
             if (Gesture == null)
             {
                 Debug.LogError($"[{GetType().Name}] GestureRecognizer가 ServiceLocator에 없음.");
-                return;
             }
-            Gesture.OnTap           += HandleTap;
-            Gesture.OnSwipe         += HandleSwipe;
-            Gesture.OnMoveDirection += HandleMoveDirection;
-            Gesture.OnMoveEnd       += HandleMoveEnd;
-            Gesture.OnHold          += HandleHold;
-            Gesture.OnRelease       += HandleRelease;
-            Gesture.OnJustDodge     += HandleJustDodge;
+            else
+            {
+                Gesture.OnTap           += HandleTap;
+                Gesture.OnSwipe         += HandleSwipe;
+                Gesture.OnMoveDirection += HandleMoveDirection;
+                Gesture.OnMoveEnd       += HandleMoveEnd;
+                Gesture.OnHold          += HandleHold;
+                Gesture.OnRelease       += HandleRelease;
+                Gesture.OnJustDodge     += HandleJustDodge;
+            }
+
+            // RunStat 지연 주입 — StageManager 는 MonoBehaviour 라 Awake 순서가 비결정적.
+            // Start 는 모든 Awake 이후 실행되므로 ServiceLocator 조회가 안전.
+            var stageManager = ServiceLocator.Get<StageManager>();
+            if (stageManager != null && Model != null)
+            {
+                var runStatContainer = stageManager.RunStat;
+                Model.SetRunStat(runStatContainer);
+
+                if (runStatContainer != null)
+                {
+                    runStatContainer.OnStatChanged += HandleRunStatChanged;
+                    _subscribedRunStat = runStatContainer;
+                }
+            }
+            // StageManager 미등록 (로비 등) 이면 RunStat 없이 baseline 진행.
         }
     }
 }

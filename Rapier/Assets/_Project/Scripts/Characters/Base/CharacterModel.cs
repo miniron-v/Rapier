@@ -20,7 +20,7 @@ namespace Game.Characters
 
         // ── 주입된 컨테이너 ────────────────────────────────────────
         private readonly MetaStatContainer _meta;
-        private readonly RunStatContainer  _runStat;
+        private          RunStatContainer  _runStat;
 
         // ── 최종 스탯 (MetaStat + RunStat 반영, [NonSerialized] 캐싱) ─
         /// <summary>MetaStat + RunStat 반영 최종 최대 HP.</summary>
@@ -68,6 +68,18 @@ namespace Game.Characters
             ComputeFinalsOnly();
             CurrentHp          = _finalMaxHp;
             DodgeCooldownRatio = 1f; // 시작 시 즉시 사용 가능
+        }
+
+        // ── RunStat 지연 주입 ─────────────────────────────────────
+        /// <summary>
+        /// RunStatContainer 를 지연 주입한다 (Awake 순서 비결정성 우회용).
+        /// <see cref="CharacterPresenterBase.Start"/> 에서 <see cref="Game.Core.Stage.StageManager"/>
+        /// 조회가 확정된 뒤 호출. 주입 즉시 <see cref="RecomputeFinalStats"/> 로 스탯을 갱신한다.
+        /// </summary>
+        public void SetRunStat(RunStatContainer runStat)
+        {
+            _runStat = runStat;
+            RecomputeFinalStats();
         }
 
         // ── RunStat 갱신 ──────────────────────────────────────────
