@@ -18,7 +18,7 @@ namespace Game.Core.Stage
     ///   - 보스 사망 → 포탈 스폰 (마지막 방이면 HUD ShowResult(true) 추가 호출)
     ///   - 포탈 진입 → StageManager.NotifyPortalEntered()
     ///   - 인터미션 진입 → 플레이어 위치 리셋 + UI + 포탈 스폰
-    ///   - 플레이어 사망 → 이어하기 팝업 표시 + HUD ShowResult(false)
+    ///   - 플레이어 사망 → 이어하기 팝업 표시
     /// </summary>
     public class ProgressionManager : MonoBehaviour
     {
@@ -295,8 +295,6 @@ namespace Game.Core.Stage
             _playerDeathHandled = true;
 
             Debug.Log("[ProgressionManager] 플레이어 사망 → 사망 팝업 표시");
-
-            _bossHud?.ShowResult(false);
 
             if (_intermissionManager != null)
                 _intermissionManager.ShowDeathPopup(_stageManager);
