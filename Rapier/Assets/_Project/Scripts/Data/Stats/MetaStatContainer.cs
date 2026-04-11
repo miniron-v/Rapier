@@ -1,4 +1,5 @@
 using System;
+using Game.Data.Equipment;
 
 namespace Game.Data.MetaStats
 {
@@ -117,6 +118,67 @@ namespace Game.Data.MetaStats
             _percentInvincBonus = _percentCritChance = 0f;
             _percentCritDamage = _percentCdr = _percentSkillDamage = 0f;
             OnStatChanged?.Invoke();
+        }
+
+        // ── StatEntry 직접 입력 경로 (Phase 13-B 장비 파이프라인) ──
+
+        /// <summary>
+        /// <see cref="StatEntry"/> (장비/룬 스탯) 를 컨테이너에 누산한다.
+        /// <see cref="Apply(MetaStatData)"/> 와 별도 경로로, 기존 SO 경로를 건드리지 않는다.
+        /// </summary>
+        public void Apply(StatEntry entry)
+        {
+            ApplyStat(entry.statType, entry.flatValue, entry.percentValue);
+            OnStatChanged?.Invoke();
+        }
+
+        /// <summary>
+        /// 스탯 종류 + 깡값 + % 값으로 직접 누산한다.
+        /// </summary>
+        public void Apply(StatType statType, float flat, float percent)
+        {
+            ApplyStat(statType, flat, percent);
+            OnStatChanged?.Invoke();
+        }
+
+        private void ApplyStat(StatType statType, float flat, float percent)
+        {
+            switch (statType)
+            {
+                case StatType.HP:
+                    _flatHp      += flat;
+                    _percentHp   += percent;
+                    break;
+                case StatType.ATK:
+                    _flatAtk     += flat;
+                    _percentAtk  += percent;
+                    break;
+                case StatType.MoveSpeed:
+                    _flatMs      += flat;
+                    _percentMs   += percent;
+                    break;
+                case StatType.DodgeCDR:
+                    _percentDodgeCdr     += percent;
+                    break;
+                case StatType.ChargeTimeReduction:
+                    _percentChargeTimeRed += percent;
+                    break;
+                case StatType.InvincibilityBonus:
+                    _percentInvincBonus  += percent;
+                    break;
+                case StatType.CritChance:
+                    _percentCritChance   += percent;
+                    break;
+                case StatType.CritDamage:
+                    _percentCritDamage   += percent;
+                    break;
+                case StatType.CDR:
+                    _percentCdr          += percent;
+                    break;
+                case StatType.SkillDamage:
+                    _percentSkillDamage  += percent;
+                    break;
+            }
         }
     }
 }

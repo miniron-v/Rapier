@@ -1,11 +1,14 @@
 using System;
 using System.Collections.Generic;
+using Game.Core;
 using UnityEngine;
 
 namespace Game.Data.Equipment
 {
     /// <summary>
     /// 장착/해제/룬 서비스. 인벤토리 및 캐릭터별 장착 세트를 관리한다.
+    /// Phase 13-B: Init() 시 ServiceLocator 에 등록하여 씬 간 공유.
+    /// Dispose() 시 ServiceLocator 에서 해제.
     /// B3 연결 전까지 IEquipmentSaveProvider 스텁은 null 허용(저장 스킵).
     /// </summary>
     public class EquipmentManager
@@ -40,10 +43,35 @@ namespace Game.Data.Equipment
 
         // ── 초기화 ───────────────────────────────────────────────────────────
 
-        /// <summary>수동 DI: 저장 프로바이더를 주입한다. B3 완성 전까지는 null 가능.</summary>
+        /// <summary>
+        /// 저장 프로바이더를 주입하고 ServiceLocator 에 자신을 등록한다.
+        /// 씬 간 EquipmentManager 인스턴스를 공유하려면 반드시 이 메서드를 호출한다.
+        /// B3 완성 전까지 saveProvider 는 null 가능.
+        /// </summary>
         public void Init(IEquipmentSaveProvider saveProvider = null)
         {
             _saveProvider = saveProvider;
+
+            // 이미 다른 인스턴스가 등록된 경우 중복 등록 방지 (로그는 ServiceLocator가 출력)
+            var existing = ServiceLocator.Get<EquipmentManager>();
+            if (existing != null && existing != this)
+            {
+                // 기존 인스턴스가 남아있음 — 새 인스턴스로 교체하지 않고 자신을 폐기
+                Debug.LogWarning("[EquipmentManager] ServiceLocator에 이미 다른 인스턴스 등록됨. Init 스킵.");
+                return;
+            }
+            ServiceLocator.Register(this);
+        }
+
+        /// <summary>
+        /// ServiceLocator 에서 자신을 해제한다.
+        /// 장비 시스템이 필요 없어지는 시점(앱 종료, 씬 전체 초기화 등)에 호출한다.
+        /// </summary>
+        public void Dispose()
+        {
+            var registered = ServiceLocator.Get<EquipmentManager>();
+            if (registered == this)
+                ServiceLocator.Unregister<EquipmentManager>();
         }
 
         // ── 인벤토리 접근 ────────────────────────────────────────────────────
