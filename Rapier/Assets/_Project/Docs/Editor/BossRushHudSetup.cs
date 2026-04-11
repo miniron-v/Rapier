@@ -155,6 +155,16 @@ namespace Game.Editor
             hpFillRt.pivot     = new Vector2(0f, 0.5f);
             hpFillRt.offsetMin = hpFillRt.offsetMax = Vector2.zero;
 
+            // 보스 HP 수치 텍스트 (HP Bg 중앙, Fill 과 독립 — fill 축소에 영향받지 않음)
+            var bossHpTextGo = CreateTMPText(hpBgGo.transform, "BossHpText", "0", 26, FontStyles.Bold, Color.white);
+            var bossHpTextRt = bossHpTextGo.GetComponent<RectTransform>();
+            bossHpTextRt.anchorMin        = Vector2.zero;
+            bossHpTextRt.anchorMax        = Vector2.one;
+            bossHpTextRt.pivot            = new Vector2(0.5f, 0.5f);
+            bossHpTextRt.offsetMin        = bossHpTextRt.offsetMax = Vector2.zero;
+            bossHpTextRt.anchoredPosition = Vector2.zero;
+            bossHpTextGo.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+
             var stageGo = CreateTMPText(topBar.transform, "StageText", "STAGE 1 / 2", 28, FontStyles.Normal, new Color(0.8f, 0.8f, 0.8f));
             var stageRt = stageGo.GetComponent<RectTransform>();
             stageRt.anchorMin        = new Vector2(0f, 0f);
@@ -219,6 +229,7 @@ namespace Game.Editor
             var hudView = cvGo.AddComponent<BossRushHudView>();
             hudView.Init(
                 hpFillImg,
+                bossHpTextGo.GetComponent<TextMeshProUGUI>(),
                 bossNameGo.GetComponent<TextMeshProUGUI>(),
                 phaseGo.GetComponent<TextMeshProUGUI>(),
                 stageGo.GetComponent<TextMeshProUGUI>(),
