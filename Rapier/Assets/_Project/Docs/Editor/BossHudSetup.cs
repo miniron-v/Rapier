@@ -109,6 +109,21 @@ namespace Game.Editor
 
             cvGo.AddComponent<GraphicRaycaster>();
 
+            // ── Safe Area 컨테이너 ───────────────────────────────
+            // 모든 HUD 콘텐츠의 부모. 런타임에 SafeAreaFitter 가
+            // Screen.safeArea 를 읽어 anchor 를 축소하므로 노치/제스처바
+            // 영역에 콘텐츠가 걸리지 않는다.
+            var safeAreaGo = new GameObject("SafeAreaPanel", typeof(RectTransform));
+            Undo.RegisterCreatedObjectUndo(safeAreaGo, "Create SafeAreaPanel");
+            safeAreaGo.transform.SetParent(cvGo.transform, false);
+            var safeAreaRt = safeAreaGo.GetComponent<RectTransform>();
+            safeAreaRt.anchorMin        = Vector2.zero;
+            safeAreaRt.anchorMax        = Vector2.one;
+            safeAreaRt.offsetMin        = Vector2.zero;
+            safeAreaRt.offsetMax        = Vector2.zero;
+            safeAreaRt.anchoredPosition = Vector2.zero;
+            safeAreaGo.AddComponent<SafeAreaFitter>();
+
             // ── 상단 보스 HP 영역 ──────────────────────────────────
             // [레이아웃 원칙]
             //  - 모든 자식은 단일 anchor(=min==max) + 고정 sizeDelta 로 배치.
@@ -118,7 +133,7 @@ namespace Game.Editor
             //      [-10 ~ -70] BossName(좌) / Phase(우)  60
             //      [-80 ~ -110] StageText                 30
             //      [-140 ~ -180] HpBg                     40   (하단에서 20 띄움)
-            var topBar = CreatePanel(cvGo.transform, "BossHpArea", BG_DARK, sq);
+            var topBar = CreatePanel(safeAreaGo.transform, "BossHpArea", BG_DARK, sq);
             var topRt  = topBar.GetComponent<RectTransform>();
             topRt.anchorMin        = new Vector2(0f, 1f);
             topRt.anchorMax        = new Vector2(1f, 1f);
@@ -186,7 +201,7 @@ namespace Game.Editor
             bossHpTextGo.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
 
             // ── 승리 패널 ─────────────────────────────────────────
-            var victoryPanel   = CreatePanel(cvGo.transform, "VictoryPanel", PANEL_BG_COLOR, sq);
+            var victoryPanel   = CreatePanel(safeAreaGo.transform, "VictoryPanel", PANEL_BG_COLOR, sq);
             var victoryPanelRt = victoryPanel.GetComponent<RectTransform>();
             victoryPanelRt.anchorMin        = new Vector2(0.5f, 0.5f);
             victoryPanelRt.anchorMax        = new Vector2(0.5f, 0.5f);
@@ -214,7 +229,7 @@ namespace Game.Editor
             nextBtnRt.anchoredPosition = new Vector2(0f, 40f);
 
             // ── 결과 패널 ─────────────────────────────────────────
-            var resultPanel   = CreatePanel(cvGo.transform, "ResultPanel", PANEL_BG_COLOR, sq);
+            var resultPanel   = CreatePanel(safeAreaGo.transform, "ResultPanel", PANEL_BG_COLOR, sq);
             var resultPanelRt = resultPanel.GetComponent<RectTransform>();
             resultPanelRt.anchorMin = Vector2.zero;
             resultPanelRt.anchorMax = Vector2.one;
