@@ -60,7 +60,11 @@ namespace Game.DevTools
         private static TMP_FontAsset GetFont()
         {
             if (_font == null)
+            {
                 _font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FONT_ASSET_PATH);
+                if (_font == null)
+                    Debug.LogError($"[LobbyHudSetup] NEXON 폰트 로드 실패: {FONT_ASSET_PATH}");
+            }
             return _font;
         }
 
@@ -623,6 +627,8 @@ namespace Game.DevTools
             nameTmp.fontSize  = 28;
             nameTmp.alignment = TextAlignmentOptions.Center;
             nameTmp.color     = Color.white;
+            var charFont = GetFont();
+            if (charFont != null) nameTmp.font = charFont;
             var nameRect = nameGo.GetComponent<RectTransform>();
             SetAnchors(nameRect, new Vector2(0f, 0.6f), Vector2.one);
             nameRect.offsetMin = nameRect.offsetMax = Vector2.zero;
@@ -635,6 +641,8 @@ namespace Game.DevTools
             csTmp.fontSize  = 22;
             csTmp.alignment = TextAlignmentOptions.Center;
             csTmp.color     = new Color(1f, 0.8f, 0.3f);
+            var csFont = GetFont();
+            if (csFont != null) csTmp.font = csFont;
             var csRect = csGo.GetComponent<RectTransform>();
             SetAnchors(csRect, Vector2.zero, new Vector2(1f, 0.6f));
             csRect.offsetMin = csRect.offsetMax = Vector2.zero;
@@ -664,6 +672,8 @@ namespace Game.DevTools
             tmp.fontSize  = 32;
             tmp.alignment = TextAlignmentOptions.Left;
             tmp.color     = Color.white;
+            var sliderFont = GetFont();
+            if (sliderFont != null) tmp.font = sliderFont;
             var labelRect = labelGo.GetComponent<RectTransform>();
             SetAnchors(labelRect, Vector2.zero, new Vector2(0.3f, 1f));
             labelRect.offsetMin = labelRect.offsetMax = Vector2.zero;
@@ -750,6 +760,8 @@ namespace Game.DevTools
             tmp.fontSize  = 32;
             tmp.alignment = TextAlignmentOptions.Left;
             tmp.color     = Color.white;
+            var toggleFont = GetFont();
+            if (toggleFont != null) tmp.font = toggleFont;
             var labelRect = labelGo.GetComponent<RectTransform>();
             SetAnchors(labelRect, Vector2.zero, new Vector2(0.3f, 1f));
             labelRect.offsetMin = labelRect.offsetMax = Vector2.zero;

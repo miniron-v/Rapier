@@ -116,20 +116,24 @@ namespace Game.UI.Lobby.Equipment
         private void SubscribeManagerEvents()
         {
             if (_manager == null) return;
-            _manager.OnEquipped     += HandleManagerEquipped;
-            _manager.OnUnequipped   += HandleManagerUnequipped;
-            _manager.OnRuneEquipped += HandleManagerRuneEquipped;
+            _manager.OnEquipped       += HandleManagerEquipped;
+            _manager.OnUnequipped     += HandleManagerUnequipped;
+            _manager.OnRuneEquipped   += HandleManagerRuneEquipped;
             _manager.OnRuneUnequipped += HandleManagerRuneUnequipped;
+            _manager.OnInventoryChanged += HandleInventoryChanged;
         }
 
         private void UnsubscribeManagerEvents()
         {
             if (_manager == null) return;
-            _manager.OnEquipped     -= HandleManagerEquipped;
-            _manager.OnUnequipped   -= HandleManagerUnequipped;
-            _manager.OnRuneEquipped -= HandleManagerRuneEquipped;
+            _manager.OnEquipped       -= HandleManagerEquipped;
+            _manager.OnUnequipped     -= HandleManagerUnequipped;
+            _manager.OnRuneEquipped   -= HandleManagerRuneEquipped;
             _manager.OnRuneUnequipped -= HandleManagerRuneUnequipped;
+            _manager.OnInventoryChanged -= HandleInventoryChanged;
         }
+
+        private void HandleInventoryChanged() => RefreshAll();
 
         // ── Event Handlers (View → Presenter) ────────────────────────────────
 

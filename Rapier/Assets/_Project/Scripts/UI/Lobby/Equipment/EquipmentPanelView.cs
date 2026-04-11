@@ -92,6 +92,7 @@ namespace Game.UI.Lobby.Equipment
                     view.OnClicked += HandleInventoryItemClicked;
                     _inventoryItems.Add(view);
                 }
+                view.gameObject.SetActive(true);
                 view.Refresh(inventory[i]);
             }
         }

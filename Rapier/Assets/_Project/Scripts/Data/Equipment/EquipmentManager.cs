@@ -29,6 +29,13 @@ namespace Game.Data.Equipment
         /// <summary>룬 해제 이벤트 (캐릭터 ID, 슬롯, 소켓 인덱스)</summary>
         public event Action<string, EquipmentSlotType, int> OnRuneUnequipped;
 
+        /// <summary>
+        /// 인벤토리(장비/룬) 내용이 변경되었을 때 발행.
+        /// AddEquipmentToInventory / RemoveEquipmentFromInventory / AddRuneToInventory 에서 호출된다.
+        /// Deserialize 경로는 Presenter 구독 이전이므로 이벤트를 발행하지 않는다.
+        /// </summary>
+        public event Action OnInventoryChanged;
+
         // ── 내부 상태 ────────────────────────────────────────────────────────
 
         // 전체 보유 장비 인스턴스 인벤토리
@@ -100,17 +107,23 @@ namespace Game.Data.Equipment
         {
             if (instance == null) return;
             _equipmentInventory.Add(instance);
+            OnInventoryChanged?.Invoke();
         }
 
         /// <summary>인벤토리에서 장비를 제거한다.</summary>
         public bool RemoveEquipmentFromInventory(EquipmentInstance instance)
-            => _equipmentInventory.Remove(instance);
+        {
+            bool removed = _equipmentInventory.Remove(instance);
+            if (removed) OnInventoryChanged?.Invoke();
+            return removed;
+        }
 
         /// <summary>인벤토리에 룬을 추가한다.</summary>
         public void AddRuneToInventory(RuneItemData rune)
         {
             if (rune == null) return;
             _runeInventory.Add(rune);
+            OnInventoryChanged?.Invoke();
         }
 
         /// <summary>보유 장비 인벤토리 (읽기 전용)</summary>
