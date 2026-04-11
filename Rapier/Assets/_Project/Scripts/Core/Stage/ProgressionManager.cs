@@ -230,8 +230,8 @@ namespace Game.Core.Stage
             if (rapier != null && rapier.PublicModel != null)
             {
                 var model = rapier.PublicModel;
-                model.Heal(model.StatData.maxHp);
-                Debug.Log($"[ProgressionManager] HP 100% 회복 완료. 현재: {model.CurrentHp}/{model.StatData.maxHp}");
+                model.Heal(model.MaxHp);
+                Debug.Log($"[ProgressionManager] HP 100% 회복 완료. 현재: {model.CurrentHp}/{model.MaxHp}");
             }
         }
 

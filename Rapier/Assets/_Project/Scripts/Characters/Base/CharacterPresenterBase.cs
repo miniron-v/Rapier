@@ -533,7 +533,7 @@ namespace Game.Characters
         public void Revive()
         {
             if (Model == null) return;
-            Model.Revive(Model.StatData.maxHp);
+            Model.Revive(Model.MaxHp);
             View?.PlayRevive();
 
             if (Gesture != null)
@@ -554,7 +554,7 @@ namespace Game.Characters
                 Gesture.OnJustDodge     -= HandleJustDodge;
                 Gesture.OnJustDodge     += HandleJustDodge;
             }
-            Debug.Log($"[{GetType().Name}] 부활 완료. HP: {Model.CurrentHp}/{Model.StatData.maxHp}");
+            Debug.Log($"[{GetType().Name}] 부활 완료. HP: {Model.CurrentHp}/{Model.MaxHp}");
         }
 
         // ── 슬로우모션 ────────────────────────────────────────────
