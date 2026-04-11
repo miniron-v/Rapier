@@ -28,6 +28,7 @@ namespace Game.UI
         // ── Inspector / Init으로 주입 ──────────────────────────────
         [Header("보스 HP 바 (상단)")]
         [SerializeField] private Image           _bossHpFill;
+        [SerializeField] private TextMeshProUGUI _bossHpText;
         [SerializeField] private TextMeshProUGUI _bossNameText;
         [SerializeField] private TextMeshProUGUI _bossPhaseText;
         [SerializeField] private TextMeshProUGUI _stageText;
@@ -53,6 +54,7 @@ namespace Game.UI
         /// </summary>
         public void Init(
             Image           bossHpFill,
+            TextMeshProUGUI bossHpText,
             TextMeshProUGUI bossNameText,
             TextMeshProUGUI bossPhaseText,
             TextMeshProUGUI stageText,
@@ -64,6 +66,7 @@ namespace Game.UI
             Button          toLobbyButton)
         {
             _bossHpFill      = bossHpFill;
+            _bossHpText      = bossHpText;
             _bossNameText    = bossNameText;
             _bossPhaseText   = bossPhaseText;
             _stageText       = stageText;
@@ -111,6 +114,8 @@ namespace Game.UI
             }
 
             if (_bossHpFill   != null) _bossHpFill.fillAmount  = 1f;
+            if (_bossHpText   != null && _bossModel != null)
+                _bossHpText.text = _bossModel.CurrentHp.ToString("F0");
             if (_bossNameText  != null) _bossNameText.text      = bossName.ToUpper();
             if (_bossPhaseText != null) _bossPhaseText.text     = "PHASE 1";
             if (_stageText     != null) _stageText.text         = $"STAGE {stage} / {totalStages}";
@@ -159,10 +164,14 @@ namespace Game.UI
         {
             if (_bossHpFill != null)
                 _bossHpFill.fillAmount = Mathf.Clamp01(ratio);
+            if (_bossHpText != null && _bossModel != null)
+                _bossHpText.text = _bossModel.CurrentHp.ToString("F0");
         }
 
         private void OnBossModelDeath()
         {
+            if (_bossHpText != null)
+                _bossHpText.text = "0";
             if (_bossModel != null)
             {
                 _bossModel.OnHpChanged -= UpdateHp;

@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 using Game.Characters;
 using Game.Core;
 
@@ -28,8 +29,9 @@ namespace Game.UI
         [Header("회피 쿨타임 게이지 Fill Image (Vertical)")]
         [SerializeField] private Image _dodgeCooldownImage;
 
-        private CharacterModel _playerModel;
-        private GameObject     _dodgeCooldownBg;
+        private TextMeshProUGUI _hpText;
+        private CharacterModel  _playerModel;
+        private GameObject      _dodgeCooldownBg;
 
         private void Start()
         {
@@ -53,6 +55,10 @@ namespace Game.UI
                     _dodgeCooldownBg    = go.transform.parent?.gameObject;
                 }
             }
+            {
+                var go = FindInChildren(transform, "HpText");
+                if (go != null) _hpText = go.GetComponent<TextMeshProUGUI>();
+            }
 
             // IPlayerCharacter 인터페이스로 참조 — 구체 타입 무관
             var player = ServiceLocator.Get<IPlayerCharacter>();
@@ -73,12 +79,13 @@ namespace Game.UI
             _playerModel.OnChargeChanged        += OnChargeChanged;
             _playerModel.OnDodgeCooldownChanged += OnDodgeCooldownChanged;
 
-            SetHp(_playerModel.CurrentHp / _playerModel.StatData.maxHp);
+            SetHp(_playerModel.CurrentHp / _playerModel.StatData.maxHp, _playerModel.CurrentHp);
             SetCharge(0f);
             SetDodgeCooldown(1f);
 
             Debug.Log($"[HudView] 초기화 완료. HpFill={_hpFillImage != null}, " +
-                      $"ChargeImage={_chargeImage != null}, DodgeCooldown={_dodgeCooldownImage != null}");
+                      $"ChargeImage={_chargeImage != null}, DodgeCooldown={_dodgeCooldownImage != null}, " +
+                      $"HpText={_hpText != null}");
         }
 
         private void OnDestroy()
@@ -93,17 +100,19 @@ namespace Game.UI
         private void OnHpChanged(float currentHp)
         {
             if (_playerModel == null) return;
-            SetHp(currentHp / _playerModel.StatData.maxHp);
+            SetHp(currentHp / _playerModel.StatData.maxHp, currentHp);
         }
 
         private void OnChargeChanged(float ratio)        => SetCharge(ratio);
         private void OnDodgeCooldownChanged(float ratio) => SetDodgeCooldown(ratio);
 
         // ── UI 갱신 ───────────────────────────────────────────────
-        private void SetHp(float ratio)
+        private void SetHp(float ratio, float currentHp)
         {
             if (_hpFillImage != null)
                 _hpFillImage.fillAmount = Mathf.Clamp01(ratio);
+            if (_hpText != null)
+                _hpText.text = currentHp.ToString("F0");
         }
 
         private void SetCharge(float ratio)
