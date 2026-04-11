@@ -23,7 +23,26 @@
       "Bash(mkdir -p \"C:/GitHub/Rapier-phase12b3-meta/Rapier/Assets/_Project/10_Scripts/UI/Lobby/Mission\")",
       "Bash(mkdir -p \"C:/GitHub/Rapier-phase12b3-meta/Rapier/Assets/_Project/30_ScriptableObjects/Missions\")",
       "Read(//c/GitHub/Rapier-phase12b3-meta/**)",
-      "Bash(node -e ':*)"
+      "Bash(node -e ':*)",
+      "Bash(cmd /c mklink /J \"C:\\\\GitHub\\\\Rapier-phase12c-bosses\\\\Rapier\\\\Library\" \"C:\\\\GitHub\\\\Rapier\\\\Rapier\\\\Library\")",
+      "Bash(cmd /c mklink /J \"C:\\\\GitHub\\\\Rapier-phase12d-stages\\\\Rapier\\\\Library\" \"C:\\\\GitHub\\\\Rapier\\\\Rapier\\\\Library\")",
+      "Bash(cmd /c dir \"C:\\\\GitHub\\\\Rapier-phase12c-bosses\\\\Rapier\")",
+      "Bash(findstr Library)",
+      "Bash(cmd /c dir \"C:\\\\GitHub\\\\Rapier-phase12d-stages\\\\Rapier\")",
+      "Bash(cmd:*)",
+      "Bash(powershell:*)",
+      "Bash(grep:*)",
+      "Bash(git merge:*)",
+      "Bash(git -C \"C:/GitHub/Rapier-phase12c-bosses/Rapier\" diff -- \"Assets/_Project/00_Docs/Domains/ENEMIES.md\")",
+      "Read(//tmp/**)",
+      "Bash(unlink \"C:/GitHub/Rapier-phase12c-bosses/Rapier/Assets/Rapier-Private/Fonts\")",
+      "Bash(mv \"C:/GitHub/Rapier-phase12c-bosses/Rapier/Assets/Rapier-Private/Fonts.meta\" \"C:/GitHub/Rapier-phase12c-bosses/Rapier/Assets/Rapier-Private/Fonts.meta.bak\")",
+      "Bash(unlink \"C:/GitHub/Rapier-phase12d-stages/Rapier/Assets/Rapier-Private/Fonts\")",
+      "Bash(mv C:/GitHub/Rapier-phase12d-stages/Rapier/Assets/Rapier-Private/Fonts.meta C:/GitHub/Rapier-phase12d-stages/Rapier/Assets/Rapier-Private/Fonts.meta.bak)",
+      "Bash(pip install:*)",
+      "Bash(python -m git_filter_repo --invert-paths --path \"Rapier/Assets/Rapier-Private/Fonts\" --path \"Rapier/Assets/Rapier-Private/Fonts.meta\")",
+      "Bash(python -m git_filter_repo --force --invert-paths --path \"Rapier/Assets/Rapier-Private/Fonts\" --path \"Rapier/Assets/Rapier-Private/Fonts.meta\")",
+      "Bash(python:*)"
     ]
   }
 }
