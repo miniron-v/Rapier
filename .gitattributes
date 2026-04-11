@@ -1,0 +1,98 @@
+# Default: let git auto-detect text; do not force conversion
+* text=auto
+
+# ---- Scripts / code / config: CRLF ----
+*.cs        text eol=crlf
+*.shader    text eol=crlf
+*.cginc     text eol=crlf
+*.hlsl      text eol=crlf
+*.compute   text eol=crlf
+*.asmdef    text eol=crlf
+*.asmref    text eol=crlf
+*.json      text eol=crlf
+*.xml       text eol=crlf
+*.md        text eol=crlf
+*.txt       text eol=crlf
+*.uxml      text eol=crlf
+*.uss       text eol=crlf
+*.editorconfig text eol=crlf
+*.gitattributes text eol=crlf
+*.gitignore text eol=crlf
+
+# ---- Shell scripts: LF (must stay LF to run) ----
+*.sh        text eol=lf
+
+# ---- Unity YAML assets: LF (Unity's native; avoids churn on save) ----
+*.meta          text eol=lf
+*.unity         text eol=lf
+*.prefab        text eol=lf
+*.asset         text eol=lf
+*.mat           text eol=lf
+*.anim          text eol=lf
+*.controller    text eol=lf
+*.overrideController text eol=lf
+*.physicMaterial text eol=lf
+*.physicsMaterial2D text eol=lf
+*.playable      text eol=lf
+*.mask          text eol=lf
+*.brush         text eol=lf
+*.flare         text eol=lf
+*.fontsettings  text eol=lf
+*.guiskin       text eol=lf
+*.giparams      text eol=lf
+*.preset        text eol=lf
+*.terrainlayer  text eol=lf
+*.signal        text eol=lf
+*.shadergraph   text eol=lf
+*.shadersubgraph text eol=lf
+*.scenetemplate text eol=lf
+*.inputactions  text eol=lf
+*.vsconfig      text eol=lf
+
+# ---- Binary: never touch ----
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.bmp  binary
+*.tga  binary
+*.tif  binary
+*.tiff binary
+*.psd  binary
+*.exr  binary
+*.hdr  binary
+*.ico  binary
+*.svg  binary
+*.fbx  binary
+*.obj  binary
+*.blend binary
+*.dae  binary
+*.3ds  binary
+*.max  binary
+*.wav  binary
+*.mp3  binary
+*.ogg  binary
+*.aif  binary
+*.aiff binary
+*.flac binary
+*.mp4  binary
+*.mov  binary
+*.webm binary
+*.ttf  binary
+*.otf  binary
+*.woff binary
+*.woff2 binary
+*.dll  binary
+*.so   binary
+*.dylib binary
+*.exe  binary
+*.pdb  binary
+*.mdb  binary
+*.zip  binary
+*.7z   binary
+*.rar  binary
+*.gz   binary
+*.unitypackage binary
+*.docx binary
+*.xlsx binary
+*.pdf  binary

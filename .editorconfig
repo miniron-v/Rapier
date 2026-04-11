@@ -3,7 +3,21 @@ root = true
 # All files
 [*]
 indent_style = space
-charset=utf-8
+charset = utf-8
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Scripts / code / config: CRLF
+[*.{cs,shader,cginc,hlsl,compute,asmdef,asmref,json,xml,md,txt,uxml,uss}]
+end_of_line = crlf
+
+# Unity YAML assets: LF (Unity's native)
+[*.{meta,unity,prefab,asset,mat,anim,controller,overrideController,playable,mask,preset,shadergraph,shadersubgraph,scenetemplate,inputactions}]
+end_of_line = lf
+
+# Shell scripts: LF
+[*.sh]
+end_of_line = lf
 
 # Xml files
 [*.xml]
