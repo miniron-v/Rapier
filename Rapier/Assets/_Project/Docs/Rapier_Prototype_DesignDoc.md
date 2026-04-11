@@ -605,9 +605,11 @@ ATK = 80   × Position_ATK × Stage_ATK
 | **Phase 12-B** | **로비 5탭 + 캐릭터 관리 + 장비 + 룬 + 미션 + 저장 (메타 시스템)** | **로비 5탭 진입/이탈, 장비 장착·해제, JSON 저장/로드 동작** |
 | **Phase 12-C** | **신규 보스 (Specter 완성 + Pyromancer/Berserker/Stormcaller/Gravekeeper/Twin Phantoms)** | **각 보스 단일 보스전에서 정상 플레이 가능** |
 | **Phase 12-D** | **스테이지 / 인터미션 방 / 런 스탯 시스템** | **나선비경식 진행, 휴식+스탯 선택, RunStat 누적/소멸 확인** |
-| Phase 12-E | 통합 (12-A~D 머지 후 BossRushManager에 신규 보스 등록 + 스테이지 흐름 연결) | 스테이지 1 풀 플레이 가능 |
+| Phase 12-E | BossRushManager 에 12-C 신규 보스 6종 배열 등록 + 스테이지 흐름 연결 | 보스 러시 씬에서 전체 보스 순차 플레이 가능 |
+| **Phase 13-A** | **공용 BossHudView 통합 + HP 숫자 표기 + SafeAreaFitter** | **StageDemo/BossRushDemo 공용 HUD 동작, 노치 대응 확인** |
+| **Phase 13-B** | **Save 파이프라인 (SaveData 확장 / SaveMigrator / GameBootstrap) + 장비 스탯 주입 (EquipmentMetaStatProvider)** | **save.json 생성·로드 + 장비 스탯이 플레이어에 반영 확인** |
 
-Phase 12-A ~ 12-D는 **병렬 작업**으로 진행한다. 12-E는 통합 단계로 팀장이 직접 수행한다.
+Phase 12-A ~ 12-D 와 13-A/13-B 는 **병렬 작업**으로 진행한다. 12-E 는 통합 단계로 팀장이 직접 수행한다.
 
 ---
 

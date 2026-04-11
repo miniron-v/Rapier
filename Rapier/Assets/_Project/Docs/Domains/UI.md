@@ -8,7 +8,7 @@
 |----|------|
 | Lobby | 5탭 로비. 메인/캐릭터/상점/미션/설정. |
 | StageDemo | 스테이지 진행 씬. 8방 RoomNode(인터미션/보스 교차). 포탈 시스템 기반. |
-| BossRushDemo | 보스 러시 씬(레거시 단일 씬). `BossRushManager` 배선 대기 (Phase 12-E). |
+| BossRushDemo | 보스 러시 씬. `BossRushManager` 가 공용 `BossHudView` 에 연결되어 동작 (Phase 13-A 통합). 12-C 신규 보스 배열 등록은 Phase 12-E 대기. |
 
 - `SceneController.LoadLobby()` / `LoadGame()` 으로 전환.
 - 씬 전환 전 `Time.timeScale = 1f` 복구 보장.
