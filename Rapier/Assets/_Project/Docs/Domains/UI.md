@@ -7,7 +7,8 @@
 | 씬 | 역할 |
 |----|------|
 | Lobby | 5탭 로비. 메인/캐릭터/상점/미션/설정. |
-| BossRushDemo | 스테이지 진행 씬. 보스방 + 인터미션 방. |
+| StageDemo | 스테이지 진행 씬. 8방 RoomNode(인터미션/보스 교차). 포탈 시스템 기반. |
+| BossRushDemo | 보스 러시 씬(레거시 단일 씬). `BossRushManager` 배선 대기 (Phase 12-E). |
 
 - `SceneController.LoadLobby()` / `LoadGame()` 으로 전환.
 - 씬 전환 전 `Time.timeScale = 1f` 복구 보장.
@@ -17,12 +18,34 @@
 
 ## 2. HUD 구성
 
+### HudView (플레이어 HP/차지/회피 쿨)
+
+- `Rapier_Player.prefab` 내장 **World Space** `PlayerHudCanvas` 에 올라감. 플레이어를 따라다닌다.
+- 구성: `HpFill` (Image fillAmount, Horizontal) + `ChargeGaugeFill` (Radial360) + `DodgeCooldownFill` (Vertical).
+- **HP 숫자 표기 (Phase 13-A)**: `HpFill` 내부 중앙에 `TextMeshProUGUI _hpText` 배치. **현재 HP 만** 정수로 표시 (`"{currentHp:F0}"`). 최대 HP 는 표시하지 않는다.
+- 데이터 소스: `ServiceLocator.Get<IPlayerCharacter>().PublicModel` — `CharacterModel.OnHpChanged(float currentHp)` 이벤트 구독. 이벤트 파라미터가 절대값이므로 그대로 포맷에 사용.
+- WorldSpace Canvas 이므로 Safe Area 영향권 밖.
+
 ### BossRushHudView
 
-- HP바, 차지 게이지, 보스 HP바.
+- 상단 `BossHpArea` (Screen Space Overlay). 보스 HP 바 + 보스 이름 + 페이즈 + 스테이지 번호.
+- **보스 HP 숫자 표기 (Phase 13-A)**: `_bossHpFill` 옆에 `TextMeshProUGUI _bossHpText` 배치. **현재 HP 만** 정수로 표시.
+- `EnemyModel.OnHpChanged(float ratio)` 이벤트는 비율만 주므로, View 에서 `_bossModel.CurrentHp` 를 직접 읽어 갱신.
 - 결과 패널: ALL CLEAR(노랑) / GAME OVER(빨강).
 - `_toLobbyButton` → `SceneController.LoadLobby()`.
 - `Init(...)` 메서드로 BossRushHudSetup이 주입.
+
+### Safe Area 대응 (Phase 13-A)
+
+모바일 노치/펀치홀/제스처바를 고려해 모든 **Screen Space Overlay Canvas** 에 `SafeAreaFitter` 를 부착한다.
+
+- 신규 컴포넌트: `Scripts/UI/Common/SafeAreaFitter.cs` — `Screen.safeArea` 를 읽어 대상 `RectTransform` 의 anchor 를 매 프레임(또는 해상도 변경 시) 재계산.
+- 적용 대상:
+  - `BossRushHudCanvas` (StageDemo, BossRushDemo 공통 — 상단 `BossHpArea` 노치 회피)
+  - `[UI]` Canvas (StageDemo — `VirtualJoystick` 하단 제스처바 회피, Intermission/Death/StageClear 팝업 중앙 정렬)
+  - `LobbyCanvas`
+- **적용 제외**: `PlayerHudCanvas` (World Space, 무관).
+- Portrait 고정 프로젝트이므로 회전 처리는 단순화 — 화면 회전 대응 로직 불필요.
 
 ### LobbyManager
 
@@ -67,7 +90,8 @@
 
 ## 4. UI 코드 생성 주의사항
 
-- `CanvasScaler`: 기본 ConstantPixelSize → `ScaleWithScreenSize`, referenceResolution `(1080, 1920)` 설정.
+- `CanvasScaler`: 기본 ConstantPixelSize → `ScaleWithScreenSize`, referenceResolution `(1080, 1920)`, Match 0.5 설정.
 - `RectTransform`: Anchor와 Pivot을 반드시 일치시킬 것.
 - EventSystem 생성 시 `InputSystemUIInputModule` 사용 (StandaloneInputModule 금지).
 - `Image.Type.Filled` 사용 시 Sprite 반드시 할당 — None이면 fillAmount 무시됨.
+- Screen Space Overlay Canvas 생성 시 `SafeAreaFitter` 부착을 기본으로 고려 (모바일 대응).

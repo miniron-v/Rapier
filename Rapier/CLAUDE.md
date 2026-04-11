@@ -210,30 +210,41 @@ Assets/
 
 ---
 
-## 12. 멀티 터미널 에이전트 워크플로우
+## 12. 백그라운드 Agent 에이전트 워크플로우
 
-Phase 단위 작업은 아래 흐름을 따른다.
+Phase 단위 작업은 팀장 세션의 `Agent` 도구를 `run_in_background: true` + `model: "sonnet"` 로 띄워 병렬 진행한다.
 
-### 팀장 세션 역할 (이 터미널)
-1. 워크트리 생성 (`git worktree add`)
-2. 기획 확정 + 작업 에이전트용 초기 프롬프트 작성
-3. 사용자에게 "새 터미널을 열고 아래 경로에서 `claude`를 실행한 뒤 프롬프트를 붙여넣어 주세요" 안내
+### 팀장 세션 역할
+1. 관련 도메인 문서 + 탐색 에이전트(`subagent_type: "Explore"`, Read-only)로 현 상태 조사
+2. 사용자와 기획 논의 → 합의 → 관련 도메인 문서 갱신
+3. 워크트리 생성 (`git worktree add`, 각 병렬 작업마다)
+4. Rapier-Private 폴더 Junction 연결 (비공개 에셋 필요 시)
+5. `Agent` 도구로 구현 에이전트 실행
+   - `subagent_type: "general-purpose"`
+   - `model: "sonnet"` (반드시 명시, 비용 관리)
+   - `run_in_background: true`
+   - 자체완결적 프롬프트 (아래 필수 포함 항목)
+6. 완료 알림 수신 후 §9 체크리스트 + 시나리오 트레이스 직접 검토
+7. 사용자 직접 플레이 테스트 안내
+8. develop ff-only 머지
 
-### 작업 터미널 역할 (새 터미널)
-- 사용자가 직접 모니터링·개입 가능
-- 작업 완료 후 결과를 팀장 세션에 보고
-- **커밋까지만 수행. push / merge / worktree remove 금지.**
-
-### 팀장 세션 복귀
-4. 결과 검토 (CLAUDE.md §9 체크리스트)
-5. develop 머지
+### 구현 에이전트 역할
+- 워크트리 내에서 **커밋까지만** 수행
+- **금지**: push / merge / worktree remove / --amend / --no-ff / --no-verify / force push
+- 사용자 실시간 개입이 어려우므로 프롬프트가 반드시 완결적이어야 한다
+- 다른 병렬 Phase 의 워크트리는 절대 건드리지 않음
 
 ### 초기 프롬프트 필수 포함 항목
 - 워크트리 절대 경로 및 브랜치
-- `§11 Bash 운영 규칙` 인용 (cd 금지, git -C 사용)
-- 작업 목표 (합의된 기획 인용, 추측 금지)
-- 참조 문서 목록 및 읽는 순서
-- 수정 허용/금지 폴더
-- §9 피드백 루프 수행 지시
-- 커밋 형식: `[Phase 12-X] 한국어 설명`
-- **push / merge / worktree remove / --amend 금지** 명시
+- `§11 Bash 운영 규칙` 인용 (cd 금지, `git -C` 사용)
+- 작업 목표 (합의된 기획 원문 인용, 추측 금지)
+- 참조 문서 목록 + 읽는 순서 (CLAUDE.md → 관련 `Domains/*.md` → DesignDoc)
+- 현재 구현 상태 고지 (예: "Rapier 1종만 구현됨. Warrior/Assassin/Ranger 클래스는 미존재")
+- 수정 허용 폴더 / **수정 금지 폴더** (병렬 Phase 충돌 방지)
+- §9 피드백 루프 지시 (컴파일 검증 / 코드 리뷰 체크리스트 / 자체 트레이스)
+- 잠금·플래그 짝 grep 검증 지시 (모든 `Begin*` / `Lock*` / `SetXxx(true)` / `StartCoroutine` 에 대응하는 해제가 정상/취소/사망/OnDisable 모든 종료 경로에 있는지)
+- C# 정적 문법 grep 검증 지시 (Unity 실행 불가 환경이므로 누락 using, 접근 불가 멤버, 튜플 요소 수 등 사전 점검)
+- "사용자 직접 플레이 테스트가 최종 검증 단계" 명시
+- 커밋 형식: `[Phase 13-X] 한국어 설명` (본문에 근본 원인 + 수정 위치 + 검증 결과)
+- **push / merge / worktree remove / --amend / --no-verify / force push 금지** 명시
+- 보고 형식: 200~400자 (수정 요지 / 시나리오 트레이스 / 잠금-해제 매핑 표 / 커밋 SHA)

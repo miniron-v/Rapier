@@ -61,14 +61,17 @@
 
 ## 4. 적용 위치
 
-- **계산 위치**: `CharacterStatCalculator` (가칭) — 단일 책임. Model이 아닌 별도 서비스.
+- **MetaStat 구성**: `EquipmentMetaStatProvider` (`IMetaStatProvider` 구현) — `EquipmentManager` 의 장착 상태를 읽어 `MetaStatContainer` 를 빌드. 자세한 파이프라인은 `EQUIPMENT.md §4` 참조.
+- **주입 지점**: `CharacterPresenterBase.Init(statData, view)` — 씬 진입 시 1회. `ServiceLocator.Get<EquipmentManager>()` 로 현재 장착 상태 조회 후 `MetaStatContainer` 를 `CharacterModel` 생성에 주입.
+- **RunStat 적용 위치**: `RunStatContainer` — 인터미션 방에서 선택 시 누적. `ProgressionManager` 가 컨테이너 보유.
+- **최종 스탯 계산**: `RunStatContainer.CalculateFinalHp(base, meta, run)` 와 같이 MetaStatContainer 와 RunStatContainer 가 **합산 지점에서만 만난다**. 두 컨테이너를 섞지 않는다.
 - **호출 시점**:
-  - 게임 시작 시: MetaStat 변경 후 1회 계산
+  - 인게임 씬 진입 시: MetaStat 1회 계산 → CharacterModel 주입
   - RunStat 추가 시 (인터미션 방 선택): 매번 재계산
   - 외부에서는 항상 캐싱된 최종값을 읽는다
 
 - **소멸**:
-  - 스테이지 클리어/이탈 → `RunStatModifier.Clear()`
+  - 스테이지 클리어/이탈 → `RunStatContainer.Clear()`
   - 다음 게임 시작 시 RunStat은 빈 상태에서 시작
 
 ---

@@ -75,13 +75,33 @@
 | `EquipmentInventory` | 모든 보유 장비/룬 인스턴스 관리 |
 | `CharacterEquipment` | 캐릭터별 8 슬롯 장착 상태 |
 
-### 능력치 적용
+### 능력치 적용 (Phase 13-B 파이프라인)
 
-장비/룬의 능력치는 모두 **MetaStat** 으로 분류된다 (`STATS.md` 참조).
+장비/룬의 능력치는 모두 **MetaStat** 으로 분류되어 단일 경로로 캐릭터에 적용된다 (`STATS.md` 참조).
 
-캐릭터 능력치 계산 시:
-1. 장착된 8 슬롯의 메인/서브 스탯 → MetaStat 합산에 반영
-2. 각 장비에 장착된 룬 → MetaStat (또는 캐릭터 고유 효과) 에 반영
+```
+EquipmentManager (장착 상태)
+   │ OnEquipped / OnUnequipped
+   ▼
+EquipmentMetaStatProvider  : IMetaStatProvider
+   │ 장착 장비 8슬롯의 MainStat + SubStats + 각 소켓의 룬 StatEffect 를 순회
+   │ StatEntry 를 누적하여 MetaStatContainer 구성
+   ▼
+MetaStatContainer
+   │ (base + meta_flat) × (1 + meta%) 계산
+   ▼
+CharacterPresenterBase.Init(statData, view)
+   │ 진입 시 ServiceLocator.Get<EquipmentManager>() 조회
+   │ Provider.BuildContainer() → CharacterModel 의 최종 스탯에 주입
+   ▼
+CharacterModel (maxHp / atk / moveSpeed = 최종 스탯)
+```
+
+**씬 간 보존**: `EquipmentManager` 는 `DontDestroyOnLoad` + `ServiceLocator.Register(this)` 로 로비에서 인게임 씬으로 전달된다. 씬 전환 중 장착 상태 유실 없음.
+
+**런타임 재계산**: 스테이지 중 장비 변경은 없으므로 `Init` 시점 1회 계산이면 충분. 로비 내 장착 변경 시에는 View 측 미리보기용으로만 재계산 이벤트 발행.
+
+**룬 처리**: 룬의 `StatEffect` (StatEntry) 는 장비와 동일 파이프라인으로 합산. 단, 캐릭터 전용 룬(`_targetCharacterId` 불일치)은 Provider 단계에서 필터링.
 
 ---
 
