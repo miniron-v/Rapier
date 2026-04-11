@@ -3,6 +3,7 @@ using System.Collections;
 using UnityEngine;
 using Game.Characters;
 using Game.Enemies;
+using Game.UI;
 using Game.UI.Intermission;
 using Game.Core;
 
@@ -13,16 +14,20 @@ namespace Game.Core.Stage
     ///
     /// [역할]
     ///   - StageManager.OnRoomEntered 구독 → 방 종류에 따라 보스 스폰 또는 인터미션 처리
-    ///   - 보스 사망 → 포탈 스폰
+    ///   - 보스 스폰 시 씬의 BossHudView에 SetupBoss/UpdatePhase/ShowResult를 호출해 HUD를 구동
+    ///   - 보스 사망 → 포탈 스폰 (마지막 방이면 HUD ShowResult(true) 추가 호출)
     ///   - 포탈 진입 → StageManager.NotifyPortalEntered()
     ///   - 인터미션 진입 → 플레이어 위치 리셋 + UI + 포탈 스폰
-    ///   - 플레이어 사망 → 이어하기 팝업 표시
+    ///   - 플레이어 사망 → 이어하기 팝업 표시 + HUD ShowResult(false)
     /// </summary>
     public class ProgressionManager : MonoBehaviour
     {
         [Header("참조")]
         [SerializeField] private StageManager        _stageManager;
         [SerializeField] private IntermissionManager _intermissionManager;
+
+        [Header("Boss HUD")]
+        [SerializeField] private BossHudView _bossHud; // 씬에서 연결. 없으면 null 허용.
 
         [Header("보스 스폰")]
         [SerializeField] private Vector2 _bossSpawnPosition = Vector2.zero;
@@ -34,9 +39,11 @@ namespace Game.Core.Stage
 
         // ── 런타임 ───────────────────────────────────────────────────
         private EnemyPresenterBase _currentBoss;
+        private BossPresenterBase  _currentBossPresenter; // BossPresenterBase 캐스팅 캐시
         private bool               _bossAlive;
         private bool               _playerDeathHandled;
         private Portal             _activePortal;
+        private int                _currentBossRoomIndex; // 보스 방 진입 순번 (1-based)
 
         // ── 이벤트 구독/해제 ─────────────────────────────────────────
         private void OnEnable()
@@ -108,10 +115,35 @@ namespace Game.Core.Stage
             _bossAlive = true;
             _currentBoss.OnDeath += HandleBossDeath;
 
+            // BossPresenterBase 캐스팅 → HUD + 페이즈 이벤트 연결
+            _currentBossPresenter = _currentBoss as BossPresenterBase;
+            if (_currentBossPresenter != null)
+            {
+                _currentBossPresenter.OnPhaseChanged += HandleBossPhaseChanged;
+
+                _currentBossRoomIndex++;
+                int totalBossRooms = _stageManager != null ? _stageManager.TotalBossRooms : 0;
+                string bossDisplayName = room.bossStatData?.enemyName
+                    ?? room.displayName
+                    ?? room.bossPrefab.name;
+
+                _bossHud?.SetupBoss(bossDisplayName, _currentBossPresenter, _currentBossRoomIndex, totalBossRooms);
+                Debug.Log($"[ProgressionManager] HUD SetupBoss: {bossDisplayName} ({_currentBossRoomIndex}/{totalBossRooms})");
+            }
+            else
+            {
+                Debug.LogWarning($"[ProgressionManager] {room.bossPrefab.name}이 BossPresenterBase가 아님. HUD 연결 생략.");
+            }
+
             // 플레이어 사망 구독 (방 진입마다 갱신)
             SubscribePlayer();
 
             Debug.Log($"[ProgressionManager] 보스 스폰: {room.displayName} @ {_bossSpawnPosition}");
+        }
+
+        private void HandleBossPhaseChanged(BossPresenterBase.BossPhase phase)
+        {
+            _bossHud?.UpdatePhase(phase);
         }
 
         private void HandleBossDeath()
@@ -120,8 +152,15 @@ namespace Game.Core.Stage
             _bossAlive = false;
             UnsubscribeBoss();
 
-            Debug.Log("[ProgressionManager] 보스 처치 → 포탈 스폰");
+            // 마지막 보스 방 처치 여부 판정
+            bool isFinalBoss = _stageManager != null
+                && _currentBossRoomIndex >= _stageManager.TotalBossRooms;
+
+            Debug.Log($"[ProgressionManager] 보스 처치. 마지막: {isFinalBoss}. → 포탈 스폰");
             SpawnPortal(_portalSpawnPosition);
+
+            if (isFinalBoss)
+                _bossHud?.ShowResult(true);
         }
 
         // ── 인터미션 방 ──────────────────────────────────────────────
@@ -131,7 +170,11 @@ namespace Game.Core.Stage
 
             // 이어하기 진입이면 부활 처리, 아니면 HP 회복
             if (_stageManager != null && _stageManager.IsContinueMode)
+            {
                 RevivePlayer();
+                // 이어하기 진입: 결과/승리 패널 초기화
+                HideHudPanels();
+            }
             else
                 HealPlayerToFull();
 
@@ -251,10 +294,20 @@ namespace Game.Core.Stage
 
             Debug.Log("[ProgressionManager] 플레이어 사망 → 사망 팝업 표시");
 
+            _bossHud?.ShowResult(false);
+
             if (_intermissionManager != null)
                 _intermissionManager.ShowDeathPopup(_stageManager);
             else
                 Debug.LogWarning("[ProgressionManager] IntermissionManager 없음 — 사망 팝업 생략.");
+        }
+
+        // ── 이어하기 HUD 리셋 ────────────────────────────────────────
+        /// <summary>이어하기 진입 시 결과/승리 패널을 숨긴다.</summary>
+        private void HideHudPanels()
+        {
+            _bossHud?.HideVictoryPanel();
+            _bossHud?.HideResultPanel();
         }
 
         // ── 정리 유틸 ────────────────────────────────────────────────
@@ -262,6 +315,11 @@ namespace Game.Core.Stage
         {
             if (_currentBoss != null)
                 _currentBoss.OnDeath -= HandleBossDeath;
+            if (_currentBossPresenter != null)
+            {
+                _currentBossPresenter.OnPhaseChanged -= HandleBossPhaseChanged;
+                _currentBossPresenter = null;
+            }
         }
 
         private void CleanupCurrentBoss()
@@ -272,6 +330,13 @@ namespace Game.Core.Stage
                 _currentBoss = null;
             }
             _bossAlive = false;
+        }
+
+        // ── 공개 세터 (에디터 Setup 툴 등 외부에서 HUD 주입용) ──────
+        /// <summary>BossHudSetup 에디터 툴이 호출하는 HUD 주입 세터.</summary>
+        public void SetBossHud(BossHudView hud)
+        {
+            _bossHud = hud;
         }
     }
 }
