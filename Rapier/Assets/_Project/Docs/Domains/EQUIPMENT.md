@@ -7,15 +7,17 @@
 | 카테고리 | 슬롯 | 메인 능력치 |
 |---|---|---|
 | 무기 | 무기 | 공격력 |
-| 방어구 | 모자 | 쿨타임 감소 |
+| 방어구 | 모자 | 차지 시간 단축 |
 | 방어구 | 상의 | HP |
 | 방어구 | 하의 | HP |
-| 방어구 | 신발 | 이동속도, HP |
+| 방어구 | 신발 | 이동속도 |
 | 방어구 | 장갑 | 크리티컬 데미지 |
-| 장신구 | 목걸이 | 랜덤: 쿨감/스킬뎀/크리확 |
-| 장신구 | 반지 | 랜덤: 쿨감/스킬뎀/크리확 |
+| 장신구 | 목걸이 | 스킬 데미지 증가 |
+| 장신구 | 반지 | 크리티컬 데미지 |
 
 **캐릭터 관계**: 각 캐릭터가 자신의 8슬롯 상태 보유. 착용 제한 없음 — 동일 장비 다른 캐릭터로 이동 가능 (이전 캐릭터에서 자동 해제). 한 인스턴스는 동시에 1 캐릭터만.
+
+**characterId 규약**: PascalCase + 언더바 (예: `"Rapier"`). 코드·SO·세이브 전부 동일 리터럴. 대소문자 무시 비교자(`OrdinalIgnoreCase`) 금지 — 어긋나면 리터럴을 맞춘다.
 
 ## 2. 등급 / 룬 소켓
 
@@ -39,7 +41,7 @@
 | 분쇄 룬 | (Warrior) 대지 분쇄 범위 +20% |
 | 잔상 룬 | (Assassin) 잔상 지속 +30% |
 | 폭발 룬 | (Ranger) 강화 폭발 화살 데미지 +50% |
-| 기본 쿨감 룬 | 차지 스킬 쿨 -15% (모든 캐릭터) |
+| 차지 단축 룬 | 차지 시간 -15% (모든 캐릭터) |
 | 회피 룬 | 회피 쿨 -20% (모든 캐릭터) |
 
 - 장비 룬 소켓에 장착/해제 자유. 캐릭터 고유 룬은 해당 캐릭터에만 효과 (다른 캐릭터 장착 시 무효). 장비와 별도 인벤토리.
@@ -61,23 +63,29 @@
 
 ```
 EquipmentManager ─OnEquipped/Unequipped→ EquipmentMetaStatProvider : IMetaStatProvider
-  → 8슬롯 MainStat + SubStats + 룬 StatEffect 순회, StatEntry 누적 → MetaStatContainer
-  → (base + meta_flat) × (1 + meta%) 계산
+  → 8슬롯 MainStat + SubStats + 룬 StatEffect 순회
+    - 가산형 (HP/ATK/MS/SkillDamage/Crit~): StatEntry 누적 → flat 합 / % 합
+    - 감소형 (DodgeCDR/ChargeTimeReduction/InvincibilityBonus): 소스별 (1 − p) 곱
+  → MetaStatContainer
   → CharacterPresenterBase.Init(statData, view):
-      ServiceLocator.Get<EquipmentManager>() → Provider.BuildContainer()
-      → CharacterModel 최종 스탯 (maxHp/atk/moveSpeed)
+      ServiceLocator.Get<EquipmentManager>() → Provider.BuildContainer("Rapier")
+      → CharacterModel 최종 스탯
+         가산: (base + meta_flat) × (1 + meta%) × (1 + run%) + run_flat
+         감소: base × Π_i(1 − metaP_i) × Π_j(1 − runP_j)
 ```
 
 - **씬 간 보존**: `EquipmentManager` 는 `DontDestroyOnLoad` + `ServiceLocator.Register(this)`.
 - **재계산**: 스테이지 중 장비 변경 없음 → `Init` 시점 1회 계산. 로비 내 변경은 View 미리보기용만 이벤트 발행.
-- **룬 처리**: 룬 `StatEffect` (StatEntry) 를 장비와 동일 파이프라인 합산. 캐릭터 전용 룬 (`_targetCharacterId` 불일치) 은 Provider 단계에서 필터링.
+- **룬 처리**: 룬 `StatEffect` (StatEntry) 를 장비와 동일 파이프라인. 감소형은 룬 하나가 하나의 독립 소스. 캐릭터 전용 룬 (`_targetCharacterId` 불일치) 은 Provider 단계에서 필터링.
+- **저장 트리거**: `EquipmentManager.Equip/Unequip` 내부에서 `TrySave()` 호출 → `SaveManager.Save()` 로 체이닝 (`SaveManager` 는 `EquipmentManager.Init` 시 주입). 매 장착 변경 시 `save.json` 갱신. 레거시 `IEquipmentSaveProvider` 경로는 사용하지 않는다.
 
 ## 5. 프로토타입 데이터
 
 가챠/드롭은 후순위. 사전 정의 SO + 디버그 메뉴 제공.
 
-- 노말~유니크 각 카테고리당 1~2개, 룬 5~6종 (Rapier 고유 + 공통).
+- 8 슬롯 각각 최소 1 SO (메인스탯이 §1 표와 일치), 룬 5~6종 (Rapier 고유 + 공통).
 - 디버그 메뉴: `Rapier/Dev/Add Debug Equipment`, `Rapier/Dev/Add Debug Runes`.
+- `Add Debug Equipment` 는 **8 슬롯 전체 자동 장착 + Save** 한 번으로 완결. 재클릭 불필요. 빌드 시엔 보스 드롭으로 대체 예정.
 
 ## 6. UI
 
@@ -137,17 +145,19 @@ equippedMap: Dictionary<characterId, List<instanceId>>
 ```
 1. var db = Resources.Load<EquipmentDatabase>("EquipmentDatabase");
 2. var em = new EquipmentManager();
-3. em.Init(saveProvider: em, database: db);
-4. var sm = new SaveManager();
-5. sm.SetEquipmentProvider(em);
+3. var sm = new SaveManager();
+4. sm.SetEquipmentProvider(em);
+5. em.Init(saveManager: sm, database: db);   // Equip/Unequip → sm.Save() 연결
 6. sm.Load()
    → save.json 존재: DeserializeOwnedEquipment → DeserializeEquippedMap 순 호출
    → 없음: 빈 인벤토리, sm.Save() 로 최초 파일 생성
-7. ServiceLocator.Register(sm);
+7. ServiceLocator.Register(sm); ServiceLocator.Register(em);
 8. 씬 로드
 ```
 
-**순서 제약**: `DeserializeOwnedEquipment` → `DeserializeEquippedMap` (후자가 instanceId 로 전자 참조). `SaveManager.Load()` 내부가 보장.
+**순서 제약**:
+- `DeserializeOwnedEquipment` → `DeserializeEquippedMap` (후자가 instanceId 로 전자 참조). `SaveManager.Load()` 내부가 보장.
+- `em.Init` 은 `sm.SetEquipmentProvider(em)` 다음에 온다 — Init 시점 주입된 `sm` 이 즉시 TrySave 경로로 쓰이므로 반드시 선행.
 
 ### 7-7. 테스트 시나리오
 
@@ -162,5 +172,5 @@ equippedMap: Dictionary<characterId, List<instanceId>>
 ### 7-8. 제약 및 경계
 
 - 복원 경로는 로드 1회 전제 (러닝 중 재로드/핫리로드 고려 불필요).
-- 레거시 `Game.Data.Equipment.IEquipmentSaveProvider` 인터페이스 유지 (`Game.Data.Save.IEquipmentSaveProvider` 가 단일 진입점).
+- 저장 진입점은 `Game.Data.Save.IEquipmentSaveProvider` 단일. 레거시 `Game.Data.Equipment.IEquipmentSaveProvider` 는 폐기.
 - `EquipmentDatabase` 는 런타임 SO 조회 전용. 에디터 툴/검증기 미포함 (향후 필요 시 별도).
