@@ -282,13 +282,12 @@ namespace Game.DevTools
             var scrollBg = scrollGo.gameObject.AddComponent<Image>();
             scrollBg.color = new Color(0.15f, 0.15f, 0.18f, 0.8f);
 
-            // Viewport
+            // Viewport — RectMask2D 로 사각형 클리핑 (Mask + clear Image 조합은
+            // Image.alpha=0 으로 인해 전체 영역이 마스킹 아웃되는 버그가 있었음)
             var viewportGo = CreateRectChild(scrollGo, "Viewport");
             SetAnchors(viewportGo, Vector2.zero, Vector2.one);
             viewportGo.offsetMin = viewportGo.offsetMax = Vector2.zero;
-            var viewportMask = viewportGo.gameObject.AddComponent<Mask>();
-            viewportMask.showMaskGraphic = false;
-            viewportGo.gameObject.AddComponent<Image>().color = Color.clear; // Mask 에 Image 필요
+            viewportGo.gameObject.AddComponent<RectMask2D>();
 
             // Content
             var contentGo = CreateRectChild(viewportGo, "Content");
