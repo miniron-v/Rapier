@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -7,7 +8,8 @@ using Game.Enemies;
 namespace Game.UI
 {
     /// <summary>
-    /// 보스 러시 HUD 런타임 View.
+    /// 보스 HUD 런타임 View.
+    /// ProgressionManager, BossRushManager 등 보스를 스폰하는 모든 드라이버가 공용으로 사용.
     ///
     /// [구성]
     ///   - 화면 상단: 보스 이름 + 페이즈 텍스트 + 대형 HP바 + 스테이지 텍스트
@@ -15,15 +17,18 @@ namespace Game.UI
     ///   - 결과 패널: ALL CLEAR / GAME OVER 텍스트 + "로비로" 버튼
     ///
     /// [초기화]
-    ///   BossRushHudSetup(Editor)가 Init()을 호출하여 모든 참조를 주입한다.
+    ///   BossHudSetup(Editor)이 Init()을 호출하여 모든 참조를 주입한다.
     ///   Reflection 미사용. [SerializeField]로 직렬화되어 씬에 저장됨.
+    ///
+    /// [이벤트]
+    ///   OnNextStageRequested: 다음 스테이지 요청을 외부 드라이버에 위임 (HUD는 매니저 타입을 모른다).
     ///
     /// [게임 루프]
     ///   플레이어 사망 → ShowResult(false)
     ///   전체 클리어   → ShowResult(true)
     ///   "로비로" 버튼 → SceneController.LoadLobby()
     /// </summary>
-    public class BossRushHudView : MonoBehaviour
+    public class BossHudView : MonoBehaviour
     {
         // ── Inspector / Init으로 주입 ──────────────────────────────
         [Header("보스 HP 바 (상단)")]
@@ -43,13 +48,19 @@ namespace Game.UI
         [SerializeField] private TextMeshProUGUI _resultText;
         [SerializeField] private Button          _toLobbyButton;
 
+        // ── 이벤트 ────────────────────────────────────────────────
+        /// <summary>
+        /// 다음 스테이지 버튼 클릭 시 발행.
+        /// 외부 드라이버(BossRushManager 등)가 구독하여 SpawnNextBoss 등을 처리한다.
+        /// </summary>
+        public event Action OnNextStageRequested;
+
         // ── 내부 참조 ─────────────────────────────────────────────
-        private EnemyModel      _bossModel;
-        private BossRushManager _manager;
+        private EnemyModel _bossModel;
 
         // ── 에디터 Setup 진입점 ───────────────────────────────────
         /// <summary>
-        /// BossRushHudSetup이 호출하는 공개 초기화 메서드.
+        /// BossHudSetup이 호출하는 공개 초기화 메서드.
         /// Reflection 없이 직접 [SerializeField] 필드에 주입한다.
         /// </summary>
         public void Init(
@@ -81,10 +92,6 @@ namespace Game.UI
         // ── 초기화 ────────────────────────────────────────────────
         private void Awake()
         {
-            _manager = GetComponentInParent<BossRushManager>();
-            if (_manager == null)
-                _manager = FindObjectOfType<BossRushManager>();
-
             if (_nextStageButton != null)
                 _nextStageButton.onClick.AddListener(OnNextStageClicked);
 
@@ -139,6 +146,7 @@ namespace Game.UI
                 _victoryText.text = $"STAGE {clearedStage} CLEAR!\n\n다음 보스를 소환하시겠습니까?";
         }
 
+        /// <summary>승리 패널 숨김.</summary>
         public void HideVictoryPanel()
         {
             _victoryPanel?.SetActive(false);
@@ -157,6 +165,12 @@ namespace Game.UI
                 _resultText.text  = isCleared ? "ALL CLEAR!" : "GAME OVER";
                 _resultText.color = isCleared ? Color.yellow : new Color(1f, 0.3f, 0.3f);
             }
+        }
+
+        /// <summary>결과 패널 숨김 (이어하기 진입 시 호출).</summary>
+        public void HideResultPanel()
+        {
+            _resultPanel?.SetActive(false);
         }
 
         // ── 내부 ──────────────────────────────────────────────────
@@ -181,7 +195,7 @@ namespace Game.UI
 
         private void OnNextStageClicked()
         {
-            _manager?.SpawnNextBoss();
+            OnNextStageRequested?.Invoke();
         }
 
         private void OnToLobbyClicked()

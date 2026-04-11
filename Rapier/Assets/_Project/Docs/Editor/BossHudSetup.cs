@@ -6,6 +6,7 @@ using UnityEditor.SceneManagement;
 using TMPro;
 using Game.UI;
 using Game.Enemies;
+using Game.Core.Stage;
 
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem.UI;
@@ -14,27 +15,31 @@ using UnityEngine.InputSystem.UI;
 namespace Game.Editor
 {
     /// <summary>
-    /// 보스 러시 HUD Canvas 자동 생성 도우미.
+    /// 보스 HUD Canvas 자동 생성 도우미.
     ///
     /// [생성 구성]
-    ///   BossRushHudCanvas (Canvas + BossRushHudView)
+    ///   BossHudCanvas (Canvas + BossHudView)
     ///     - 상단 보스 HP 영역: 보스 이름 + 페이즈 텍스트 + HP 바 + 스테이지 텍스트
     ///     - 승리 패널: STAGE X CLEAR + 다음 스테이지 버튼
     ///     - 결과 패널: ALL CLEAR / GAME OVER + 로비로 버튼
     ///   EventSystem (없을 때만 생성, InputSystemUIInputModule)
     ///
     /// [연결 목록]
-    ///   BossRushHudView : Init()으로 UI 참조 전체 주입
-    ///   BossRushManager : InitHudView()로 _hudView 주입
+    ///   BossHudView : Init()으로 UI 참조 전체 주입
+    ///   BossRushManager : InitHudView()로 _hudView 주입 (씬에 존재할 경우)
+    ///   ProgressionManager : SetBossHud()로 _bossHud 주입 (씬에 존재할 경우)
+    ///
+    /// [레거시 마이그레이션]
+    ///   Rebuild 실행 시 "BossRushHudCanvas" 이름의 기존 오브젝트도 탐색하여 제거.
     ///
     /// [직렬화 보장]
-    ///   SetDirty(hudView) + SetDirty(manager) + MarkSceneDirty + SaveScene
+    ///   SetDirty(hudView) + SetDirty(manager/progressionManager) + MarkSceneDirty + SaveScene
     ///
     /// [실행]
-    ///   Rapier/BossRush/Create Boss Rush HUD
-    ///   Rapier/BossRush/Rebuild Boss Rush HUD
+    ///   Rapier/Boss HUD/Create Boss HUD
+    ///   Rapier/Boss HUD/Rebuild Boss HUD
     /// </summary>
-    public static class BossRushHudSetup
+    public static class BossHudSetup
     {
         private const string SPRITE_BASE =
             "Packages/com.unity.2d.sprite/Editor/ObjectMenuCreation/DefaultAssets/Textures/v2/";
@@ -59,36 +64,39 @@ namespace Game.Editor
         private static readonly Color BTN_TEXT_COLOR  = new Color(0.10f, 0.05f, 0.00f, 1.00f);
         private static readonly Color BTN_LOBBY_COLOR = new Color(0.30f, 0.55f, 0.90f, 1.00f);
 
-        [MenuItem("Rapier/BossRush/Create Boss Rush HUD")]
+        [MenuItem("Rapier/Boss HUD/Create Boss HUD")]
         public static void CreateHud()  => BuildHud(false);
 
-        [MenuItem("Rapier/BossRush/Rebuild Boss Rush HUD")]
+        [MenuItem("Rapier/Boss HUD/Rebuild Boss HUD")]
         public static void RebuildHud() => BuildHud(true);
 
         private static void BuildHud(bool forceRebuild)
         {
             _font = null; // 매 빌드마다 재로드
             var sq = AssetDatabase.LoadAssetAtPath<Sprite>(SPRITE_BASE + "Square.png");
-            Debug.Log($"[BossRushHudSetup] Square={sq != null}, Font={GetFont() != null}");
+            Debug.Log($"[BossHudSetup] Square={sq != null}, Font={GetFont() != null}");
 
-            // ── 기존 Canvas 제거 ──────────────────────────────────
-            var existing = GameObject.Find("BossRushHudCanvas");
-            if (existing != null)
+            // ── 기존 Canvas 제거 (신규 이름 + 레거시 이름 모두 탐색) ──
+            var existingNew    = GameObject.Find("BossHudCanvas");
+            var existingLegacy = GameObject.Find("BossRushHudCanvas");
+
+            if (existingNew != null || existingLegacy != null)
             {
                 if (!forceRebuild)
                 {
-                    Debug.LogWarning("[BossRushHudSetup] 이미 존재. Rebuild를 사용하세요.");
+                    Debug.LogWarning("[BossHudSetup] 이미 존재. Rebuild를 사용하세요.");
                     return;
                 }
-                Undo.DestroyObjectImmediate(existing);
+                if (existingNew    != null) Undo.DestroyObjectImmediate(existingNew);
+                if (existingLegacy != null) Undo.DestroyObjectImmediate(existingLegacy);
             }
 
             // ── EventSystem (없을 때만 생성) ──────────────────────
             EnsureEventSystem();
 
             // ── Root Canvas ───────────────────────────────────────
-            var cvGo = new GameObject("BossRushHudCanvas");
-            Undo.RegisterCreatedObjectUndo(cvGo, "Create BossRushHudCanvas");
+            var cvGo = new GameObject("BossHudCanvas");
+            Undo.RegisterCreatedObjectUndo(cvGo, "Create BossHudCanvas");
 
             var cv = cvGo.AddComponent<Canvas>();
             cv.renderMode   = RenderMode.ScreenSpaceOverlay;
@@ -228,8 +236,8 @@ namespace Game.Editor
             lobbyBtnRt.sizeDelta        = new Vector2(0f, 130f);
             lobbyBtnRt.anchoredPosition = new Vector2(0f, -20f);
 
-            // ── BossRushHudView 부착 및 Init() 주입 ───────────────
-            var hudView = cvGo.AddComponent<BossRushHudView>();
+            // ── BossHudView 부착 및 Init() 주입 ───────────────────
+            var hudView = cvGo.AddComponent<BossHudView>();
             hudView.Init(
                 hpFillImg,
                 bossHpTextGo.GetComponent<TextMeshProUGUI>(),
@@ -245,18 +253,34 @@ namespace Game.Editor
             );
             EditorUtility.SetDirty(hudView);
 
-            // ── BossRushManager에 HudView 연결 ────────────────────
-            var manager = Object.FindObjectOfType<BossRushManager>();
-            if (manager != null)
+            // ── BossRushManager에 HudView 연결 (씬에 존재할 경우) ─
+            var bossRushManager = Object.FindObjectOfType<BossRushManager>();
+            if (bossRushManager != null)
             {
-                manager.InitHudView(hudView);
-                EditorUtility.SetDirty(manager);
-                Debug.Log("[BossRushHudSetup] BossRushManager._hudView 연결 완료.");
+                bossRushManager.InitHudView(hudView);
+                EditorUtility.SetDirty(bossRushManager);
+                Debug.Log("[BossHudSetup] BossRushManager._hudView 연결 완료.");
             }
             else
             {
-                Debug.LogWarning("[BossRushHudSetup] BossRushManager를 찾을 수 없음. _hudView 수동 연결 필요.");
+                Debug.Log("[BossHudSetup] BossRushManager 없음. ProgressionManager 씬이면 정상.");
             }
+
+            // ── ProgressionManager에 HudView 연결 (씬에 존재할 경우) ─
+            var progressionManager = Object.FindObjectOfType<ProgressionManager>();
+            if (progressionManager != null)
+            {
+                progressionManager.SetBossHud(hudView);
+                EditorUtility.SetDirty(progressionManager);
+                Debug.Log("[BossHudSetup] ProgressionManager._bossHud 연결 완료.");
+            }
+            else
+            {
+                Debug.Log("[BossHudSetup] ProgressionManager 없음. BossRushDemo 씬이면 정상.");
+            }
+
+            if (bossRushManager == null && progressionManager == null)
+                Debug.LogWarning("[BossHudSetup] BossRushManager / ProgressionManager 모두 없음. 수동 연결 필요.");
 
             // ── 씬 저장 ───────────────────────────────────────────
             var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
@@ -264,7 +288,7 @@ namespace Game.Editor
             EditorSceneManager.SaveScene(scene);
 
             Selection.activeGameObject = cvGo;
-            Debug.Log("[BossRushHudSetup] BossRushHudCanvas 생성 및 씬 저장 완료!");
+            Debug.Log("[BossHudSetup] BossHudCanvas 생성 및 씬 저장 완료!");
         }
 
         // ── EventSystem 보장 ──────────────────────────────────────
@@ -278,10 +302,10 @@ namespace Game.Editor
 
 #if ENABLE_INPUT_SYSTEM
             esGo.AddComponent<InputSystemUIInputModule>();
-            Debug.Log("[BossRushHudSetup] EventSystem 생성 (InputSystemUIInputModule).");
+            Debug.Log("[BossHudSetup] EventSystem 생성 (InputSystemUIInputModule).");
 #else
             esGo.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>();
-            Debug.Log("[BossRushHudSetup] EventSystem 생성 (StandaloneInputModule).");
+            Debug.Log("[BossHudSetup] EventSystem 생성 (StandaloneInputModule).");
 #endif
         }
 
