@@ -145,8 +145,9 @@ git branch -d [브랜치명]   # 또는 -D (deny되어 있음, 사용자 확인)
 | 15-A (장비 세이브 훅업 보완) | 완료 |
 | 16 (페이즈 시스템 통합 리디자인) | **완료** — Enemy/Boss 공통 N페이즈, 데미지 공식 통일 (develop @ ee9b479) |
 | 17 (StageData SO 분리 + 10 스테이지) | **완료** — StageData SO 10개 + 스테이지 선택 UI + 해금/스케일링 (develop @ 001d60c) |
-| 18 (보스 드롭 시스템) | 미착수 |
+| 18 (보스 드롭 시스템) | **다음 세션** — Phase 17 의존 충족, 착수 준비 완료 |
 | 19 (Assassin 캐릭터) | **완료** — 잔상 3개 + 360도 차지 + CharacterSpawner 동적 스폰 (develop @ 001d60c) |
+| - (버그픽스) | **완료** — 로비 캐릭터명/순서, 페이즈 전환 공격 취소, 보스/스테이지 HUD 분리 (develop @ 31b4eb9) |
 
 ---
 
@@ -157,5 +158,14 @@ git branch -d [브랜치명]   # 또는 -D (deny되어 있음, 사용자 확인)
 1. 자동 로드된 메모리 (`MEMORY.md` 인덱스의 모든 항목) 를 인지.
 2. `project_progress.md` 로 현재 상태(어디서 멈췄는지) 파악.
 3. `workflow_agent_delegation.md` 로 위임 운영 규칙 인지.
-4. 본 문서 §2 절차에 따라 다음 작업 (보통 12-B/C/D 위임 프롬프트 작성) 으로 진입.
+4. 본 문서 §2 절차에 따라 다음 작업으로 진입.
 5. 사용자에게 진행할 작업과 우선순위 확인 후 시작.
+
+### 다음 세션 예정 작업 (2026-04-13 기준)
+
+1. **페이즈 전환 FSM 정지** — 보스 색상 Lerp 연출 중 Chase/Windup/Hit 상태머신 일시 정지.
+   현재 PhaseTransitionRoutine이 진행 중인 공격만 취소하고 새 공격 시작은 막지 않음.
+   `EnemyPresenterBase.Update()` 진입 조건에 `_isInPhaseTransition` 플래그 추가 예정.
+
+2. **Phase 18 (보스 드롭 시스템)** — Phase 17 완료로 의존 충족.
+   `Domains/EQUIPMENT.md` §5 DropTable 설계 참조.
