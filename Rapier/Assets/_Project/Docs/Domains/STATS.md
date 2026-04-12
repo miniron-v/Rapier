@@ -9,7 +9,7 @@
 | 종류 | 정의 | 출처 | 저장 | 적용 시점 | 네임스페이스 |
 |------|------|------|------|----------|--------------|
 | **MetaStat** | 영구 능력치 | 캐릭터 레벨, 장비, 룬 | JSON 영구 저장 | 게임 시작 시 캐릭터 모델에 주입 | `Game.Data.MetaStats` |
-| **RunStat** | 일회성 능력치 | 인터미션 방의 스탯 선택 | 메모리 only, 스테이지 종료/이탈 시 소멸 | 스테이지 진행 중 누적 적용 | `Game.Combat.RunStatModifier` |
+| **RunStat** | 일회성 능력치 | 인터미션 방의 스탯 선택 | 메모리 only, 스테이지 종료/이탈 시 소멸 | 스테이지 진행 중 누적 적용 | `Game.Data.RunStats` |
 
 > **혼동 금지**: MetaStat과 RunStat은 절대 동일 자료구조로 관리하지 않는다. 변환 함수도 두지 않는다. 두 종류가 합산되는 지점은 오직 `최종 능력치 계산` 한 곳.
 
@@ -83,7 +83,7 @@
 
 - **MetaStat 구성**: `EquipmentMetaStatProvider` (`IMetaStatProvider` 구현) — `EquipmentManager` 의 장착 상태를 읽어 `MetaStatContainer` 를 빌드. 자세한 파이프라인은 `EQUIPMENT.md §4` 참조.
 - **RunStat 소유**: `StageManager._runStat` (메모리 only). `IntermissionManager` 가 참조를 공유해 `RunStatContainer.Apply()` 로 누적. 스테이지 클리어 / 로비 복귀 시 `Reset()`.
-- **주입 지점**: `CharacterPresenterBase.Init(statData, view)` — 씬 진입 시 1회. `ServiceLocator` 에서 `EquipmentManager` / `StageManager` 조회 → `MetaStatContainer` + `RunStatContainer` 를 **둘 다** `CharacterModel` 생성에 주입. `StageManager` 미등록(로비 등) 이면 RunStat 없이 진행.
+- **주입 지점**: `CharacterPresenterBase.Init(statData, view)` — 씬 진입 시 1회. `ServiceLocator` 에서 `EquipmentManager` / `StageManager` 조회 → `MetaStatContainer` + `RunStatContainer` 를 **둘 다** `CharacterModel` 생성에 주입. `StageManager` 미등록(로비 등) 이면 RunStat 없이 진행. **참고**: 현재 `CharacterStatData` 에 `characterId` 필드가 없어 `"Rapier"` 하드코딩 — 다중 캐릭터 구현 시 SO 필드 추가 또는 Presenter 오버라이드 필요.
 - **최종 스탯 계산**: `CharacterModel` 내부에서 §3 계산식을 적용하여 가산형은 `_finalMaxHp / _finalAttackPower / _finalMoveSpeed`, 감소형은 `_finalDodgeCooldown / _finalChargeRequiredTime`, 배수는 `_skillDamageMultiplier` 를 캐싱. MetaStat / RunStat 두 컨테이너는 이 계산 지점에서만 만난다 — 섞지 않는다.
 - **갱신 트리거**: `CharacterPresenterBase.Init` 에서 `RunStatContainer.OnStatChanged` 를 구독 → 픽이 들어올 때마다 `CharacterModel.RecomputeFinalStats()` 호출. 구독은 `OnDisable` / `OnDestroy` 에서 **반드시 해제 쌍** 유지 (§5 참조). MetaStat 은 인게임 중 변경 없음 — 스냅샷으로 충분.
 - **HP 처리 정책**: RunStat HP% 픽으로 `MaxHp` 가 증가하면 **증가분만큼 `CurrentHp` 를 Heal** 한다 (인터미션이 보상 겸 회복 의미를 갖도록). 감소 시에는 `CurrentHp` 를 새 `MaxHp` 로 Clamp.

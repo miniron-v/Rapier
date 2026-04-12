@@ -25,9 +25,10 @@
 | 객체 | 책임 |
 |---|---|
 | `MissionData` (SO) | 목표 수치, 보상, 추적 이벤트 |
-| `MissionProgressModel` | 진행 상태 (현재 수치, 완료 여부, 수령 여부) |
-| `MissionTracker` | 게임 이벤트 구독 → 미션 진행 갱신 |
-| `MissionResetScheduler` | 일일/주간 리셋 시각 체크 및 초기화 |
+| `MissionProgress` | 진행 상태 (현재 수치, 완료 여부, 수령 여부) |
+| `MissionManager` | 게임 이벤트 구독 → 미션 진행 갱신 + 일일/주간 리셋 체크 (통합)  |
+
+> **미구현**: 주간 #3 보상 "에픽 장비 확정 1" 지급 로직 (`ApplyReward()` 내 TODO).
 
 ## 4. 저장
 

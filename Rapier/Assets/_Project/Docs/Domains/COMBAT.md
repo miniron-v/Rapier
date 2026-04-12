@@ -4,9 +4,9 @@
 
 ## 1. 데미지 인터페이스
 
-- `IDamageable`: 피격 대상이 구현. `TakeDamage(float damage)` 등.
-- 위치: `Scripts/Combat/`
-- 네임스페이스: `Game.Combat`
+- `IDamageable`: 피격 대상이 구현. `TakeDamage(float amount, Vector2 knockbackDir)`.
+- 위치: `Scripts/Combat/` (인터페이스), `Scripts/Enemies/Attacks/` (AttackAction 파생 클래스)
+- 네임스페이스: `Game.Combat` (인터페이스), `Game.Enemies` (AttackAction)
 
 ---
 
@@ -35,9 +35,7 @@ EnterHitPhase()
 | `ChargeAttackAction` | PrepareWindup에서 RaycastToWall로 wallDist 확정. SO의 chargeMaxDistance는 상한값. |
 | `TeleportAttackAction` | 히트 판정 없음. 페이드아웃 → 순간이동 → 페이드인. |
 
-### 파생 클래스 (계획)
-
-다음 AttackAction은 **사용하는 보스를 구현할 때 함께 추가**한다. 미리 만들지 않는다.
+### 파생 클래스 (구현 완료)
 
 | 클래스 | 역할 | 사용 보스 |
 |--------|------|----------|

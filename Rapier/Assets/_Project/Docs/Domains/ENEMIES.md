@@ -17,7 +17,7 @@ EnemyPresenterBase (abstract)       ← Chase/Windup/Hit/PostAttack + 시퀀서
 
 - `EnemyModel`: 순수 데이터 (HP/상태). `EnemyView`: 시각/애니.
 - `EnemyStatData` (SO): 일반 적 스탯 + attackSequence.
-- `BossStatData` (SO): `EnemyStatData` 확장 + `List<List<EnemyAttackAction>> phaseSequences` (1~N 페이즈) + 페이즈별 임계 HP 리스트 + 다중 스폰 필드 (§4).
+- `BossStatData` (SO): `EnemyStatData` 확장 + `phase2Sequence` (2페이즈 시퀀스, 단일 필드) + HP 50% 임계치 하드코딩 (`BossPresenterBase`) + 다중 스폰 필드 (§4). 3페이즈 이상은 자식 Presenter 에서 별도 필드로 확장 (예: `StormcallerBossPresenter.phase3Sequence`).
 
 ## 2. 상태 머신
 
@@ -79,6 +79,7 @@ EnemyPresenterBase (abstract)       ← Chase/Windup/Hit/PostAttack + 시퀀서
 
 ## 6. 에디터 유틸
 
-- `TitanDataSetup.cs`: `Rapier/Dev/Setup Titan Attack Sequence`
-- `EnemyDataSetup.cs`: `Rapier/Dev/Setup Normal Enemy Sequence`, `Setup Specter Sequence`
+- `BossDataSetup.cs` (`Scripts/Enemies/Boss/Editor/`): Specter/Pyromancer/Berserker/Stormcaller/Gravekeeper/TwinPhantoms Setup 메뉴 통합.
+- `TitanDataSetup.cs` (`Docs/Editor/`, 레거시): `Rapier/Dev/Setup Titan Attack Sequence`
+- `EnemyDataSetup.cs` (`Docs/Editor/`, 레거시): `Rapier/Dev/Setup Normal Enemy Sequence`, `Setup Specter Sequence`
 - `[SerializeReference]` 갱신 순서: null 초기화 → SetDirty → SaveAssets → ImportAsset → 재할당.

@@ -10,9 +10,12 @@
 
 | 객체 | 책임 |
 |---|---|
-| `StageData` (SO) | 보스 4종 순서, 스테이지 번호, 보상 |
-| `StageProgress` (런타임) | 현재 위치 (1~4), 클리어 보스, RunStat 누적 |
-| `ProgressionManager` | 방 전환, 사망 처리, 보상 계산, RunStat clear |
+| `RoomNode` (`[Serializable]`) | 방 종류(BossRoom/IntermissionRoom), 표시명, 보스 프리팹/SO 참조 |
+| `StageBuilder` (MonoBehaviour) | `RoomNode[]` 배열을 인스펙터에서 보유, `StageManager.Init()` 에 전달 |
+| `StageManager` (런타임) | 현재 방 인덱스, 보스 처치 수, RunStatContainer 소유, 포탈/이어하기 제어 |
+| `ProgressionManager` | 방 전환 오케스트레이션 (보스 스폰, 인터미션 UI, 사망 처리) |
+
+> **향후 과제**: `RoomNode[]` 를 `StageData` SO 로 분리하면 씬 외부 재사용·버전 관리가 용이해짐. 현재는 씬 내 `StageBuilder` 에 임베드.
 
 ## 2. 인터미션 방
 
@@ -22,9 +25,9 @@
 
 | 객체 | 책임 |
 |---|---|
-| `IntermissionRoomPresenter` | 회복 트리거, 후보 추출, 선택 처리 |
-| `RunStatPool` (SO) | 후보 풀 (스탯 종류 + 강도) |
-| `RunStatModifier` | 선택 누적/저장/적용 |
+| `IntermissionManager` (MonoBehaviour) | 회복 트리거, 후보 추출, 선택 UI 처리 |
+| `StatPickPool` (static class) | 후보 풀 (스탯 종류 + 강도) — 하드코딩, SO 아님 |
+| `RunStatContainer.Apply()` | 선택 누적/적용 (§STATS.md 참조) |
 
 ## 3. 사망 / 이어하기
 
@@ -99,15 +102,15 @@ PlayerPrefs 금지. `Application.persistentDataPath/save.json`. 구현: `Game.Da
 
 - **진입점**: `Game.Core.Services.GameBootstrap`, `[RuntimeInitializeOnLoadMethod(BeforeSceneLoad)]` 의 `Bootstrap()`.
 - **시점**: 앱 기동 직후 첫 씬 로드 전 1회. 재호출 시 중복 가드.
-- **배선 순서**:
+- **배선 순서** (`EQUIPMENT.md §7-6` 참조):
   1. 중복 가드 (`ServiceLocator.Get<SaveManager>()` 존재 시 return).
   2. `var db = Resources.Load<EquipmentDatabase>("EquipmentDatabase");`
   3. `var em = new EquipmentManager();`
-  4. `em.Init(saveProvider: em, database: db);` (`EquipmentManager` 가 `IEquipmentSaveProvider` 직접 구현 → 자기 자신. 내부 `ServiceLocator.Register(this)`).
-  5. `var sm = new SaveManager();`
-  6. `sm.SetEquipmentProvider(em);`
+  4. `var sm = new SaveManager();`
+  5. `sm.SetEquipmentProvider(em);`
+  6. `em.Init(saveManager: sm, database: db);` (내부 `ServiceLocator.Register(em)`).
   7. `sm.Load();` (파일 존재 시 역직렬화 + 마이그레이션, 없으면 defaults).
-  8. **파일 없었으면 즉시 `sm.Save()` 1회** — 최초 `save.json` 생성, 메타 필드 (deviceId/schemaCreatedAt) 디스크 고정. 팁: `Load()` 전 `File.Exists` 사전 판정.
+  8. **파일 없었으면 즉시 `sm.Save()` 1회** — 최초 `save.json` 생성, 메타 필드 (deviceId/schemaCreatedAt) 디스크 고정.
   9. `ServiceLocator.Register(sm);`
 - **지속성**: `ServiceLocator` static 참조 → GC 대상 아님. Lobby ↔ Stage/BossRush 전환 단일 인스턴스 유지, 교체 없음.
 - **엔트리 씬 독립**: `BeforeSceneLoad` 라 어느 씬을 Play 해도 동일 초기화, 수동 배선 불필요.

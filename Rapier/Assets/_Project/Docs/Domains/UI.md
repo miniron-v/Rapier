@@ -10,7 +10,7 @@
 | StageDemo | 스테이지 진행 씬. 8방 RoomNode(인터미션/보스 교차). 포탈 시스템 기반. |
 | BossRushDemo | 보스 러시 씬. `BossRushManager` 가 공용 `BossHudView` 에 연결되어 동작 (Phase 13-A 통합). 12-C 신규 보스 배열 등록은 Phase 12-E 대기. |
 
-- `SceneController.LoadLobby()` / `LoadGame()` 으로 전환.
+- `SceneController.LoadLobby()` / `LoadGame()` 으로 전환. (`LoadStageDemo()` → `LoadGame()` 리네임 예정, BossRushDemo 레거시 삭제 예정)
 - 씬 전환 전 `Time.timeScale = 1f` 복구 보장.
 - 진행도/RunStat은 씬 전환 시 처리: 클리어/사망 후 능동 복귀 → 초기화. 자세한 규칙은 `PROGRESSION.md` 참조.
 
@@ -55,19 +55,30 @@
 - 5탭 구조. 화면 하단 가로 버튼으로 탭 전환.
 - 탭 인덱스 (1-기준): 1=상점, 2=캐릭터 관리, 3=메인(홈), 4=미션, 5=설정.
 - 진입 시 기본 표시 탭은 **3 (메인)**.
-- 메인 탭의 하단 시작 버튼 → `SceneController.LoadGame()`.
+- 메인 탭의 하단 시작 버튼 → `SceneController.LoadGame()`. (현재 코드는 `LoadStageDemo()` — 리네임 예정)
 
 #### 탭 책임 분리
 
 | 탭 | View | Presenter | 비고 |
 |----|------|-----------|------|
-| 1 상점 | `ShopTabView` | `ShopTabPresenter` | 가챠/충전/상품 |
+| 1 상점 | `ShopTabView` | **미구현** | 가챠/충전/상품 |
 | 2 캐릭터 | `CharacterTabView` | `CharacterTabPresenter` | 장비 영역 + 레벨/스킬 영역 (서브 토글) |
-| 3 메인 | `HomeTabView` | `HomeTabPresenter` | 스테이지 표시 + 진입 버튼 + 우편함 아이콘 |
-| 4 미션 | `MissionTabView` | `MissionTabPresenter` | 일일/주간 미션 진행 + 보상 수령 |
-| 5 설정 | `SettingsTabView` | `SettingsTabPresenter` | 옵션/계정/약관 |
+| 3 메인 | `HomeTabView` | `HomeTabPresenter` | 스테이지 표시 + 진입 버튼 + 우편함 아이콘(플레이스홀더) |
+| 4 미션 | `MissionTabView` | `MissionPanelPresenter` (`Mission/` 서브폴더) | 일일/주간 미션 진행 + 보상 수령. 탭 수준 Presenter 미구현 |
+| 5 설정 | `SettingsTabView` | `SettingsTabPresenter` | BGM/SFX/진동/밝기 (PlayerPrefs 임시 구현, TODO B3: SaveManager 전환). 약관 UI 미구현 |
 
 각 탭 Presenter는 LobbyManager가 주입한다. Tab 전환은 LobbyManager가 중재.
+
+### Intermission / Death / StageClear (StageDemo 씬)
+
+| 컴포넌트 | 역할 |
+|----------|------|
+| `IntermissionManager` + `IntermissionView` | 보스 처치 후 스탯 카드 2장 표시 + 선택 처리 |
+| `DeathPopupView` | 사망 시 이어하기 / 로비 복귀 선택 |
+| `StageClearView` | 전체 클리어 시 결과 화면 표시 |
+
+- 모두 `[UI]` Canvas (Screen Space Overlay) 에 배치.
+- `SafeAreaFitter` 적용 대상 (§Safe Area 참조).
 
 ### VirtualJoystick
 

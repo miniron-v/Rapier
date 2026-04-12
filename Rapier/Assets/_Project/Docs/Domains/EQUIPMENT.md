@@ -50,19 +50,19 @@
 
 | 객체 | 책임 |
 |---|---|
-| `EquipmentData` (SO) | 카테고리, 메인 스탯, 등급, 서브 스탯 풀 참조 |
+| `EquipmentItemData` (SO) | 카테고리, 메인 스탯, 등급, 서브 스탯 풀 참조 |
 | `EquipmentInstance` (런타임) | 서브 스탯 롤 결과, 룬 장착 상태 |
-| `RuneData` (SO) | 룬 효과, 적용 캐릭터 |
-| `RuneInstance` (런타임) | 룬 인스턴스 |
-| `EquipmentInventory` | 보유 장비/룬 인스턴스 관리 |
-| `CharacterEquipment` | 캐릭터별 8슬롯 장착 상태 |
+| `RuneItemData` (SO) | 룬 효과, 적용 캐릭터 |
+| `EquipmentManager._equipmentInventory` | 보유 장비 인스턴스 관리 (List) |
+| `EquipmentManager.RuneInventory` | 보유 룬 관리 (List) |
+| `CharacterEquipmentSet` | 캐릭터별 8슬롯 장착 상태 |
 
 ### 능력치 적용
 
 장비/룬 능력치는 모두 **MetaStat** 단일 경로로 캐릭터에 적용 (`STATS.md`).
 
 ```
-EquipmentManager ─OnEquipped/Unequipped→ EquipmentMetaStatProvider : IMetaStatProvider
+EquipmentManager ─OnEquipped/Unequipped→ EquipmentMetaStatProvider
   → 8슬롯 MainStat + SubStats + 룬 StatEffect 순회
     - 가산형 (HP/ATK/MS/SkillDamage/Crit~): StatEntry 누적 → flat 합 / % 합
     - 감소형 (DodgeCDR/ChargeTimeReduction/InvincibilityBonus): 소스별 (1 − p) 곱
@@ -83,7 +83,7 @@ EquipmentManager ─OnEquipped/Unequipped→ EquipmentMetaStatProvider : IMetaSt
 
 가챠/드롭은 후순위. 사전 정의 SO + 디버그 메뉴 제공.
 
-- 8 슬롯 각각 최소 1 SO (메인스탯이 §1 표와 일치), 룬 5~6종 (Rapier 고유 + 공통).
+- 8 슬롯 각각 최소 1 SO (메인스탯이 §1 표와 일치), 룬 3종 (Rapier 고유 1 + 공통 2).
 - 디버그 메뉴: `Rapier/Dev/Add Debug Equipment`, `Rapier/Dev/Add Debug Runes`.
 - `Add Debug Equipment` 는 **8 슬롯 전체 자동 장착 + Save** 한 번으로 완결. 재클릭 불필요. 빌드 시엔 보스 드롭으로 대체 예정.
 
@@ -114,7 +114,7 @@ EquipmentSaveEntry {
   grade        : int (런타임 스냅샷, §7-4)
   runeAssetIds : string[] (빈 소켓 null/"")
 }
-equippedMap: Dictionary<characterId, List<instanceId>>
+equippedMap: List<EquippedMapEntry> (JsonUtility 는 Dictionary 미지원 → List 로 저장, SaveManager 경계에서 Dict ↔ List 변환)
 ```
 
 ### 7-3. DeserializeOwnedEquipment 흐름
@@ -147,17 +147,20 @@ equippedMap: Dictionary<characterId, List<instanceId>>
 2. var em = new EquipmentManager();
 3. var sm = new SaveManager();
 4. sm.SetEquipmentProvider(em);
-5. em.Init(saveManager: sm, database: db);   // Equip/Unequip → sm.Save() 연결
-6. sm.Load()
+5. em.Init(saveManager: sm, database: db);   // 내부에서 ServiceLocator.Register(em)
+6. bool fileExisted 캡처
+7. sm.Load()
    → save.json 존재: DeserializeOwnedEquipment → DeserializeEquippedMap 순 호출
-   → 없음: 빈 인벤토리, sm.Save() 로 최초 파일 생성
-7. ServiceLocator.Register(sm); ServiceLocator.Register(em);
-8. 씬 로드
+   → 없음: 빈 인벤토리
+8. 파일 없었으면 sm.Save() 로 최초 파일 생성
+9. ServiceLocator.Register(sm);
+10. 씬 로드
 ```
 
 **순서 제약**:
+- `sm` 이 `em.Init(saveManager: sm)` 에 주입되므로, `sm` 생성이 `em.Init` 보다 선행.
 - `DeserializeOwnedEquipment` → `DeserializeEquippedMap` (후자가 instanceId 로 전자 참조). `SaveManager.Load()` 내부가 보장.
-- `em.Init` 은 `sm.SetEquipmentProvider(em)` 다음에 온다 — Init 시점 주입된 `sm` 이 즉시 TrySave 경로로 쓰이므로 반드시 선행.
+- `em`은 `Init()` 내부에서 `ServiceLocator.Register(this)` — 문서 step 5 시점에 등록됨.
 
 ### 7-7. 테스트 시나리오
 

@@ -38,9 +38,9 @@ New Input System → GestureRecognizer → InputState Enum → C# event → Char
 
 ## 4. 저스트 회피 트리거
 
-- 회피 대시 중(`JustDodgeAvailable == true`) 피격 시 `TriggerJustDodge()` 호출.
-- 한 회피당 1회만 발동. `ConsumeJustDodge()`로 소비.
-- `TriggerJustDodge()`가 유일한 발동 API.
+- 회피 대시 중(`CharacterPresenterBase.JustDodgeAvailable == true`) 피격 시 `GestureRecognizer.TriggerJustDodge(Vector2 direction)` 호출.
+- 한 회피당 1회만 발동. `CharacterPresenterBase.ConsumeJustDodge()`로 소비.
+- `TriggerJustDodge(Vector2)`가 유일한 발동 API.
 
 ---
 
@@ -54,9 +54,10 @@ New Input System → GestureRecognizer → InputState Enum → C# event → Char
 | 저스트 회피 슬로우 | Tap |
 | 고유 스킬 발동 ~ 복귀 | Tap |
 | 차지 스킬 발동 | Tap |
+| 공격 인디케이터 표시 중 (0.4초) | Tap |
 | 회피 쿨다운 (2초) | Swipe |
 
-- 차단은 GestureRecognizer 또는 CharacterPresenterBase 레벨에서 처리한다.
+- 차단은 GestureRecognizer 또는 CharacterPresenterBase 레벨에서 처리한다. 공격 인디케이터 차단은 `_isAttacking` 플래그 경로로 별도 처리.
 - 차단된 입력은 절대 큐잉되지 않으며, 상태 종료 후에도 자동 발동되지 않는다.
 - 차지 스킬 발동 중 `ChargeReleased` 이벤트는 차단 대상이 아님 (이미 발동된 스킬의 종료 신호이므로).
 - 캐릭터별 고유 메커니즘이 추가되어도 위 규칙은 일관되게 적용되어야 한다.

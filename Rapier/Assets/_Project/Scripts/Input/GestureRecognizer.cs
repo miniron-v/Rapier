@@ -31,7 +31,6 @@ namespace Game.Input
     public class GestureRecognizer : MonoBehaviour
     {
         // ── 판별 기준 상수 ───────────────────────────────────────
-        private const float VALID_AREA_RATIO    = 0.4f;
         private const float TAP_MAX_DISTANCE    = 20f;
         private const float TAP_MAX_DURATION    = 0.2f;
         private const float SWIPE_MIN_DISTANCE  = 60f;
