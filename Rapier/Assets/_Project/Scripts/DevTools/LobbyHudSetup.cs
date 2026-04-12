@@ -108,9 +108,9 @@ namespace Game.DevTools
             var settingsPanel   = CreateTabPanel(contentArea.gameObject, "SettingsPanel",   new Color(0.11f, 0.11f, 0.14f));
 
             // 4. 각 패널 내부 내용 구성
-            var shopView                       = SetupShopPanel(shopPanel);
-            var (charView, equipPresenter)     = SetupCharacterPanel(charPanel);
-            var homeView                       = SetupHomePanel(homePanel);
+            var shopView                           = SetupShopPanel(shopPanel);
+            var (charView, equipPresenter)         = SetupCharacterPanel(charPanel);
+            var (homeView, stageSelectView)        = SetupHomePanel(homePanel);
             var missionView  = SetupMissionPanel(missionPanel);
             var settingsView = SetupSettingsPanel(settingsPanel);
 
@@ -128,6 +128,14 @@ namespace Game.DevTools
 
             // 7. Presenter 생성 및 Init
             var homePresenter = tabViewGo.AddComponent<HomeTabPresenter>();
+
+            // StageSelectView → HomeTabPresenter 배선
+            {
+                var homeSo = new SerializedObject(homePresenter);
+                homeSo.FindProperty("_stageSelectView").objectReferenceValue = stageSelectView;
+                homeSo.ApplyModifiedProperties();
+            }
+
             var charPresenter = tabViewGo.AddComponent<CharacterTabPresenter>();
             charPresenter.InitEquipmentPanel(equipPresenter);   // B2: 장비 패널 Presenter 연결
             var settPresenter = tabViewGo.AddComponent<SettingsTabPresenter>();
@@ -157,6 +165,8 @@ namespace Game.DevTools
             EditorUtility.SetDirty(lobbyManager);
             EditorUtility.SetDirty(lobbyPresenter);
             EditorUtility.SetDirty(tabView);
+            EditorUtility.SetDirty(homePresenter);    // _stageSelectView [SerializeField] 직렬화 보장
+            EditorUtility.SetDirty(stageSelectView);  // _panel, _closeButton, _stageButtons 직렬화 보장
             EditorUtility.SetDirty(charPresenter);    // _equipmentPanel [SerializeField] 직렬화 보장
             EditorUtility.SetDirty(equipPresenter);   // _view [SerializeField] 직렬화 보장
             UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(
@@ -392,7 +402,7 @@ namespace Game.DevTools
             return (view, equipPresenter);
         }
 
-        private static HomeTabView SetupHomePanel(GameObject panel)
+        private static (HomeTabView view, StageSelectView stageSelectView) SetupHomePanel(GameObject panel)
         {
             var view = panel.AddComponent<HomeTabView>();
 
@@ -417,7 +427,147 @@ namespace Game.DevTools
             CreateLabel(mailboxGo, "우편", 24, TextAlignmentOptions.Center);
 
             view.Init(stageText.GetComponent<TMP_Text>(), enterBtn.GetComponent<Button>(), mailboxGo);
-            return view;
+
+            // 스테이지 선택 패널 생성 및 배선
+            var stageSelectView = SetupStageSelectPanel(panel);
+
+            return (view, stageSelectView);
+        }
+
+        /// <summary>
+        /// homePanel 위에 전체화면 반투명 오버레이 + 2열 5행 스테이지 버튼 + 닫기 버튼을 생성하고
+        /// StageSelectView 컴포넌트에 배선한다.
+        /// </summary>
+        private static StageSelectView SetupStageSelectPanel(GameObject homePanel)
+        {
+            const int StageCount = 10;
+
+            // ── 루트 GameObject (StageSelectView 컴포넌트 부착) ──────────────
+            var selectGo   = new GameObject("StageSelectView");
+            selectGo.transform.SetParent(homePanel.transform, false);
+            var selectRect = selectGo.AddComponent<RectTransform>();
+            SetAnchors(selectRect, Vector2.zero, Vector2.one);
+            selectRect.offsetMin = selectRect.offsetMax = Vector2.zero;
+
+            // ── 반투명 오버레이 패널 (_panel) ────────────────────────────────
+            var overlayGo  = new GameObject("OverlayPanel");
+            overlayGo.transform.SetParent(selectGo.transform, false);
+            var overlayImg  = overlayGo.AddComponent<Image>();
+            overlayImg.color = new Color(0f, 0f, 0f, 0.75f);
+            // Image가 레이캐스트를 받아야 버튼 뒤 클릭 차단
+            var overlayRect = overlayGo.GetComponent<RectTransform>();
+            SetAnchors(overlayRect, Vector2.zero, Vector2.one);
+            overlayRect.offsetMin = overlayRect.offsetMax = Vector2.zero;
+
+            // ── 내부 카드 패널 ───────────────────────────────────────────────
+            var cardGo   = new GameObject("CardPanel");
+            cardGo.transform.SetParent(overlayGo.transform, false);
+            var cardImg  = cardGo.AddComponent<Image>();
+            cardImg.color = new Color(0.12f, 0.12f, 0.16f, 0.98f);
+            var cardRect = cardGo.GetComponent<RectTransform>();
+            SetAnchors(cardRect, new Vector2(0.05f, 0.08f), new Vector2(0.95f, 0.92f));
+            cardRect.offsetMin = cardRect.offsetMax = Vector2.zero;
+
+            // 타이틀 레이블
+            var titleGo  = CreateLabel(cardGo, "스테이지 선택", 52, TextAlignmentOptions.Center,
+                                       new Color(0.9f, 0.85f, 0.4f),
+                                       new Vector2(0.05f, 0.87f), new Vector2(0.75f, 0.97f));
+
+            // ── 닫기 버튼 (_closeButton) ─────────────────────────────────────
+            var closeBtnGo = new GameObject("CloseButton");
+            closeBtnGo.transform.SetParent(cardGo.transform, false);
+            var closeBtnImg  = closeBtnGo.AddComponent<Image>();
+            closeBtnImg.color = new Color(0.8f, 0.25f, 0.2f);
+            var closeBtnRect = closeBtnGo.GetComponent<RectTransform>();
+            SetAnchors(closeBtnRect, new Vector2(0.82f, 0.88f), new Vector2(0.97f, 0.98f));
+            closeBtnRect.offsetMin = closeBtnRect.offsetMax = Vector2.zero;
+            var closeBtn  = closeBtnGo.AddComponent<Button>();
+            // 닫기 버튼 레이블
+            var closeLblGo = new GameObject("Label");
+            closeLblGo.transform.SetParent(closeBtnGo.transform, false);
+            var closeTmp   = closeLblGo.AddComponent<TextMeshProUGUI>();
+            closeTmp.text      = "X";
+            closeTmp.fontSize  = 40;
+            closeTmp.alignment = TextAlignmentOptions.Center;
+            closeTmp.color     = Color.white;
+            var closeFont = GetFont();
+            if (closeFont != null) closeTmp.font = closeFont;
+            var closeLblRect = closeLblGo.GetComponent<RectTransform>();
+            SetAnchors(closeLblRect, Vector2.zero, Vector2.one);
+            closeLblRect.offsetMin = closeLblRect.offsetMax = Vector2.zero;
+
+            // ── 스테이지 버튼 그리드 (2열 5행) ──────────────────────────────
+            var gridGo   = new GameObject("StageButtonGrid");
+            gridGo.transform.SetParent(cardGo.transform, false);
+            var gridRect = gridGo.AddComponent<RectTransform>();
+            SetAnchors(gridRect, new Vector2(0.05f, 0.05f), new Vector2(0.95f, 0.85f));
+            gridRect.offsetMin = gridRect.offsetMax = Vector2.zero;
+            var gridLayout = gridGo.AddComponent<GridLayoutGroup>();
+            gridLayout.constraint      = GridLayoutGroup.Constraint.FixedColumnCount;
+            gridLayout.constraintCount = 2;
+            gridLayout.cellSize        = new Vector2(380f, 130f);
+            gridLayout.spacing         = new Vector2(20f, 20f);
+            gridLayout.padding         = new RectOffset(10, 10, 10, 10);
+            gridLayout.childAlignment  = TextAnchor.MiddleCenter;
+
+            var stageButtons = new Button[StageCount];
+            var stageLabels  = new TMP_Text[StageCount];
+
+            for (int i = 0; i < StageCount; i++)
+            {
+                var stageBtnGo  = new GameObject($"StageButton_{i + 1}");
+                stageBtnGo.transform.SetParent(gridGo.transform, false);
+                var stageBtnImg  = stageBtnGo.AddComponent<Image>();
+                // 잠긴 버튼은 어두운 색, 해금 버튼은 밝은 색 (기본값: 잠김 표시)
+                stageBtnImg.color = new Color(0.25f, 0.25f, 0.30f);
+                var stageBtn     = stageBtnGo.AddComponent<Button>();
+                var stageBtnColors = stageBtn.colors;
+                stageBtnColors.normalColor      = new Color(0.25f, 0.25f, 0.30f);
+                stageBtnColors.highlightedColor = new Color(0.35f, 0.55f, 0.85f);
+                stageBtnColors.pressedColor     = new Color(0.20f, 0.40f, 0.70f);
+                stageBtnColors.disabledColor    = new Color(0.18f, 0.18f, 0.22f, 0.7f);
+                stageBtn.colors = stageBtnColors;
+
+                // 레이블
+                var stageLblGo  = new GameObject("Label");
+                stageLblGo.transform.SetParent(stageBtnGo.transform, false);
+                var stageTmp    = stageLblGo.AddComponent<TextMeshProUGUI>();
+                stageTmp.text      = $"Stage {i + 1}\n[LOCKED]";
+                stageTmp.fontSize  = 36;
+                stageTmp.alignment = TextAlignmentOptions.Center;
+                stageTmp.color     = new Color(0.55f, 0.55f, 0.60f);
+                var stageFont = GetFont();
+                if (stageFont != null) stageTmp.font = stageFont;
+                var stageLblRect = stageLblGo.GetComponent<RectTransform>();
+                SetAnchors(stageLblRect, Vector2.zero, Vector2.one);
+                stageLblRect.offsetMin = stageLblRect.offsetMax = Vector2.zero;
+
+                stageButtons[i] = stageBtn;
+                stageLabels[i]  = stageTmp;
+            }
+
+            // ── StageSelectView 컴포넌트 부착 및 직렬화 필드 배선 ────────────
+            var stageSelectView = selectGo.AddComponent<StageSelectView>();
+            var ssv = new SerializedObject(stageSelectView);
+            ssv.FindProperty("_panel").objectReferenceValue       = overlayGo;
+            ssv.FindProperty("_closeButton").objectReferenceValue = closeBtn;
+
+            var btnsProp = ssv.FindProperty("_stageButtons");
+            btnsProp.arraySize = StageCount;
+            for (int i = 0; i < StageCount; i++)
+                btnsProp.GetArrayElementAtIndex(i).objectReferenceValue = stageButtons[i];
+
+            var lblsProp = ssv.FindProperty("_stageButtonLabels");
+            lblsProp.arraySize = StageCount;
+            for (int i = 0; i < StageCount; i++)
+                lblsProp.GetArrayElementAtIndex(i).objectReferenceValue = stageLabels[i];
+
+            ssv.ApplyModifiedProperties();
+
+            // 패널 초기 상태: 비활성 (StageSelectView.Show()에서 활성화)
+            overlayGo.SetActive(false);
+
+            return stageSelectView;
         }
 
         private static MissionTabView SetupMissionPanel(GameObject panel)
