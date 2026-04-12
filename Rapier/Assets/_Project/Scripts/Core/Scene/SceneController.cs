@@ -31,15 +31,15 @@ namespace Game.Core
             SceneManager.LoadScene(LOBBY);
         }
 
-        /// <summary>보스 러시 게임 씬으로 이동 (레거시).</summary>
-        public static void LoadGame()
+        /// <summary>보스 러시 씬으로 이동 (레거시, BossRushDemo 전용).</summary>
+        public static void LoadBossRush()
         {
             Time.timeScale = 1f;
             SceneManager.LoadScene(BOSS_RUSH);
         }
 
-        /// <summary>스테이지 데모 씬으로 이동.</summary>
-        public static void LoadStageDemo()
+        /// <summary>게임 씬(StageDemo)으로 이동.</summary>
+        public static void LoadGame()
         {
             Time.timeScale = 1f;
             SceneManager.LoadScene(STAGE_DEMO);

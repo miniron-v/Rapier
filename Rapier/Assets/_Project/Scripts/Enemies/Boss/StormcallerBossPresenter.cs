@@ -78,6 +78,7 @@ namespace Game.Enemies
             if (phase3Sequence != null && phase3Sequence.Count > 0)
                 SetSequence(phase3Sequence);
 
+            SetPhase(BossPhase.Phase3);
             Debug.Log("[StormcallerBoss] ★★ Phase 3 진입! 8방향 방사 활성화.");
         }
 

@@ -132,10 +132,21 @@ namespace Game.UI
         public void UpdatePhase(BossPresenterBase.BossPhase phase)
         {
             if (_bossPhaseText == null) return;
-            _bossPhaseText.text  = phase == BossPresenterBase.BossPhase.Phase2 ? "PHASE 2 !" : "PHASE 1";
-            _bossPhaseText.color = phase == BossPresenterBase.BossPhase.Phase2
-                ? new Color(1f, 0.5f, 0f)
-                : Color.white;
+            switch (phase)
+            {
+                case BossPresenterBase.BossPhase.Phase3:
+                    _bossPhaseText.text  = "PHASE 3 !!";
+                    _bossPhaseText.color = new Color(0.4f, 0.8f, 1f);
+                    break;
+                case BossPresenterBase.BossPhase.Phase2:
+                    _bossPhaseText.text  = "PHASE 2 !";
+                    _bossPhaseText.color = new Color(1f, 0.5f, 0f);
+                    break;
+                default:
+                    _bossPhaseText.text  = "PHASE 1";
+                    _bossPhaseText.color = Color.white;
+                    break;
+            }
         }
 
         /// <summary>스테이지 클리어 시 승리 패널 표시.</summary>

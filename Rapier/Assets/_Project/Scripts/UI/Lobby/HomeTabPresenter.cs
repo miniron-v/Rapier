@@ -9,7 +9,7 @@ namespace Game.UI.Lobby
     ///
     /// [역할]
     ///   - 스테이지 번호 표시 (SaveManager.Current.highestStage + 1 기준)
-    ///   - "스테이지 진입" 버튼 클릭 → SceneController.LoadStageDemo() 호출
+    ///   - "스테이지 진입" 버튼 클릭 → SceneController.LoadGame() 호출
     ///
     /// [Phase 13-B 변경]
     ///   - PlayerPrefs("Progress_CurrentStage") 레거시 제거.
@@ -72,7 +72,7 @@ namespace Game.UI.Lobby
         // ── Event Handlers ────────────────────────────────────────
         private void HandleEnterStageClicked()
         {
-            SceneController.LoadStageDemo();
+            SceneController.LoadGame();
         }
     }
 }

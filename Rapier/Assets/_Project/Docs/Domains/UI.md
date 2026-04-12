@@ -10,7 +10,7 @@
 | StageDemo | 스테이지 진행 씬. 8방 RoomNode(인터미션/보스 교차). 포탈 시스템 기반. |
 | BossRushDemo | 보스 러시 씬. `BossRushManager` 가 공용 `BossHudView` 에 연결되어 동작 (Phase 13-A 통합). 12-C 신규 보스 배열 등록은 Phase 12-E 대기. |
 
-- `SceneController.LoadLobby()` / `LoadGame()` 으로 전환. (`LoadStageDemo()` → `LoadGame()` 리네임 예정, BossRushDemo 레거시 삭제 예정)
+- `SceneController.LoadLobby()` / `LoadGame()` 으로 전환. `LoadBossRush()` 는 레거시 BossRushDemo 전용.
 - 씬 전환 전 `Time.timeScale = 1f` 복구 보장.
 - 진행도/RunStat은 씬 전환 시 처리: 클리어/사망 후 능동 복귀 → 초기화. 자세한 규칙은 `PROGRESSION.md` 참조.
 
@@ -55,7 +55,7 @@
 - 5탭 구조. 화면 하단 가로 버튼으로 탭 전환.
 - 탭 인덱스 (1-기준): 1=상점, 2=캐릭터 관리, 3=메인(홈), 4=미션, 5=설정.
 - 진입 시 기본 표시 탭은 **3 (메인)**.
-- 메인 탭의 하단 시작 버튼 → `SceneController.LoadGame()`. (현재 코드는 `LoadStageDemo()` — 리네임 예정)
+- 메인 탭의 하단 시작 버튼 → `SceneController.LoadGame()`.
 
 #### 탭 책임 분리
 

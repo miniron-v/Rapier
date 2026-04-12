@@ -164,7 +164,7 @@ namespace Game.UI.Intermission
             Debug.Log("[IntermissionManager] 다음 스테이지 진입.");
             _stageClearView?.Hide();
             // TODO: Phase 12-E 이후 실제 다음 스테이지 로드로 교체
-            Game.Core.SceneController.LoadStageDemo();
+            Game.Core.SceneController.LoadGame();
         }
 
         // ── 내부 유틸 ────────────────────────────────────────────────
