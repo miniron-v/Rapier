@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: PyromancerStatData
   m_EditorClassIdentifier: Assembly-CSharp::Game.Enemies.BossStatData
   enemyName: Pyromancer
-  sprite: {fileID: 0}
+  sprite: {fileID: -712631045867808456, guid: b670ab75dde984907b8570040daa08c5, type: 3}
   maxHp: 800
   attackPower: 80
   moveSpeed: 1.2

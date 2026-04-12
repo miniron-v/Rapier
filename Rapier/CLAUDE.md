@@ -248,3 +248,48 @@ Phase 단위 작업은 팀장 세션의 `Agent` 도구를 `run_in_background: tr
 - 커밋 형식: `[Phase 13-X] 한국어 설명` (본문에 근본 원인 + 수정 위치 + 검증 결과)
 - **push / merge / worktree remove / --amend / --no-verify / force push 금지** 명시
 - 보고 형식: 200~400자 (수정 요지 / 시나리오 트레이스 / 잠금-해제 매핑 표 / 커밋 SHA)
+
+---
+
+## 13. 과거 실수 기록 (Lessons Learned)
+
+프로젝트 역사에서 실제 발생한 버그와 교훈. 모든 에이전트는 해당 상황에서 이 목록을 참조한다.
+
+### 워크플로우
+
+| # | 교훈 | 적용 시점 |
+|---|------|-----------|
+| L-01 | **원인 미확정 시 코드 수정 금지.** 에디터에서 직접 확인 가능한 사항(레이어, 콜라이더, 스프라이트 할당 등)은 사용자에게 먼저 질문하고, 원인이 확정된 후에만 코드를 수정한다. | 버그 수정 착수 전 |
+| L-02 | **승인 없이 작업 착수 금지.** 설계/분석이 완료되더라도 반드시 보고 → 합의 → 착수 순서를 준수한다. | 모든 작업 |
+
+### 아키텍처 / SOLID
+
+| # | 교훈 | 적용 시점 |
+|---|------|-----------|
+| L-03 | **자식 고유 상태를 Base에서 참조 금지 (OCP/DIP).** 자식의 `_isDashSkillActive` 같은 상태에 의존하는 로직은 자식 안에서만 처리. Base와의 결합은 `virtual`/`override` 계약(`CanAttack` 등)으로만 수행. | 캐릭터 Presenter 수정 시 |
+| L-04 | **단일 플래그로 복수 상태 억제 → 영구 잠금 위험.** 스킬 대기 상태와 스킬 진행 상태를 구분하지 않으면 일반 회피에서도 `OnDodgeDashComplete`가 억제되어 영구 잠금 발생. 억제 조건은 실제 진행 중인 상태만으로 판단할 것. | 잠금/플래그 코드 수정 시 |
+| L-05 | **AnimationCurve 끝값 0 → 무한 루프.** `MoveTowards` 이동량이 0에 수렴하여 `ARRIVE_THRESHOLD`에 도달 불가. 속도 배율 커브 끝값은 0.50f 이상 유지. `DodgeDashRoutine`에 MinSpeed 보증 + 타임아웃 포함. | AnimationCurve 설정 시 |
+
+### Unity 에디터 스크립트 / UI 코드 생성
+
+| # | 교훈 | 적용 시점 |
+|---|------|-----------|
+| L-06 | **Filled Image에 Sprite 필수 할당.** `sprite=None` 상태에서 `Image.Type.Filled` 설정 시 `fillAmount`가 완전 무시됨. Radial360은 Circle 없으면 사각형 렌더링. 코드로 Image 생성 시 TIP 스프라이트를 반드시 동시 할당. | HudSetup/LobbyHudSetup 등 UI 코드 생성 시 |
+| L-07 | **CanvasScaler 기본값 주의.** 기본 `ConstantPixelSize` → Device Simulator에서 UI가 작게 보임. `ScaleWithScreenSize`, `referenceResolution = (1080, 1920)` 설정 필요. | Canvas 코드 생성 시 |
+| L-08 | **RectTransform Pivot 기본값(0.5, 0.5) 주의.** `anchoredPosition`은 pivot 기준 계산. Anchor와 Pivot을 반드시 일치시킬 것. | UI 코드 생성 시 |
+| L-09 | **EventSystem은 InputSystemUIInputModule 사용.** New Input System 환경에서 `StandaloneInputModule` 사용 시 `UnityEngine.Input.get_mousePosition()` 런타임 에러 발생. | EventSystem 생성 시 |
+| L-10 | **2D Sprite 내장 경로** (에디터 전용): `Packages/com.unity.2d.sprite/Editor/ObjectMenuCreation/DefaultAssets/Textures/v2/` — Square / Circle / Capsule / Triangle / 9Sliced / HexagonFlatTop 등. `AssetDatabase.LoadAssetAtPath<Sprite>()` 로 로드. | 에디터 스크립트에서 스프라이트 필요 시 |
+
+### 런타임 제약
+
+| # | 교훈 | 적용 시점 |
+|---|------|-----------|
+| L-11 | **런타임에서 `AssetDatabase` 사용 금지.** 에디터 전용 API. 런타임 스프라이트는 `Texture2D` 직접 생성 / `Resources.Load` / SO 레퍼런스로 조달. (§8 참조) | 런타임 MonoBehaviour 작성 시 |
+| L-12 | **Editor 폴더에 런타임 컴포넌트 배치 금지.** `Editor/` 하위 스크립트는 씬에 부착 불가. 씬 부착 컴포넌트는 `DevTools/` 등 Editor 바깥에 배치. | 새 스크립트 생성 시 |
+| L-13 | **UnityEngine 내장 클래스명과 네임스페이스 충돌 금지.** `namespace Game.Debug` → `UnityEngine.Debug`와 충돌. DevTools 계열은 `Game.DevTools` 사용. (§4 참조) | 네임스페이스 명명 시 |
+
+### 밸런스 / SO 설정
+
+| # | 교훈 | 적용 시점 |
+|---|------|-----------|
+| L-14 | **`ChargeRequiredTime` ≥ 1.0f 권장.** Hold 이벤트는 판정 직후부터 발생. 값이 짧으면 최초 이벤트 수신 시점에 이미 duration 초과 → 차지가 즉시 1로 표시됨. | CharacterStatData SO 값 설정 시 |

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: SpecterStatData
   m_EditorClassIdentifier: Assembly-CSharp::Game.Enemies.BossStatData
   enemyName: Specter
-  sprite: {fileID: -2413806693520163455, guid: a86470a33a6bf42c4b3595704624658b, type: 3}
+  sprite: {fileID: -712631045867808456, guid: b670ab75dde984907b8570040daa08c5, type: 3}
   maxHp: 600
   attackPower: 50
   moveSpeed: 4.5
@@ -36,6 +36,9 @@ MonoBehaviour:
   approachAngleVariance: 30
   bossScale: 1.8
   phaseTransitionDuration: 0.8
+  _spawnCount: 1
+  _spawnOffsets:
+  - {x: 0, y: 0}
   references:
     version: 2
     RefIds:
@@ -54,6 +57,7 @@ MonoBehaviour:
             range: 0
             width: 0
         hitRange: 4
+        damagePercent: 100
     - rid: 2897679572369932394
       type: {class: TeleportAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
       data:
@@ -77,3 +81,4 @@ MonoBehaviour:
             range: 0
             width: 0
         hitRange: 4
+        damagePercent: 100
