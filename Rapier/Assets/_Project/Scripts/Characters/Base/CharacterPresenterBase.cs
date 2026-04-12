@@ -305,6 +305,8 @@ namespace Game.Characters
 
         private void PerformAttack()
         {
+            OnPerformAttack();
+
             EnemyPresenterBase nearestEnemy = FindNearestEnemy(30f);
 
             var stat = Model.StatData;
@@ -799,6 +801,12 @@ namespace Game.Characters
         protected virtual void OnJustDodge(Vector2 direction)                          { }
         protected virtual void OnRelease(InputState lastState)                         { }
         protected virtual void OnHitDamageable(IDamageable target)                     { }
+
+        /// <summary>
+        /// PerformAttack() 시작 시 호출되는 훅. 본체 히트 여부와 무관하게 항상 호출된다.
+        /// 잔상 독자 공격 등 공격 시도 자체에 반응해야 하는 자식 로직에 사용한다.
+        /// </summary>
+        protected virtual void OnPerformAttack()                                         { }
 
         protected virtual void Start()
         {

@@ -18,8 +18,9 @@ namespace Game.Characters.Assassin
     ///   잔상은 수명 만료 시 자동 페이드 아웃 후 Destroy.
     ///
     /// [동참 공격]
-    ///   OnHitDamageable override: 본체 Tap 공격이 적을 맞혔을 때 활성 잔상 전부에
-    ///   AttackWithPlayer(dir, ATK) 를 호출한다.
+    ///   OnPerformAttack override: 본체 Tap 공격 시작 시(히트 여부 무관) 활성 잔상 전부에
+    ///   AttackNearestEnemy(ATK) 를 호출한다. 잔상이 각자 위치에서 독자적으로 가장 가까운
+    ///   적을 탐색하여 공격한다.
     ///   잔상 데미지 = ATK × (phantomDamagePercent / 100).
     ///
     /// [차지 스킬 — 360도 광역 베기]
@@ -164,34 +165,21 @@ namespace Game.Characters.Assassin
             }
         }
 
-        // ── 공격 히트 훅 — 잔상 동참 공격 ───────────────────────
+        // ── 공격 실행 훅 — 잔상 독자 공격 ──────────────────────
         /// <summary>
-        /// 본체 Tap 공격이 IDamageable을 맞혔을 때 호출된다.
-        /// 활성 잔상 전부에 AttackWithPlayer(타겟 위치)를 전달한다.
-        /// 방향은 각 잔상 내부에서 "잔상→타겟"으로 재계산하여 기하학적 정확도를 보장한다.
+        /// 본체 PerformAttack() 시작 시 호출된다 (히트 여부와 무관).
+        /// 각 잔상이 독자적으로 가장 가까운 적을 탐색해 공격한다.
+        /// 본체가 빗나가도 잔상 근처에 적이 있으면 잔상은 공격한다.
         /// </summary>
-        protected override void OnHitDamageable(IDamageable target)
+        protected override void OnPerformAttack()
         {
             if (_activePhantoms.Count == 0) return;
-
-            // 타겟 위치 추출: EnemyPresenterBase면 정확한 위치, 아니면 본체 전방 기본값
-            var enemy = target as EnemyPresenterBase;
-            Vector2 targetPos = enemy != null
-                ? (Vector2)enemy.transform.position
-                : (Vector2)transform.position + Vector2.up;
-
-            // 본체 ATK만 전달 — 잔상 내부에서 damagePercent 비율 적용
             float baseAtk = Model != null ? Model.AttackPower : 0f;
-
             for (int i = _activePhantoms.Count - 1; i >= 0; i--)
             {
                 var phantom = _activePhantoms[i];
-                if (phantom == null)
-                {
-                    _activePhantoms.RemoveAt(i);
-                    continue;
-                }
-                phantom.AttackWithPlayer(targetPos, baseAtk);
+                if (phantom == null) { _activePhantoms.RemoveAt(i); continue; }
+                phantom.AttackNearestEnemy(baseAtk);
             }
         }
 
@@ -275,6 +263,16 @@ namespace Game.Characters.Assassin
             }
 
             Debug.Log($"[AssassinPresenter] 360도 광역 베기 히트: {hitCount}명 / 반지름: {radius}");
+
+            // 잔상 동참 AoE — 각 잔상 위치에서도 동일한 AoE 실행
+            float phantomAoeDamage = Model.AttackPower * (_statData.AoeSkillDamagePercent / 100f)
+                                     * Model.SkillDamageMultiplier * (_statData.PhantomDamagePercent / 100f);
+            for (int i = _activePhantoms.Count - 1; i >= 0; i--)
+            {
+                var phantom = _activePhantoms[i];
+                if (phantom == null) { _activePhantoms.RemoveAt(i); continue; }
+                phantom.ExecuteAoe(phantomAoeDamage);
+            }
         }
 
         /// <summary>

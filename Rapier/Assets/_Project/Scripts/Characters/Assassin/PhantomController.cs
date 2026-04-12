@@ -14,9 +14,14 @@ namespace Game.Characters.Assassin
     ///   수명 만료 → OnDeath 이벤트 발행 → Destroy(gameObject).
     ///
     /// [공격 동참]
-    ///   AttackWithPlayer(targetDir, baseDamage): 잔상 위치에서 같은 방향으로 공격 판정.
+    ///   AttackWithPlayer(targetPos, baseDamage): 잔상 위치에서 타겟 방향으로 박스 히트 판정.
+    ///   AttackNearestEnemy(baseDamage): 잔상 반경 내 가장 가까운 적을 탐색해 AttackWithPlayer 호출.
+    ///   ExecuteAoe(damage): 잔상 위치에서 360도 원형 광역 공격 (차지 스킬 동참).
     ///   데미지 = baseDamage × (damagePercent / 100).
-    ///   단, 수명이 만료되었거나 페이드 아웃 중이면 공격하지 않는다.
+    ///   수명 만료(_isExpired=true)이면 모든 공격 메서드에서 조기 리턴.
+    ///
+    /// [시각 피드백]
+    ///   공격 시 ShowAttackFlash()로 0.08초간 Color.white 플래시.
     ///
     /// [시각]
     ///   CharacterView의 SpriteRenderer를 복제하여 alpha 0.5 반투명 적용.
@@ -30,6 +35,8 @@ namespace Game.Characters.Assassin
         private const float ATTACK_BOX_WIDTH     = 2.0f;
         private const float ATTACK_BOX_HEIGHT    = 1.5f;
         private const float ATTACK_BOX_OFFSET    = 1.0f;
+        private const float ATTACK_RANGE         = 3.0f;
+        private const float ATTACK_FLASH_DURATION = 0.08f;
 
         // ── 직렬화 필드 (없음 — 모두 Init 주입) ──────────────────
 
@@ -110,7 +117,81 @@ namespace Game.Characters.Assassin
                 hitCount++;
             }
 
+            ShowAttackFlash();
             Debug.Log($"[PhantomController] 동참 공격 @ {transform.position} → 타겟 {targetPos}, 히트: {hitCount}");
+        }
+
+        /// <summary>
+        /// 잔상 위치 기준 반경 내 가장 가까운 적을 탐색해 공격한다.
+        /// 적이 없으면 아무것도 하지 않는다.
+        /// </summary>
+        /// <param name="baseDamage">본체 기준 공격력 (damagePercent는 내부 적용)</param>
+        public void AttackNearestEnemy(float baseDamage)
+        {
+            if (_isExpired) return;
+
+            int   enemyLayer = LayerMask.GetMask("Enemy");
+            var   hits       = Physics2D.OverlapCircleAll(transform.position, ATTACK_RANGE, enemyLayer);
+
+            EnemyPresenterBase nearest      = null;
+            float              nearestDistSq = float.MaxValue;
+
+            foreach (var hit in hits)
+            {
+                var enemy = hit.GetComponent<EnemyPresenterBase>();
+                if (enemy == null || !enemy.IsAlive) continue;
+                float distSq = ((Vector2)enemy.transform.position - (Vector2)transform.position).sqrMagnitude;
+                if (distSq < nearestDistSq)
+                {
+                    nearestDistSq = distSq;
+                    nearest       = enemy;
+                }
+            }
+
+            if (nearest == null) return;
+
+            AttackWithPlayer((Vector2)nearest.transform.position, baseDamage);
+        }
+
+        /// <summary>
+        /// 잔상 위치에서 360도 원형 광역 공격을 수행한다. 차지 스킬 동참에 사용한다.
+        /// </summary>
+        /// <param name="damage">최종 데미지 (호출자에서 계산 완료된 값)</param>
+        public void ExecuteAoe(float damage)
+        {
+            if (_isExpired) return;
+
+            int   enemyLayer = LayerMask.GetMask("Enemy");
+            var   hits       = Physics2D.OverlapCircleAll(transform.position, ATTACK_RANGE, enemyLayer);
+            int   hitCount   = 0;
+
+            foreach (var hit in hits)
+            {
+                var enemy = hit.GetComponent<EnemyPresenterBase>();
+                if (enemy == null || !enemy.IsAlive) continue;
+                var dir = ((Vector2)enemy.transform.position - (Vector2)transform.position).normalized;
+                enemy.TakeDamage(damage, dir);
+                hitCount++;
+            }
+
+            ShowAttackFlash();
+            Debug.Log($"[PhantomController] AoE 동참 @ {transform.position}, 히트: {hitCount}");
+        }
+
+        // ── 공격 시각 피드백 ──────────────────────────────────────
+        private void ShowAttackFlash()
+        {
+            if (_sr == null) return;
+            StartCoroutine(AttackFlashRoutine());
+        }
+
+        private IEnumerator AttackFlashRoutine()
+        {
+            Color original = _sr.color;
+            _sr.color = Color.white;
+            yield return new WaitForSecondsRealtime(ATTACK_FLASH_DURATION);
+            if (_sr != null)
+                _sr.color = original;
         }
 
         // ── 수명 코루틴 ───────────────────────────────────────────

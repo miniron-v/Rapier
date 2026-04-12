@@ -52,6 +52,13 @@ namespace Game.Core
 
             var spawned = Instantiate(entry.prefab, transform.position, Quaternion.identity);
             Debug.Log($"[CharacterSpawner] '{entry.characterId}' 스폰 완료 @ {transform.position}");
+
+            // 카메라 추적 대상 설정 — CameraFollow는 Awake에서 ServiceLocator.Register하므로 Start에서 안전하게 접근 가능
+            var camFollow = ServiceLocator.TryGet<CameraFollow>();
+            if (camFollow != null)
+                camFollow.SetTarget(spawned.transform);
+            else
+                Debug.LogWarning("[CharacterSpawner] CameraFollow 미등록 — 카메라 추적 대상 설정 불가.");
         }
 
         // ── Private 메서드 ────────────────────────────────────────
