@@ -17,9 +17,9 @@ namespace Game.Enemies
     ///   생존자는 survivorSpeedMultiplier / survivorAttackMultiplier 로 스탯이 강화된다.
     ///
     /// [페이즈]
-    ///   Twin Phantoms 는 BossPresenterBase 의 페이즈 전환(HP 50%)을 사용하지 않는다.
+    ///   Twin Phantoms 는 HP 기반 페이즈 전환을 사용하지 않는다.
+    ///   SO의 phases를 1개만 설정하여 자동 전환이 발생하지 않게 한다.
     ///   대신 partner 사망이 전환 트리거다.
-    ///   TakeDamage override 에서 페이즈 전환을 방지하고 자체 로직을 사용한다.
     ///
     /// [클리어 조건]
     ///   두 체 모두 사망 시 클리어. BossRushManager 는 OnDeath 이벤트로 추적한다.
@@ -64,24 +64,6 @@ namespace Game.Enemies
             if (partner != null)
                 partner.OnDeath -= HandlePartnerDeath;
         }
-
-        // ── BossPresenterBase HP 50% 페이즈 전환 비활성화 ─────────
-        /// <summary>
-        /// Twin Phantoms 는 HP 50% 페이즈 전환 대신 파트너 사망으로 강화한다.
-        /// TakeDamage 를 override 하여 Phase 전환 로직이 실행되지 않도록 한다.
-        /// BossPresenterBase.TakeDamage 의 페이즈 전환 검사를 건너뛰고,
-        /// EnemyPresenterBase.TakeDamage 만 호출한다.
-        /// </summary>
-        public override void TakeDamage(float amount, Vector2 knockbackDir)
-        {
-            // BossPresenterBase 의 페이즈 전환 검사를 건너뛰고
-            // EnemyPresenterBase.TakeDamage 만 호출한다.
-            if (!IsAlive) return;
-            _model.TakeDamage(amount);
-            _view.PlayHit();
-        }
-
-        protected override void OnEnterPhase2() { /* 미사용 — 파트너 사망으로만 강화 */ }
 
         // ── 스탯 override: 생존자 강화 적용 ──────────────────────
         protected override float GetMoveSpeed()

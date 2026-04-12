@@ -497,7 +497,7 @@ Windup 구간 동안 아웃라인(범위 경계 고정) + 스캔라인(중심→
 ### 적 공격 시스템 (AttackAction 패턴)
 
 모든 적의 공격은 EnemyAttackAction 파생 클래스로 정의하고,
-EnemyStatData.attackSequence ([SerializeReference] 리스트)에 직렬화한다.
+EnemyStatData.phases[].sequence ([SerializeReference] 리스트)에 직렬화한다.
 
 ```
 EnterWindupPhase()

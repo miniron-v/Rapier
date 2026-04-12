@@ -19,17 +19,17 @@ MonoBehaviour:
   moveSpeed: 3
   attackRange: 1.2
   postAttackDelay: 0.3
-  attackSequence:
-  - rid: 2897679572369932400
-  - rid: 2897679572369932401
+  phases:
+  - hpThreshold: 1
+    color: {r: 0.7, g: 0.7, b: 1, a: 1}
+    speedMultiplier: 1
+    attackMultiplier: 1
+    sequence:
+    - rid: 2897679572369932400
+    - rid: 2897679572369932401
   approachAngleVariance: 30
   bossScale: 2
-  phase1Color: {r: 0.7, g: 0.7, b: 1, a: 1}
-  phase2Color: {r: 0.7, g: 0.7, b: 1, a: 1}
-  phase2SpeedMultiplier: 1
-  phase2AttackMultiplier: 1
   phaseTransitionDuration: 1
-  phase2Sequence: []
   _spawnCount: 2
   _spawnOffsets:
   - {x: -2, y: 0}

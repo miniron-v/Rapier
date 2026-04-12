@@ -7,13 +7,13 @@ namespace Game.Enemies
     /// <summary>
     /// 그레이브키퍼 보스.
     ///
-    /// [1페이즈] Summon → Melee → 반복
-    /// [2페이즈] Summon → Summon → Melee → Melee → 반복 (HP 50% 이하)
+    /// 페이즈 시퀀스/전환은 EnemyStatData.phases 에서 정의.
+    /// Presenter는 미니언 프리팹 주입 + 수명 관리만 담당한다.
     ///
     /// [미니언 관리]
     ///   SummonAttackAction 은 [SerializeReference] 제약으로 UnityEngine.Object 를 직접
     ///   보유하지 못하므로, 이 Presenter 가 [SerializeField] 로 minionPrefab/minionData 를
-    ///   보유하고 Spawn() 시점에 SummonAttackAction.MinionPrefab/MinionData 에 주입한다.
+    ///   보유하고 Spawn() 시점에 모든 페이즈 시퀀스의 SummonAttackAction 에 주입한다.
     ///
     /// [종료 경로 — 미니언]
     ///   1. 플레이어에게 처치 → NormalEnemyPresenter.HandleModelDeath() → _activeMinions 제거
@@ -46,10 +46,12 @@ namespace Game.Enemies
 
             base.Spawn(statData, position);
 
-            // attackSequence + phase2Sequence 의 SummonAttackAction 에 refs 주입 + 구독
-            InjectAndSubscribe(statData.attackSequence);
-            if (BossData != null)
-                InjectAndSubscribe(BossData.phase2Sequence);
+            // 모든 페이즈 시퀀스의 SummonAttackAction 에 refs 주입 + 구독
+            if (statData.phases != null)
+            {
+                foreach (var phase in statData.phases)
+                    InjectAndSubscribe(phase.sequence);
+            }
         }
 
         // ── 사망 override ─────────────────────────────────────────
@@ -60,9 +62,9 @@ namespace Game.Enemies
             base.HandleModelDeath();
         }
 
-        protected override void OnEnterPhase2()
+        protected override void OnPhaseTransition(int phaseIndex)
         {
-            Debug.Log("[GravekeeperBoss] Phase2 진입 — 소환 강화.");
+            Debug.Log($"[GravekeeperBoss] Phase {phaseIndex + 1} 진입!");
         }
 
         // ── 이벤트 핸들러 ─────────────────────────────────────────

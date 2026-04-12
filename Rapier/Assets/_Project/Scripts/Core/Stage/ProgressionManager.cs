@@ -143,9 +143,9 @@ namespace Game.Core.Stage
             Debug.Log($"[ProgressionManager] 보스 스폰: {room.displayName} @ {_bossSpawnPosition}");
         }
 
-        private void HandleBossPhaseChanged(BossPresenterBase.BossPhase phase)
+        private void HandleBossPhaseChanged(int phaseIndex)
         {
-            _bossHud?.UpdatePhase(phase);
+            _bossHud?.UpdatePhase(phaseIndex);
         }
 
         private void HandleBossDeath()

@@ -19,19 +19,31 @@ MonoBehaviour:
   moveSpeed: 1.8
   attackRange: 6
   postAttackDelay: 0.5
-  attackSequence:
-  - rid: 2897679572369932396
-  - rid: 2897679572369932397
+  phases:
+  - hpThreshold: 1
+    color: {r: 0.4, g: 0.7, b: 1, a: 1}
+    speedMultiplier: 1
+    attackMultiplier: 1
+    sequence:
+    - rid: 2897679572369932396
+    - rid: 2897679572369932397
+  - hpThreshold: 0.5
+    color: {r: 0.2, g: 0.4, b: 1, a: 1}
+    speedMultiplier: 1.4
+    attackMultiplier: 1.3
+    sequence:
+    - rid: 2897679572369932398
+    - rid: 2897679572369932399
+  - hpThreshold: 0.25
+    color: {r: 0.1, g: 0.2, b: 0.9, a: 1}
+    speedMultiplier: 1.6
+    attackMultiplier: 1.5
+    sequence:
+    - rid: 5516000000000000001
+    - rid: 5516000000000000002
   approachAngleVariance: 30
   bossScale: 2.5
-  phase1Color: {r: 0.4, g: 0.7, b: 1, a: 1}
-  phase2Color: {r: 0.2, g: 0.4, b: 1, a: 1}
-  phase2SpeedMultiplier: 1.4
-  phase2AttackMultiplier: 1.3
   phaseTransitionDuration: 1
-  phase2Sequence:
-  - rid: 2897679572369932398
-  - rid: 2897679572369932399
   _spawnCount: 1
   _spawnOffsets:
   - {x: 0, y: 0}
@@ -156,3 +168,94 @@ MonoBehaviour:
         hitRadius: 0.45
         damageMultiplier: 1.2
         homingStrength: 45
+    - rid: 5516000000000000001
+      type: {class: MultiDirectionalAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
+      data:
+        windupDuration: 0.8
+        lockIndicatorDirection: 1
+        indicators:
+        - shape: 0
+          angleOffset: 0
+          sectorData:
+            range: 5
+            angle: 45
+          rectData:
+            range: 0
+            width: 0
+        - shape: 0
+          angleOffset: 45
+          sectorData:
+            range: 5
+            angle: 45
+          rectData:
+            range: 0
+            width: 0
+        - shape: 0
+          angleOffset: 90
+          sectorData:
+            range: 5
+            angle: 45
+          rectData:
+            range: 0
+            width: 0
+        - shape: 0
+          angleOffset: 135
+          sectorData:
+            range: 5
+            angle: 45
+          rectData:
+            range: 0
+            width: 0
+        - shape: 0
+          angleOffset: 180
+          sectorData:
+            range: 5
+            angle: 45
+          rectData:
+            range: 0
+            width: 0
+        - shape: 0
+          angleOffset: 225
+          sectorData:
+            range: 5
+            angle: 45
+          rectData:
+            range: 0
+            width: 0
+        - shape: 0
+          angleOffset: 270
+          sectorData:
+            range: 5
+            angle: 45
+          rectData:
+            range: 0
+            width: 0
+        - shape: 0
+          angleOffset: 315
+          sectorData:
+            range: 5
+            angle: 45
+          rectData:
+            range: 0
+            width: 0
+        hitRange: 5
+        damageMultiplier: 1.3
+    - rid: 5516000000000000002
+      type: {class: ProjectileAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
+      data:
+        windupDuration: 0.6
+        lockIndicatorDirection: 1
+        indicators:
+        - shape: 1
+          angleOffset: 0
+          sectorData:
+            range: 0
+            angle: 0
+          rectData:
+            range: 15
+            width: 1
+        projectileSpeed: 12
+        maxRange: 20
+        hitRadius: 0.5
+        damageMultiplier: 1.4
+        homingStrength: 60

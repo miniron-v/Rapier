@@ -38,49 +38,59 @@ namespace Game.Editor
                 indicators             = new List<AttackIndicatorEntry> { MakeSectorEntry() }
             };
 
-            // 기존 직렬화 데이터 먼저 초기화
-            data.attackRange    = ATTACK_RANGE;
-            data.attackSequence  = null;
-            data.phase2Sequence  = null;
-            EditorUtility.SetDirty(data);
-            AssetDatabase.SaveAssets();
-            AssetDatabase.ImportAsset(path);
+            data.attackRange = ATTACK_RANGE;
 
-            // 재할당
-            data.attackSequence = new List<EnemyAttackAction>
+            data.phases = new List<PhaseEntry>
             {
-                MakeMelee(), MakeMelee(), MakeMelee()
-            };
-
-            var charge = new ChargeAttackAction
-            {
-                windupDuration         = WINDUP_DURATION,
-                lockIndicatorDirection = true,
-                chargeSpeed            = 14f,
-                chargeHitRange         = 1.8f,
-                damagePercent          = 200,
-                chargeMaxDistance      = 20f,
-                grogyDuration          = 2.5f,
-                indicators             = new List<AttackIndicatorEntry>
+                // [Phase1] Melee x3
+                new PhaseEntry
                 {
-                    new AttackIndicatorEntry
+                    hpThreshold = 1f,
+                    color = new Color(0.9f, 0.3f, 0.3f),
+                    speedMultiplier = 1f,
+                    attackMultiplier = 1f,
+                    sequence = new List<EnemyAttackAction>
                     {
-                        shape    = AttackIndicatorShape.Rectangle,
-                        angleOffset = 0f,
-                        rectData = new RectIndicatorData { range = 20f, width = 3.6f }
+                        MakeMelee(), MakeMelee(), MakeMelee()
+                    }
+                },
+                // [Phase2] Melee x3 + Charge
+                new PhaseEntry
+                {
+                    hpThreshold = 0.5f,
+                    color = new Color(1f, 0.15f, 0.1f),
+                    speedMultiplier = 1.5f,
+                    attackMultiplier = 1.3f,
+                    sequence = new List<EnemyAttackAction>
+                    {
+                        MakeMelee(), MakeMelee(), MakeMelee(),
+                        new ChargeAttackAction
+                        {
+                            windupDuration         = WINDUP_DURATION,
+                            lockIndicatorDirection = true,
+                            chargeSpeed            = 14f,
+                            chargeHitRange         = 1.8f,
+                            damagePercent          = 200,
+                            chargeMaxDistance      = 20f,
+                            grogyDuration          = 2.5f,
+                            indicators             = new List<AttackIndicatorEntry>
+                            {
+                                new AttackIndicatorEntry
+                                {
+                                    shape    = AttackIndicatorShape.Rectangle,
+                                    angleOffset = 0f,
+                                    rectData = new RectIndicatorData { range = 20f, width = 3.6f }
+                                }
+                            }
+                        }
                     }
                 }
-            };
-
-            data.phase2Sequence = new List<EnemyAttackAction>
-            {
-                MakeMelee(), MakeMelee(), MakeMelee(), charge
             };
 
             EditorUtility.SetDirty(data);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            Debug.Log("[TitanDataSetup] 완료! attackRange=4 windupDuration=1 lockDirection=true");
+            Debug.Log("[TitanDataSetup] 완료! phases[0]=Melee×3, phases[1]=Melee×3+Charge");
         }
     }
 }

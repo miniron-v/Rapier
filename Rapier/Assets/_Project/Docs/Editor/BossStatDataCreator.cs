@@ -67,14 +67,10 @@ namespace Game.Editor
             data.postAttackDelay         = 0.8f;
             data.approachAngleVariance   = 10f;
             data.bossScale               = 2.5f;
-            data.phase1Color             = new Color(0.85f, 0.15f, 0.15f);
-            data.phase2Color             = new Color(1.0f,  0.40f, 0.0f);
-            data.phase2SpeedMultiplier   = 1.4f;
-            data.phase2AttackMultiplier  = 1.5f;
             data.phaseTransitionDuration = 1.2f;
             if (hexSprite != null) data.sprite = hexSprite;
 
-            // attackSequence / phase2Sequence 는 인스펙터에서 직접 설정
+            // phases 는 TitanDataSetup 또는 인스펙터에서 설정
             AssetDatabase.CreateAsset(data, path);
         }
 
@@ -98,14 +94,10 @@ namespace Game.Editor
             data.postAttackDelay         = 0.2f;
             data.approachAngleVariance   = 30f;
             data.bossScale               = 1.8f;
-            data.phase1Color             = new Color(0.5f, 0.1f, 0.9f);
-            data.phase2Color             = new Color(0.8f, 0.0f, 1.0f);
-            data.phase2SpeedMultiplier   = 1.6f;
-            data.phase2AttackMultiplier  = 1.2f;
             data.phaseTransitionDuration = 0.8f;
             if (circleSprite != null) data.sprite = circleSprite;
 
-            // attackSequence / phase2Sequence 는 인스펙터에서 직접 설정
+            // phases 는 BossDataSetup 또는 인스펙터에서 설정
             AssetDatabase.CreateAsset(data, path);
         }
 

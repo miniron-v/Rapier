@@ -25,26 +25,31 @@ namespace Game.Editor
             const float WINDUP   = 0.5f;
             const float ANGLE    = 90f;
 
-            data.attackRange    = RANGE;
-            data.attackSequence = null;
-            EditorUtility.SetDirty(data);
-            AssetDatabase.SaveAssets();
-            AssetDatabase.ImportAsset(path);
-
-            data.attackSequence = new List<EnemyAttackAction>
+            data.attackRange = RANGE;
+            data.phases = new List<PhaseEntry>
             {
-                new MeleeAttackAction
+                new PhaseEntry
                 {
-                    windupDuration         = WINDUP,
-                    lockIndicatorDirection = false,
-                    hitRange               = RANGE,
-                    indicators             = new List<AttackIndicatorEntry>
+                    hpThreshold = 1f,
+                    color = new Color(0.9f, 0.3f, 0.3f),
+                    speedMultiplier = 1f,
+                    attackMultiplier = 1f,
+                    sequence = new List<EnemyAttackAction>
                     {
-                        new AttackIndicatorEntry
+                        new MeleeAttackAction
                         {
-                            shape       = AttackIndicatorShape.Sector,
-                            angleOffset = 0f,
-                            sectorData  = new SectorIndicatorData { range = RANGE, angle = ANGLE }
+                            windupDuration         = WINDUP,
+                            lockIndicatorDirection = false,
+                            hitRange               = RANGE,
+                            indicators             = new List<AttackIndicatorEntry>
+                            {
+                                new AttackIndicatorEntry
+                                {
+                                    shape       = AttackIndicatorShape.Sector,
+                                    angleOffset = 0f,
+                                    sectorData  = new SectorIndicatorData { range = RANGE, angle = ANGLE }
+                                }
+                            }
                         }
                     }
                 }
@@ -87,34 +92,41 @@ namespace Game.Editor
                 indicators             = new List<AttackIndicatorEntry> { MakeSectorEntry(windupDur) }
             };
 
-            data.attackRange     = RANGE;
-            data.attackSequence  = null;
-            data.phase2Sequence  = null;
-            EditorUtility.SetDirty(data);
-            AssetDatabase.SaveAssets();
-            AssetDatabase.ImportAsset(path);
-
-            // 1페이즈: 빠른 근접 공격 (windupDuration 0.25)
-            data.attackSequence = new List<EnemyAttackAction>
+            data.attackRange = RANGE;
+            data.phases = new List<PhaseEntry>
             {
-                MakeMelee(0.25f)
-            };
-
-            // 2페이즈: 순간이동 후 근접 공격
-            // TeleportAttackAction은 인디케이터 없음 (순간이동 자체가 예고)
-            var teleport = new TeleportAttackAction
-            {
-                windupDuration         = 0.15f,
-                lockIndicatorDirection = false,
-                teleportOffset         = 1.2f,
-                fadeTime               = 0.15f,
-                indicators             = new List<AttackIndicatorEntry>() // 인디케이터 없음
-            };
-
-            data.phase2Sequence = new List<EnemyAttackAction>
-            {
-                teleport,
-                MakeMelee(0.25f)
+                // [Phase1] 빠른 근접 공격
+                new PhaseEntry
+                {
+                    hpThreshold = 1f,
+                    color = new Color(0.5f, 0.1f, 0.9f),
+                    speedMultiplier = 1f,
+                    attackMultiplier = 1f,
+                    sequence = new List<EnemyAttackAction>
+                    {
+                        MakeMelee(0.25f)
+                    }
+                },
+                // [Phase2] 순간이동 후 근접 공격
+                new PhaseEntry
+                {
+                    hpThreshold = 0.5f,
+                    color = new Color(0.8f, 0.0f, 1.0f),
+                    speedMultiplier = 1.6f,
+                    attackMultiplier = 1.2f,
+                    sequence = new List<EnemyAttackAction>
+                    {
+                        new TeleportAttackAction
+                        {
+                            windupDuration         = 0.15f,
+                            lockIndicatorDirection = false,
+                            teleportOffset         = 1.2f,
+                            fadeTime               = 0.15f,
+                            indicators             = new List<AttackIndicatorEntry>()
+                        },
+                        MakeMelee(0.25f)
+                    }
+                }
             };
 
             EditorUtility.SetDirty(data);

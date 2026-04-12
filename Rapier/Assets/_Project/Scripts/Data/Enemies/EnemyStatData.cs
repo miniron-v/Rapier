@@ -27,11 +27,11 @@ namespace Game.Enemies
         [Tooltip("공격 후 정지 딜레이 (초)")]
         [Min(0)] public float postAttackDelay = 0.3f;
 
-        [Header("공격 시퀀스")]
-        [Tooltip("공격 패턴 목록. 순서대로 루프 실행.\n" +
-                 "우클릭 → Add → 원하는 AttackAction 파생 클래스 선택.")]
-        [SerializeReference]
-        public List<EnemyAttackAction> attackSequence = new List<EnemyAttackAction>();
+        [Header("페이즈")]
+        [Tooltip("페이즈별 공격 시퀀스 + 배율 + 색상.\n" +
+                 "일반 적은 1개, 보스는 2~3개.\n" +
+                 "hpThreshold 내림차순 (1.0 → 0.5 → 0.25 …) 정렬.")]
+        public List<PhaseEntry> phases = new List<PhaseEntry>();
 
         [Header("AI")]
         [Tooltip("플레이어 접근 시 랜덤 오프셋 각도 범위 (도)")]

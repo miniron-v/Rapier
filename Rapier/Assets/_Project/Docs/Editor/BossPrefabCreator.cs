@@ -16,7 +16,7 @@ namespace Game.Editor
     ///
     /// [AttackAction 주의]
     ///   EnemyAttackAction 은 [Serializable] 순수 C# 클래스이며,
-    ///   BossStatData SO 의 attackSequence / phase2Sequence 에 [SerializeReference]로
+    ///   EnemyStatData SO 의 phases[].sequence 에 [SerializeReference]로
     ///   저장됩니다. 프리팹에 MonoBehaviour 로 추가하는 것이 아닙니다.
     ///   StatData 는 BossRushManager.Spawn() 시점에 주입됩니다.
     ///

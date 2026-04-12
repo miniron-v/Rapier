@@ -6,12 +6,11 @@ namespace Game.Enemies
     /// <summary>
     /// 파이로맨서 보스.
     ///
-    /// [1페이즈] Projectile → GroundHazard → 반복
-    /// [2페이즈] Projectile → GroundHazard → MultiDirectional → 반복
-    ///           HP 50% 이하 진입 시 BossPresenterBase가 자동으로 phase2Sequence 로 교체.
+    /// 페이즈 시퀀스/전환은 EnemyStatData.phases 에서 정의.
+    /// Presenter는 보스 고유 연출 + GroundHazard 사망 정리만 담당한다.
     ///
     /// [특수 처리 — GroundHazard 사망 정리]
-    ///   GroundHazardAttackAction.ActiveHazard 를 폴링하여 보스 사망 시 장판을 즉시 제거.
+    ///   모든 페이즈의 시퀀스를 순회하여 GroundHazardAttackAction.ActiveHazard 를 즉시 제거.
     ///
     /// [종료 경로 — GroundHazard]
     ///   1. duration 만료 → GroundHazardAttackAction.Execute 내부에서 자동 Destroy
@@ -26,17 +25,17 @@ namespace Game.Enemies
             base.HandleModelDeath();
         }
 
-        // ── Phase2 진입 연출 ──────────────────────────────────────
-        protected override void OnEnterPhase2()
+        protected override void OnPhaseTransition(int phaseIndex)
         {
-            Debug.Log("[PyromancerBoss] Phase2 진입 — 다방향 공격 시퀀스 활성화");
+            Debug.Log($"[PyromancerBoss] Phase {phaseIndex + 1} 진입!");
         }
 
         // ── 장판 일괄 제거 ────────────────────────────────────────
         private void CleanupHazards()
         {
-            DestroyHazardsInSequence(_statData?.attackSequence);
-            DestroyHazardsInSequence(BossData?.phase2Sequence);
+            if (_statData?.phases == null) return;
+            foreach (var phase in _statData.phases)
+                DestroyHazardsInSequence(phase.sequence);
         }
 
         private void DestroyHazardsInSequence(List<EnemyAttackAction> seq)

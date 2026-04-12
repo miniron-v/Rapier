@@ -19,8 +19,13 @@ MonoBehaviour:
   moveSpeed: 3
   attackRange: 1.2
   postAttackDelay: 0.3
-  attackSequence:
-  - rid: 3100000000000000001
+  phases:
+  - hpThreshold: 1
+    color: {r: 0.9, g: 0.3, b: 0.3, a: 1}
+    speedMultiplier: 1
+    attackMultiplier: 1
+    sequence:
+    - rid: 3100000000000000001
   approachAngleVariance: 60
   references:
     version: 2

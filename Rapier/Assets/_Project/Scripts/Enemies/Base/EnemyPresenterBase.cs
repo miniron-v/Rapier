@@ -16,10 +16,15 @@ namespace Game.Enemies
     ///   EnterWindupPhase() 진입 시 시퀀서에서 다음 AttackAction을 꺼낸다.
     ///   각 AttackAction이 자신의 windupDuration, indicators, Execute() 를 소유한다.
     ///
+    /// [페이즈 시스템]
+    ///   EnemyStatData.phases 리스트의 hpThreshold 를 역순 스캔하여
+    ///   HP 비율이 임계치 이하가 되면 자동 전환한다.
+    ///   일반 적은 phases 1개이므로 전환 없이 동작한다.
+    ///
     /// [확장 포인트]
     ///   OnEnterChase / OnEnterWindup / OnEnterHit / OnEnterPostAttack / OnDeath
+    ///   OnPhaseTransition(int phaseIndex) : 페이즈 전환 시 자식 훅
     ///   GetMoveSpeed / GetAttackPower / GetAttackRange
-    ///   SetSequence() : BossPresenterBase가 페이즈 전환 시 호출
     /// </summary>
     [RequireComponent(typeof(EnemyView))]
     public abstract class EnemyPresenterBase : MonoBehaviour, IDamageable
@@ -48,6 +53,15 @@ namespace Game.Enemies
 
         // ── 컨텍스트 ─────────────────────────────────────────────
         private EnemyAttackContext _ctx;
+
+        // ── 페이즈 시스템 ─────────────────────────────────────────
+        private int _currentPhaseIndex;
+
+        /// <summary>현재 활성 페이즈 인덱스 (0-based).</summary>
+        public int CurrentPhaseIndex => _currentPhaseIndex;
+
+        /// <summary>페이즈 전환 시 발행. 인자 = 새 페이즈 인덱스.</summary>
+        public event Action<int> OnPhaseChanged;
 
         public bool IsAlive => _model != null && _model.IsAlive;
         public EnemyModel GetModel() => _model;
@@ -106,12 +120,24 @@ namespace Game.Enemies
             float angle     = UnityEngine.Random.Range(-statData.approachAngleVariance, statData.approachAngleVariance);
             _approachOffset = Quaternion.Euler(0f, 0f, angle) * Vector2.up * 0.3f;
 
-            _view.ResetVisual(new Color(0.9f, 0.3f, 0.3f));
+            // ── 페이즈 초기화 ─────────────────────────────────────
+            _currentPhaseIndex = 0;
+            var initialPhase = GetPhase(0);
+            if (initialPhase != null)
+            {
+                _view.ResetVisual(initialPhase.color);
+                if (initialPhase.sequence != null && initialPhase.sequence.Count > 0)
+                    _sequencer.SetSequence(initialPhase.sequence);
+            }
+            else
+            {
+                _view.ResetVisual(new Color(0.9f, 0.3f, 0.3f));
+            }
+
             _hpBar?.Init(_model);
 
             if (_playerTransform == null) RefreshPlayerReference();
 
-            _sequencer.SetSequence(statData.attackSequence);
             _ctx = BuildContext();
 
             gameObject.SetActive(true);
@@ -123,6 +149,73 @@ namespace Game.Enemies
             if (!IsAlive) return;
             _model.TakeDamage(amount);
             _view.PlayHit();
+            CheckPhaseTransition();
+        }
+
+        // ── 페이즈 전환 체크 ─────────────────────────────────────
+        private void CheckPhaseTransition()
+        {
+            if (_statData == null || _statData.phases == null || !IsAlive) return;
+
+            float ratio = _model.CurrentHp / _model.StatData.maxHp;
+
+            // 현재보다 높은 인덱스 중 가장 큰 것을 탐색 (역순)
+            for (int i = _statData.phases.Count - 1; i > _currentPhaseIndex; i--)
+            {
+                if (ratio <= _statData.phases[i].hpThreshold)
+                {
+                    StartCoroutine(PhaseTransitionRoutine(i));
+                    return;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 페이즈 전환 코루틴. 색상 Lerp + 시퀀스 교체 + 이벤트 발행.
+        /// </summary>
+        private IEnumerator PhaseTransitionRoutine(int newIndex)
+        {
+            _currentPhaseIndex = newIndex;
+            var entry = GetPhase(newIndex);
+            if (entry == null) yield break;
+
+            // 색상 전환
+            if (_sr != null)
+            {
+                float duration = GetPhaseTransitionDuration();
+                float elapsed  = 0f;
+                Color startColor = _sr.color;
+                while (elapsed < duration)
+                {
+                    elapsed  += Time.deltaTime;
+                    _sr.color = Color.Lerp(startColor, entry.color, elapsed / duration);
+                    yield return null;
+                }
+                _sr.color = entry.color;
+                _view.ResetVisual(entry.color);
+            }
+
+            // 시퀀스 교체 (비어있으면 이전 유지)
+            if (entry.sequence != null && entry.sequence.Count > 0)
+                _sequencer.SetSequence(entry.sequence);
+
+            Debug.Log($"[{name}] ★ Phase {newIndex + 1} 진입!");
+            OnPhaseChanged?.Invoke(newIndex);
+            OnPhaseTransition(newIndex);
+        }
+
+        /// <summary>페이즈 전환 시 자식 훅. 기본 구현 없음.</summary>
+        protected virtual void OnPhaseTransition(int phaseIndex) { }
+
+        /// <summary>페이즈 전환 연출 시간. BossPresenterBase가 override.</summary>
+        protected virtual float GetPhaseTransitionDuration() => 0.5f;
+
+        /// <summary>안전하게 PhaseEntry를 꺼낸다.</summary>
+        protected PhaseEntry GetPhase(int index)
+        {
+            if (_statData == null || _statData.phases == null) return null;
+            if (index < 0 || index >= _statData.phases.Count) return null;
+            return _statData.phases[index];
         }
 
         // ── Update ───────────────────────────────────────────────
@@ -173,7 +266,7 @@ namespace Game.Enemies
         {
             if (!_sequencer.HasSequence)
             {
-                Debug.LogWarning($"[EnemyPresenterBase] {name}: attackSequence가 비어있음. Chase 유지.");
+                Debug.LogWarning($"[EnemyPresenterBase] {name}: phases[0].sequence가 비어있음. Chase 유지.");
                 return;
             }
 
@@ -224,12 +317,6 @@ namespace Game.Enemies
             EnterPostAttackPhase();
         }
 
-        // ── 시퀀서 교체 (BossPresenterBase용) ────────────────────
-        protected void SetSequence(System.Collections.Generic.List<EnemyAttackAction> sequence)
-        {
-            _sequencer.SetSequence(sequence);
-        }
-
         // ── 자식 override 포인트 ──────────────────────────────────
         protected virtual void OnEnterChase()      { }
         protected virtual void OnEnterWindup()     { }
@@ -249,8 +336,20 @@ namespace Game.Enemies
         }
 
         // ── 스탯 override 포인트 ──────────────────────────────────
-        protected virtual float GetMoveSpeed()   => _statData != null ? _statData.moveSpeed   : 0f;
-        protected virtual float GetAttackPower() => _statData != null ? _statData.attackPower : 0f;
+        protected virtual float GetMoveSpeed()
+        {
+            float baseVal = _statData != null ? _statData.moveSpeed : 0f;
+            var phase = GetPhase(_currentPhaseIndex);
+            return phase != null ? baseVal * phase.speedMultiplier : baseVal;
+        }
+
+        protected virtual float GetAttackPower()
+        {
+            float baseVal = _statData != null ? _statData.attackPower : 0f;
+            var phase = GetPhase(_currentPhaseIndex);
+            return phase != null ? baseVal * phase.attackMultiplier : baseVal;
+        }
+
         protected virtual float GetAttackRange() => _statData != null ? _statData.attackRange : 1f;
 
         // ── 유틸 ─────────────────────────────────────────────────

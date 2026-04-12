@@ -237,9 +237,9 @@ namespace Game.Enemies
         }
 
         // ── 페이즈 변경 핸들러 ────────────────────────────────────
-        private void HandleBossPhaseChanged(BossPresenterBase.BossPhase phase)
+        private void HandleBossPhaseChanged(int phaseIndex)
         {
-            _hudView?.UpdatePhase(phase);
+            _hudView?.UpdatePhase(phaseIndex);
         }
 
         // ── 보스 사망 처리 ────────────────────────────────────────

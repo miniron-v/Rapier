@@ -5,14 +5,8 @@ namespace Game.Enemies
     /// <summary>
     /// 버서커 보스.
     ///
-    /// [1페이즈] Melee → Melee → Melee → 반복 (3연타 콤보)
-    /// [2페이즈] Melee → Melee → Melee → Melee → Charge → 반복 (광폭화: HP 50% 이하)
-    ///           BossPresenterBase 가 HP 50% 이하 감지 시 phase2Sequence 로 자동 교체.
-    ///
-    /// [광폭화 특성]
-    ///   - Phase2 진입 시 이동속도·공격력 배율이 BossStatData 값으로 자동 상승.
-    ///     (phase2SpeedMultiplier = 1.8, phase2AttackMultiplier = 1.4 권장)
-    ///   - OnEnterPhase2() 에서 시각 효과 전환 (색상: BossStatData.phase2Color 로 자동 처리됨).
+    /// 페이즈 시퀀스/전환은 EnemyStatData.phases 에서 정의.
+    /// Presenter는 보스 고유 연출만 담당한다.
     ///
     /// [콤보 사이 회피 Window]
     ///   MeleeAttackAction 의 windupDuration 이 짧아야 압박감이 있음.
@@ -21,10 +15,10 @@ namespace Game.Enemies
     /// </summary>
     public class BerserkerBossPresenter : BossPresenterBase
     {
-        protected override void OnEnterPhase2()
+        protected override void OnPhaseTransition(int phaseIndex)
         {
-            Debug.Log("[BerserkerBoss] 광폭화 — Phase2 진입! 이동속도·공격력 상승.");
-            // 색상 전환은 BossPresenterBase.PhaseTransitionRoutine() 에서 자동 처리.
+            Debug.Log($"[BerserkerBoss] Phase {phaseIndex + 1} 진입! 이동속도·공격력 상승.");
+            // 색상/배율 전환은 EnemyPresenterBase 의 PhaseTransitionRoutine 에서 자동 처리.
         }
     }
 }
