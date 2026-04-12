@@ -283,8 +283,7 @@ namespace Game.Data.Equipment
                     grade       = (int)instance.Grade,
                     runeAssetIds = instance.EquippedRunes != null
                         ? instance.EquippedRunes
-                            .Where(r => r != null)
-                            .Select(r => r.name)
+                            .Select(r => r != null ? r.name : "")
                             .ToList()
                         : new List<string>()
                 };

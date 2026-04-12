@@ -65,8 +65,15 @@ namespace Game.Data.Save
     {
         public string characterId = "";
         public int    level       = 1;
-        /// <summary>스킬별 레벨. key = 스킬 ID</summary>
-        public Dictionary<string, int> skillLevels = new();
+        /// <summary>스킬별 레벨. JsonUtility 는 Dictionary 를 직렬화하지 못하므로 List 로 저장.</summary>
+        public List<SkillLevelEntry> skillLevels = new();
+    }
+
+    [Serializable]
+    public class SkillLevelEntry
+    {
+        public string skillId = "";
+        public int    level   = 1;
     }
 
     [Serializable]
