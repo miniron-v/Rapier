@@ -8,7 +8,6 @@ using UnityEngine.Rendering.Universal;
 using Game.Core;
 using Game.Core.Stage;
 using Game.Input;
-using Game.Enemies;
 using Game.UI;
 using Game.UI.Intermission;
 
@@ -57,19 +56,7 @@ namespace Game.Editor
         private const string PLAYER_PREFAB_PATH =
             "Assets/_Project/Prefabs/Player/Rapier_Player.prefab";
 
-        private const string SPECTER_PREFAB_PATH     = "Assets/_Project/Prefabs/Boss/Specter_Boss.prefab";
-        private const string BERSERKER_PREFAB_PATH   = "Assets/_Project/Prefabs/Boss/Berserker_Boss.prefab";
-        private const string GRAVEKEEPER_PREFAB_PATH = "Assets/_Project/Prefabs/Boss/Gravekeeper_Boss.prefab";
-        private const string TITAN_PREFAB_PATH       = "Assets/_Project/Prefabs/Boss/Titan_Boss.prefab";
-
-        private const string SPECTER_STAT_PATH     =
-            "Assets/_Project/ScriptableObjects/Enemies/Boss/SpecterStatData.asset";
-        private const string BERSERKER_STAT_PATH   =
-            "Assets/_Project/ScriptableObjects/Enemies/Boss/BerserkerStatData.asset";
-        private const string GRAVEKEEPER_STAT_PATH =
-            "Assets/_Project/ScriptableObjects/Enemies/Boss/GravekeeperStatData.asset";
-        private const string TITAN_STAT_PATH       =
-            "Assets/_Project/ScriptableObjects/Enemies/Boss/TitanStatData.asset";
+        // Phase 17: 보스 프리팹/스탯 경로 제거 — StageData SO가 보유하며 런타임 로드.
 
         // ── 폰트 캐시 ─────────────────────────────────────────────
         private static TMP_FontAsset _font;
@@ -331,10 +318,11 @@ namespace Game.Editor
             pmSo.FindProperty("_portalSpawnPosition").vector2Value         = new Vector2(0f,  3f);
             pmSo.ApplyModifiedProperties();
 
-            // ── StageBuilder 배선 + RoomNodes ─────────────────────
+            // ── StageBuilder 배선 ─────────────────────────────────
+            // Phase 17: _roomNodes 제거됨. StageBuilder는 Resources/StageDatabase에서
+            // 런타임 로드하므로 에디터에서 RoomNode 배선 불필요. _stageManager만 연결.
             var sbSo = new SerializedObject(stageBuilder);
             sbSo.FindProperty("_stageManager").objectReferenceValue = stageManager;
-            SetupRoomNodes(sbSo);
             sbSo.ApplyModifiedProperties();
 
             // SetDirty
@@ -362,66 +350,8 @@ namespace Game.Editor
                       "  주의: Build Settings에 StageDemo 씬을 추가하세요.");
         }
 
-        // ── RoomNode 배열 설정 ────────────────────────────────────
-        private static void SetupRoomNodes(SerializedObject sbSo)
-        {
-            var specterPrefab     = AssetDatabase.LoadAssetAtPath<GameObject>(SPECTER_PREFAB_PATH);
-            var berserkerPrefab   = AssetDatabase.LoadAssetAtPath<GameObject>(BERSERKER_PREFAB_PATH);
-            var gravekeeperPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(GRAVEKEEPER_PREFAB_PATH);
-            var titanPrefab       = AssetDatabase.LoadAssetAtPath<GameObject>(TITAN_PREFAB_PATH);
-
-            var specterStat     = AssetDatabase.LoadAssetAtPath<BossStatData>(SPECTER_STAT_PATH);
-            var berserkerStat   = AssetDatabase.LoadAssetAtPath<BossStatData>(BERSERKER_STAT_PATH);
-            var gravekeeperStat = AssetDatabase.LoadAssetAtPath<BossStatData>(GRAVEKEEPER_STAT_PATH);
-            var titanStat       = AssetDatabase.LoadAssetAtPath<BossStatData>(TITAN_STAT_PATH);
-
-            LogAssetLoad("Specter 프리팹",     specterPrefab);
-            LogAssetLoad("Berserker 프리팹",   berserkerPrefab);
-            LogAssetLoad("Gravekeeper 프리팹", gravekeeperPrefab);
-            LogAssetLoad("Titan 프리팹",       titanPrefab);
-            LogAssetLoad("Specter StatData",     specterStat);
-            LogAssetLoad("Berserker StatData",   berserkerStat);
-            LogAssetLoad("Gravekeeper StatData", gravekeeperStat);
-            LogAssetLoad("Titan StatData",       titanStat);
-
-            var roomsProp = sbSo.FindProperty("_roomNodes");
-            roomsProp.arraySize = 8;
-
-            // [0] 시작 인터미션 (HP 회복 없음 — 최초 진입이므로 의미 없지만 스탯 선택은 가능)
-            SetIntermissionRoom(roomsProp, 0, "시작 인터미션");
-            SetBossRoom(roomsProp, 1, "Specter",     specterPrefab,     specterStat);
-            SetIntermissionRoom(roomsProp, 2, "인터미션 1");
-            SetBossRoom(roomsProp, 3, "Berserker",   berserkerPrefab,   berserkerStat);
-            SetIntermissionRoom(roomsProp, 4, "인터미션 2");
-            SetBossRoom(roomsProp, 5, "Gravekeeper", gravekeeperPrefab, gravekeeperStat);
-            SetIntermissionRoom(roomsProp, 6, "인터미션 3");
-            SetBossRoom(roomsProp, 7, "Titan",       titanPrefab,       titanStat);
-        }
-
-        private static void SetBossRoom(SerializedProperty roomsProp, int index,
-                                        string name, GameObject prefab, BossStatData stat)
-        {
-            var room = roomsProp.GetArrayElementAtIndex(index);
-            room.FindPropertyRelative("roomType").enumValueIndex           = 0; // BossRoom
-            room.FindPropertyRelative("bossPrefab").objectReferenceValue   = prefab;
-            room.FindPropertyRelative("bossStatData").objectReferenceValue = stat;
-            room.FindPropertyRelative("displayName").stringValue           = name;
-        }
-
-        private static void SetIntermissionRoom(SerializedProperty roomsProp, int index, string name)
-        {
-            var room = roomsProp.GetArrayElementAtIndex(index);
-            room.FindPropertyRelative("roomType").enumValueIndex           = 1; // IntermissionRoom
-            room.FindPropertyRelative("bossPrefab").objectReferenceValue   = null;
-            room.FindPropertyRelative("bossStatData").objectReferenceValue = null;
-            room.FindPropertyRelative("displayName").stringValue           = name;
-        }
-
-        private static void LogAssetLoad(string label, Object asset)
-        {
-            if (asset == null)
-                Debug.LogWarning($"[StageSceneSetup] {label} 로드 실패 — 경로 확인 필요.");
-        }
+        // Phase 17: RoomNode 배열 설정 제거.
+        // 보스 배치는 StageData SO → StageDatabase(Resources) → 런타임 로드 경로로 이전됨.
 
         // ── EventSystem ───────────────────────────────────────────
         private static void EnsureEventSystem()

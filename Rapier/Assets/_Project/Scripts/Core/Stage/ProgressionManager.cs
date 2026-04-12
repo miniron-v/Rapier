@@ -179,8 +179,8 @@ namespace Game.Core.Stage
             Debug.Log($"[ProgressionManager] 보스 처치. 마지막: {isFinalBoss}. → 포탈 스폰");
             SpawnPortal(_portalSpawnPosition);
 
-            if (isFinalBoss)
-                _bossHud?.ShowResult(true);
+            // 마지막 보스여도 포탈 진입으로 스테이지 클리어를 처리한다.
+            // (IntermissionManager.HandleStageCleared → StageClearView + RecordStageClear)
         }
 
         // ── 인터미션 방 ──────────────────────────────────────────────

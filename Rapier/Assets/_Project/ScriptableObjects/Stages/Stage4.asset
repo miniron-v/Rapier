@@ -20,7 +20,7 @@ MonoBehaviour:
     bossStatData: {fileID: 0}
     displayName: Intermission 1
   - roomType: 0
-    bossPrefab: {fileID: 102900000, guid: 7d6c678919ac9094eaf7f10e4227468b, type: 3}
+    bossPrefab: {fileID: 4452773329936753597, guid: 7d6c678919ac9094eaf7f10e4227468b, type: 3}
     bossStatData: {fileID: 11400000, guid: 4ee48f61b5073954faa5300a03a0a509, type: 2}
     displayName: TwinPhantoms
   - roomType: 1
@@ -28,7 +28,7 @@ MonoBehaviour:
     bossStatData: {fileID: 0}
     displayName: Intermission 2
   - roomType: 0
-    bossPrefab: {fileID: 102900000, guid: cb58e538f6562964385c993757f6a0f0, type: 3}
+    bossPrefab: {fileID: 5040457167931817585, guid: cb58e538f6562964385c993757f6a0f0, type: 3}
     bossStatData: {fileID: 11400000, guid: 622c83114ce1e8046b32569d25ce7f94, type: 2}
     displayName: Titan
   - roomType: 1
@@ -36,7 +36,7 @@ MonoBehaviour:
     bossStatData: {fileID: 0}
     displayName: Intermission 3
   - roomType: 0
-    bossPrefab: {fileID: 102900000, guid: 6a5fc69f930461b4db1f1c3f3290fd24, type: 3}
+    bossPrefab: {fileID: 5040457167931817585, guid: 6a5fc69f930461b4db1f1c3f3290fd24, type: 3}
     bossStatData: {fileID: 11400000, guid: 27468607bc2cfd841a7babaa77889be7, type: 2}
     displayName: Specter
   - roomType: 1
@@ -44,7 +44,7 @@ MonoBehaviour:
     bossStatData: {fileID: 0}
     displayName: Intermission 4
   - roomType: 0
-    bossPrefab: {fileID: 102900000, guid: 696f230154d271749aab500b4b5cbe59, type: 3}
+    bossPrefab: {fileID: 4784043667512040478, guid: 696f230154d271749aab500b4b5cbe59, type: 3}
     bossStatData: {fileID: 11400000, guid: a19622a65d8e7c14aa6251fa2c2a1650, type: 2}
     displayName: Berserker
   _hpMultiplier: 1.7
