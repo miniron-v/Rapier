@@ -28,6 +28,9 @@ namespace Game.Data.Save
                     case 0:
                         MigrateV0ToV1(data);
                         break;
+                    case 1:
+                        MigrateV1ToV2(data);
+                        break;
                     default:
                         // 알 수 없는 버전 — 루프 탈출로 무한 루프 방지
                         Debug.LogError($"[SaveMigrator] 알 수 없는 버전: {data.version}. 마이그레이션 중단.");
@@ -64,14 +67,40 @@ namespace Game.Data.Save
             if (PlayerPrefs.HasKey(legacyKey))
             {
                 int legacyStage = PlayerPrefs.GetInt(legacyKey, 0);
+#pragma warning disable CS0618
                 data.highestStage = Math.Max(data.highestStage, legacyStage);
+                Debug.Log($"[SaveMigrator] PlayerPrefs '{legacyKey}'={legacyStage} 흡수 → highestStage={data.highestStage}");
+#pragma warning restore CS0618
                 PlayerPrefs.DeleteKey(legacyKey);
                 PlayerPrefs.Save();
-                Debug.Log($"[SaveMigrator] PlayerPrefs '{legacyKey}'={legacyStage} 흡수 → highestStage={data.highestStage}");
             }
 
             data.version = 1;
             Debug.Log("[SaveMigrator] v0 → v1 마이그레이션 완료");
+        }
+
+        // ── v1 → v2 ───────────────────────────────────────────────
+
+        /// <summary>
+        /// v1 → v2 마이그레이션.
+        /// - highestStage(레거시) → highestClearedStage 흡수.
+        /// </summary>
+        private static void MigrateV1ToV2(SaveData data)
+        {
+            Debug.Log("[SaveMigrator] v1 → v2 마이그레이션 시작");
+
+#pragma warning disable CS0618
+            // highestStage 레거시 흡수
+            if (data.highestStage > 0 && data.highestClearedStage == 0)
+            {
+                data.highestClearedStage = data.highestStage;
+                Debug.Log($"[SaveMigrator] highestStage={data.highestStage} → highestClearedStage={data.highestClearedStage} 흡수");
+            }
+            data.highestStage = 0; // 레거시 초기화
+#pragma warning restore CS0618
+
+            data.version = 2;
+            Debug.Log("[SaveMigrator] v1 → v2 마이그레이션 완료");
         }
     }
 }

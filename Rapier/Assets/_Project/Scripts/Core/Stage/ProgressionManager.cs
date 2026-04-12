@@ -6,6 +6,7 @@ using Game.Enemies;
 using Game.UI;
 using Game.UI.Intermission;
 using Game.Core;
+using Game.Data.Stage;
 
 namespace Game.Core.Stage
 {
@@ -110,7 +111,24 @@ namespace Game.Core.Stage
             }
 
             if (room.bossStatData != null)
+            {
+                // 스테이지 스케일링: EnemyModel 레벨에서 multiplier 적용.
+                // BossStatData SO는 불변이므로, Spawn 후 EnemyPresenterBase.ApplyStageMultipliers 호출.
                 _currentBoss.Spawn(room.bossStatData, _bossSpawnPosition);
+
+                // StageData multiplier 적용 (있는 경우)
+                var stageData = _stageManager != null ? _stageManager.CurrentStageData : null;
+                if (stageData != null)
+                {
+                    float hp  = stageData.HpMultiplier;
+                    float atk = stageData.AtkMultiplier;
+                    if (hp != 1f || atk != 1f)
+                    {
+                        _currentBoss.ApplyStageMultipliers(hp, atk);
+                        Debug.Log($"[ProgressionManager] 스테이지 배율 적용: HP×{hp}, ATK×{atk}");
+                    }
+                }
+            }
 
             _bossAlive = true;
             _currentBoss.OnDeath += HandleBossDeath;

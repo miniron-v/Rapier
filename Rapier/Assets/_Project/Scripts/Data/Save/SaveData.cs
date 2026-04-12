@@ -12,7 +12,7 @@ namespace Game.Data.Save
     {
         // ── 스키마 버전 상수 ────────────────────────────────────────
         /// <summary>현재 스키마 버전. SaveMigrator 단계와 반드시 쌍으로 유지.</summary>
-        public const int CurrentSchemaVersion = 1;
+        public const int CurrentSchemaVersion = 2;
 
         // ── 메타 (계정 연동 대비) ───────────────────────────────────
         /// <summary>스키마 버전. 로드 후 마이그레이션 시 CurrentSchemaVersion 으로 승격.</summary>
@@ -39,6 +39,10 @@ namespace Game.Data.Save
         public List<EquippedMapEntry> equippedMap = new();
 
         // ── 진행 ───────────────────────────────────────────────────
+        /// <summary>클리어한 가장 높은 스테이지 번호 (1-based). 0 = 아직 클리어 없음.</summary>
+        public int            highestClearedStage = 0;
+        /// <summary>레거시 필드. highestClearedStage 로 통합됨. 마이그레이션 v1→v2 에서 흡수.</summary>
+        [Obsolete("highestClearedStage 를 사용할 것. v2 마이그레이션에서 제거 예정.")]
         public int            highestStage     = 0;
         public List<int>      clearedStages    = new();
 

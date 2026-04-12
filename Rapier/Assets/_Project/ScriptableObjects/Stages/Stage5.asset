@@ -1,0 +1,51 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c8e4f1a237b9064d5e2f3a1c6d8b7e09, type: 3}
+  m_Name: Stage5
+  m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Stage.StageData
+  _stageName: Stage 5
+  _stageIndex: 5
+  _rooms:
+  - roomType: 1
+    bossPrefab: {fileID: 0}
+    bossStatData: {fileID: 0}
+    displayName: Intermission 1
+  - roomType: 0
+    bossPrefab: {fileID: 102900000, guid: 816b65fb0ec622a4cb2e348c117ec4ce, type: 3}
+    bossStatData: {fileID: 11400000, guid: 100036905df2f0e4d9b8d610fb948ccb, type: 2}
+    displayName: Stormcaller
+  - roomType: 1
+    bossPrefab: {fileID: 0}
+    bossStatData: {fileID: 0}
+    displayName: Intermission 2
+  - roomType: 0
+    bossPrefab: {fileID: 102900000, guid: 3c10cf9bf2492bd4685404deca1b4cc0, type: 3}
+    bossStatData: {fileID: 11400000, guid: 25f3785235e274e4bb488885928b50c9, type: 2}
+    displayName: Pyromancer
+  - roomType: 1
+    bossPrefab: {fileID: 0}
+    bossStatData: {fileID: 0}
+    displayName: Intermission 3
+  - roomType: 0
+    bossPrefab: {fileID: 102900000, guid: cb58e538f6562964385c993757f6a0f0, type: 3}
+    bossStatData: {fileID: 11400000, guid: 622c83114ce1e8046b32569d25ce7f94, type: 2}
+    displayName: Titan
+  - roomType: 1
+    bossPrefab: {fileID: 0}
+    bossStatData: {fileID: 0}
+    displayName: Intermission 4
+  - roomType: 0
+    bossPrefab: {fileID: 102900000, guid: 256b7e45bc7fe434193622d639f5556e, type: 3}
+    bossStatData: {fileID: 11400000, guid: 8c114cc9f7df42f46add96f86db5276a, type: 2}
+    displayName: Gravekeeper
+  _hpMultiplier: 2
+  _atkMultiplier: 2

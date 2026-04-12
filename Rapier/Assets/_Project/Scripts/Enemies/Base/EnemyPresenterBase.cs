@@ -97,6 +97,7 @@ namespace Game.Enemies
         public virtual void Spawn(EnemyStatData statData, Vector2 position)
         {
             _statData = statData;
+            _stageAtkMultiplier = 1f; // Spawn마다 배율 초기화
 
             if (_model != null) _model.OnDeath -= HandleModelDeath;
             _model = new EnemyModel(statData);
@@ -143,6 +144,22 @@ namespace Game.Enemies
             gameObject.SetActive(true);
         }
 
+        // ── 스테이지 스케일링 ─────────────────────────────────────
+        /// <summary>
+        /// Spawn() 직후 스테이지 배율을 모델에 적용한다.
+        /// BossStatData SO는 불변이므로 모델의 런타임 HP를 직접 스케일한다.
+        /// </summary>
+        /// <param name="hpMultiplier">HP 배율.</param>
+        /// <param name="atkMultiplier">ATK 배율 (자식이 GetAttackPower override 시 참조).</param>
+        public virtual void ApplyStageMultipliers(float hpMultiplier, float atkMultiplier)
+        {
+            _model?.ScaleHp(hpMultiplier);
+            _stageAtkMultiplier = atkMultiplier;
+        }
+
+        /// <summary>스테이지 ATK 배율. GetAttackPower()에 곱해진다.</summary>
+        [NonSerialized] protected float _stageAtkMultiplier = 1f;
+
         // ── IDamageable ──────────────────────────────────────────
         public virtual void TakeDamage(float amount, Vector2 knockbackDir)
         {
@@ -157,7 +174,7 @@ namespace Game.Enemies
         {
             if (_statData == null || _statData.phases == null || !IsAlive) return;
 
-            float ratio = _model.CurrentHp / _model.StatData.maxHp;
+            float ratio = _model.EffectiveMaxHp > 0f ? _model.CurrentHp / _model.EffectiveMaxHp : 0f;
 
             // 현재보다 높은 인덱스 중 가장 큰 것을 탐색 (역순)
             for (int i = _statData.phases.Count - 1; i > _currentPhaseIndex; i--)
@@ -347,7 +364,8 @@ namespace Game.Enemies
         {
             float baseVal = _statData != null ? _statData.attackPower : 0f;
             var phase = GetPhase(_currentPhaseIndex);
-            return phase != null ? baseVal * phase.attackMultiplier : baseVal;
+            float val = phase != null ? baseVal * phase.attackMultiplier : baseVal;
+            return val * _stageAtkMultiplier;
         }
 
         protected virtual float GetAttackRange() => _statData != null ? _statData.attackRange : 1f;

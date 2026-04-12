@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using Game.Data.RunStats;
+using Game.Data.Stage;
 using Game.Core;
 
 namespace Game.Core.Stage
@@ -15,6 +16,7 @@ namespace Game.Core.Stage
     ///   - 현재 방 인덱스 추적
     ///   - 보스 처치 수 (1~4)
     ///   - RunStatContainer 소유 (메모리 only)
+    ///   - CurrentStageData : 현재 스테이지 SO (스케일링 등에 활용)
     ///
     /// [이벤트]
     ///   OnRoomEntered   : 방에 진입할 때 발행 (RoomNode 전달)
@@ -24,8 +26,11 @@ namespace Game.Core.Stage
     public class StageManager : MonoBehaviour
     {
         // ── 방 배열 ──────────────────────────────────────────────────
-        /// <summary>StageBuilder가 Init()으로 주입하는 방 배열.</summary>
+        /// <summary>Init()으로 주입된 방 배열.</summary>
         private RoomNode[] _rooms;
+
+        // ── 현재 StageData ───────────────────────────────────────────
+        private StageData _currentStageData;
 
         // ── 진행 상태 ────────────────────────────────────────────────
         private int  _currentRoomIndex  = -1;
@@ -56,6 +61,12 @@ namespace Game.Core.Stage
         /// <summary>이어하기로 인터미션에 재진입한 경우 true. 스탯 UI 생략에 사용.</summary>
         public bool IsContinueMode { get; private set; }
 
+        /// <summary>현재 스테이지 데이터 SO. StageBuilder가 Init(StageData) 호출 시 설정됨.</summary>
+        public StageData CurrentStageData => _currentStageData;
+
+        /// <summary>현재 스테이지의 1-based 인덱스. StageData가 없으면 0.</summary>
+        public int CurrentStageIndex => _currentStageData != null ? _currentStageData.StageIndex : 0;
+
         // ── 이벤트 ───────────────────────────────────────────────────
         /// <summary>방에 진입할 때 발행. RoomNode로 방 종류를 식별.</summary>
         public event Action<RoomNode> OnRoomEntered;
@@ -79,8 +90,19 @@ namespace Game.Core.Stage
 
         // ── 공개 API ─────────────────────────────────────────────────
         /// <summary>
-        /// StageBuilder가 방 배열을 주입하고 첫 방에 진입시킨다.
+        /// StageBuilder가 StageData SO를 주입하고 첫 방에 진입시킨다.
         /// </summary>
+        /// <param name="stageData">현재 스테이지 SO.</param>
+        public void Init(StageData stageData)
+        {
+            _currentStageData = stageData;
+            Init(stageData != null ? stageData.Rooms : Array.Empty<RoomNode>());
+        }
+
+        /// <summary>
+        /// 방 배열로 직접 초기화 (하위 호환 / 테스트용).
+        /// </summary>
+        /// <param name="rooms">방 배열.</param>
         public void Init(RoomNode[] rooms)
         {
             _rooms            = rooms;
@@ -90,10 +112,13 @@ namespace Game.Core.Stage
 
             // 전체 보스 방 수 계산
             TotalBossRooms = 0;
-            foreach (var r in rooms)
-                if (r.roomType == RoomType.BossRoom) TotalBossRooms++;
+            if (rooms != null)
+            {
+                foreach (var r in rooms)
+                    if (r.roomType == RoomType.BossRoom) TotalBossRooms++;
+            }
 
-            Debug.Log($"[StageManager] 스테이지 초기화. 방 수: {rooms.Length}, 보스 방: {TotalBossRooms}");
+            Debug.Log($"[StageManager] 스테이지 초기화. 방 수: {(rooms != null ? rooms.Length : 0)}, 보스 방: {TotalBossRooms}");
             EnterNextRoom();
         }
 
@@ -118,7 +143,7 @@ namespace Game.Core.Stage
 
             IsContinueMode = false;
 
-            bool hasNext = _currentRoomIndex + 1 < _rooms.Length;
+            bool hasNext = _rooms != null && _currentRoomIndex + 1 < _rooms.Length;
             if (hasNext)
                 EnterNextRoom();
             else
@@ -164,7 +189,7 @@ namespace Game.Core.Stage
         private void EnterNextRoom()
         {
             _currentRoomIndex++;
-            if (_currentRoomIndex >= _rooms.Length)
+            if (_rooms == null || _currentRoomIndex >= _rooms.Length)
             {
                 HandleStageCleared();
                 return;

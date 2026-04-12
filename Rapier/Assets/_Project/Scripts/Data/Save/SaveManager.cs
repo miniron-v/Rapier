@@ -129,6 +129,21 @@ namespace Game.Data.Save
         }
 
         /// <summary>
+        /// 스테이지 클리어 시 호출. highestClearedStage 를 갱신하고 즉시 저장한다.
+        /// </summary>
+        /// <param name="clearedStageIndex">클리어한 스테이지 1-based 인덱스.</param>
+        public void RecordStageClear(int clearedStageIndex)
+        {
+            if (_current == null) return;
+            if (clearedStageIndex > _current.highestClearedStage)
+            {
+                _current.highestClearedStage = clearedStageIndex;
+                Debug.Log($"[SaveManager] highestClearedStage 갱신 → {clearedStageIndex}");
+                Save();
+            }
+        }
+
+        /// <summary>
         /// 저장 파일을 삭제하고 인메모리 데이터를 기본값으로 초기화한다.
         /// </summary>
         public void DeleteSave()

@@ -1,6 +1,8 @@
 using UnityEngine;
 using Game.Core.Stage;
 using Game.Data.RunStats;
+using Game.Data.Save;
+using Game.Core;
 
 namespace Game.UI.Intermission
 {
@@ -150,6 +152,14 @@ namespace Game.UI.Intermission
         {
             Debug.Log("[IntermissionManager] 스테이지 클리어 → 결과 화면 표시.");
             _stageClearView?.Show();
+
+            // SaveManager에 클리어 기록
+            int clearedIndex = _stageManager != null ? _stageManager.CurrentStageIndex : 0;
+            if (clearedIndex > 0)
+            {
+                var saveManager = ServiceLocator.Get<SaveManager>();
+                saveManager?.RecordStageClear(clearedIndex);
+            }
         }
 
         private void HandleClearReturnToLobby()
@@ -163,8 +173,22 @@ namespace Game.UI.Intermission
         {
             Debug.Log("[IntermissionManager] 다음 스테이지 진입.");
             _stageClearView?.Hide();
-            // TODO: Phase 12-E 이후 실제 다음 스테이지 로드로 교체
-            Game.Core.SceneController.LoadGame();
+
+            // 현재 스테이지 인덱스 + 1. StageManager가 없으면 1로 폴백.
+            int currentIndex = _stageManager != null ? _stageManager.CurrentStageIndex : 0;
+            int nextIndex    = currentIndex + 1;
+
+            // StageDatabase 확인: 다음 스테이지가 없으면 로비 복귀
+            var database = UnityEngine.Resources.Load<Game.Data.Stage.StageDatabase>("StageDatabase");
+            if (database == null || database.GetStage(nextIndex) == null)
+            {
+                Debug.Log($"[IntermissionManager] 스테이지 {nextIndex} 없음 — 로비 복귀.");
+                Game.Core.SceneController.LoadLobby();
+                return;
+            }
+
+            Debug.Log($"[IntermissionManager] 스테이지 {nextIndex} 로드.");
+            Game.Core.SceneController.LoadGame(nextIndex);
         }
 
         // ── 내부 유틸 ────────────────────────────────────────────────
