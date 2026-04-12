@@ -64,7 +64,35 @@ EnterHitPhase()
 
 ---
 
-## 4. 플레이어 공격
+## 4. 데미지 공식 (통일)
+
+모든 데미지는 `최종ATK × (damagePercent / 100)` 구조. **SO 필드는 정수 백분율** (70 = ×0.7).
+
+### 플레이어 → 적
+
+| 공격 유형 | 공식 | SkillDmgMult 적용 |
+|-----------|------|----|
+| 일반 공격 (Tap) | `ATK × (normalAttackPercent / 100)` | X |
+| 스킬 공격 (저스트 회피 대시) | `ATK × (markDamagePercent / 100) × SkillDmgMult` | O |
+| 차지 스킬 | `ATK × (chargeSkillPercent / 100) × stacks × SkillDmgMult` | O |
+
+- `normalAttackPercent`: `CharacterStatData` 필드 (정수 백분율, 기본 100)
+- `markDamagePercent`, `chargeSkillPercent`: `RapierStatData` 필드 (정수 백분율, 기본 70 / 100)
+- `SkillDmgMult`: 장비 MetaStat 에서 계산된 `CharacterModel.SkillDamageMultiplier`
+
+### 적 → 플레이어
+
+| AttackAction | 공식 |
+|---|---|
+| MeleeAttackAction | `ATK × (damagePercent / 100)` |
+| ChargeAttackAction | `ATK × (damagePercent / 100)` |
+| ProjectileAttackAction | `ATK × (damagePercent / 100)` |
+| GroundHazardAttackAction | `ATK × (tickDamagePercent / 100)` (틱당) |
+| MultiDirectionalAttackAction | `ATK × (damagePercent / 100)` |
+
+- SO `damagePercent` / `tickDamagePercent` 필드는 정수 백분율 (100 = ×1.0, 200 = ×2.0).
+
+## 5. 플레이어 공격 상세
 
 - Tap: 전방 사각형 범위 광역 공격. 즉시 히트 판정. 인디케이터 0.4초 표시.
 - 차지 스킬: 캐릭터별 고유 동작 (CHARACTERS.md 참조).

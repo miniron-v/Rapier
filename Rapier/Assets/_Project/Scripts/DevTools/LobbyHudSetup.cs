@@ -92,6 +92,7 @@ namespace Game.DevTools
             scaler.matchWidthOrHeight  = 0.5f;
 
             root.AddComponent<GraphicRaycaster>();
+            root.AddComponent<SafeAreaFitter>();
 
             // 2. 탭 패널 영역 (탭 바 위쪽, 전체 화면에서 하단 바 높이 제외)
             var contentArea = CreateRectChild(root, "ContentArea");
