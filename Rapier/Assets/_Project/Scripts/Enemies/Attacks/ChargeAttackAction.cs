@@ -25,8 +25,8 @@ namespace Game.Enemies
         public float chargeSpeed            = 14f;
         [Tooltip("돌진 히트 판정 반경")]
         public float chargeHitRange         = 1.8f;
-        [Tooltip("돌진 데미지 배율")]
-        public float chargeDamageMultiplier = 2f;
+        [Tooltip("돌진 데미지 배율 (%). 100 = ×1.0, 200 = ×2.0. COMBAT.md §4 참조")]
+        public int damagePercent = 200;
         [Tooltip("돌진 최대 이동 거리 (벽이 없을 경우 한계)")]
         public float chargeMaxDistance      = 20f;
         [Tooltip("그로기 지속 시간 (초)")]
@@ -97,7 +97,7 @@ namespace Game.Enemies
             if (hitLanded && ctx.PlayerTransform != null)
             {
                 ctx.PlayerDamageable?.TakeDamage(
-                    ctx.GetAttackPower() * chargeDamageMultiplier,
+                    ctx.GetAttackPower() * (damagePercent / 100f),
                     chargeDir);
             }
 

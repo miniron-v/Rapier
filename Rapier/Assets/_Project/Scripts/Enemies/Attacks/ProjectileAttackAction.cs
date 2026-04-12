@@ -22,8 +22,8 @@ namespace Game.Enemies
         public float maxRange           = 15f;
         [Tooltip("투사체 히트 반경")]
         public float hitRadius          = 0.4f;
-        [Tooltip("데미지 배율 (GetAttackPower 기준)")]
-        public float damageMultiplier   = 1f;
+        [Tooltip("데미지 배율 (%). 100 = ×1.0. COMBAT.md §4 참조")]
+        public int damagePercent = 100;
         [Tooltip("유도 강도 (0 = 직선, 양수 = 플레이어 방향으로 회전 보정 deg/s)")]
         public float homingStrength     = 0f;
 
@@ -78,7 +78,7 @@ namespace Game.Enemies
             }
 
             if (hit && ctx.PlayerDamageable != null)
-                ctx.PlayerDamageable.TakeDamage(ctx.GetAttackPower() * damageMultiplier, dir);
+                ctx.PlayerDamageable.TakeDamage(ctx.GetAttackPower() * (damagePercent / 100f), dir);
 
             if (proj != null)
                 UnityEngine.Object.Destroy(proj);

@@ -21,7 +21,6 @@ namespace Game.Data.MetaStats
         private float _percentHp;
         private float _percentAtk;
         private float _percentMs;
-        private float _percentInvincBonus;
         private float _percentCritChance;
         private float _percentCritDamage;
         private float _percentSkillDamage;
@@ -30,6 +29,10 @@ namespace Game.Data.MetaStats
         // 초기값 1f. Apply 시 *= (1 − p), Remove 시 /= (1 − p).
         private float _dodgeCdrMultiplier     = 1f;
         private float _chargeTimeMultiplier   = 1f;
+        // InvincibilityBonus: 감소율형 — DodgeCDR/ChargeTimeReduction과 동일 패턴.
+        // "20% InvincibilityBonus" 2회 = base × (1-0.2) × (1-0.2) = base × 0.64.
+        // Apply: *= (1 - p), Remove: /= (1 - p), 초기값 1f.
+        private float _invincMultiplier = 1f;
 
         /// <summary>MetaStat 변경 시 발행. 구독자(HUD 등)는 재계산 후 갱신.</summary>
         public event Action OnStatChanged;
@@ -60,8 +63,12 @@ namespace Game.Data.MetaStats
         /// </summary>
         public float ChargeTimeMultiplier   => _chargeTimeMultiplier;
 
-        /// <summary>무적 시간 증가율 합산 (%).</summary>
-        public float InvincBonusPercent     => _percentInvincBonus;
+        /// <summary>
+        /// InvincibilityBonus 누적 곱 multiplier. DodgeCDR/ChargeTimeReduction과 동일 감소율 패턴.
+        /// 기본값 1f. 0.64 이면 20% 2회 적용 상태(0.8×0.8). CharacterModel 에서 base × multiplier 로 적용.
+        /// STATS.md §3-2 소스별 독립 곱연산.
+        /// </summary>
+        public float InvincMultiplier       => _invincMultiplier;
         /// <summary>크리티컬 확률 합산 (%).</summary>
         public float CritChancePercent      => _percentCritChance;
         /// <summary>크리티컬 데미지 합산 (%).</summary>
@@ -88,7 +95,9 @@ namespace Game.Data.MetaStats
                 _dodgeCdrMultiplier   *= (1f - data.PercentDodgeCdr);
             if (data.PercentChargeTimeRed < 1f)
                 _chargeTimeMultiplier *= (1f - data.PercentChargeTimeRed);
-            _percentInvincBonus  += data.PercentInvincBonus;
+            // InvincibilityBonus: 감소율형 — DodgeCDR/ChargeTimeReduction과 동일 패턴
+            if (data.PercentInvincBonus < 1f)
+                _invincMultiplier     *= (1f - data.PercentInvincBonus);
             _percentCritChance   += data.PercentCritChance;
             _percentCritDamage   += data.PercentCritDamage;
             _percentSkillDamage  += data.PercentSkillDamage;
@@ -113,7 +122,9 @@ namespace Game.Data.MetaStats
                 _dodgeCdrMultiplier   /= (1f - data.PercentDodgeCdr);
             if (data.PercentChargeTimeRed < 1f)
                 _chargeTimeMultiplier /= (1f - data.PercentChargeTimeRed);
-            _percentInvincBonus  -= data.PercentInvincBonus;
+            // InvincibilityBonus 제거: 감소율형 역수 나눗셈. div-by-zero 방어: p >= 1이면 스킵.
+            if (data.PercentInvincBonus < 1f)
+                _invincMultiplier     /= (1f - data.PercentInvincBonus);
             _percentCritChance   -= data.PercentCritChance;
             _percentCritDamage   -= data.PercentCritDamage;
             _percentSkillDamage  -= data.PercentSkillDamage;
@@ -128,7 +139,8 @@ namespace Game.Data.MetaStats
             _percentHp = _percentAtk = _percentMs = 0f;
             _dodgeCdrMultiplier   = 1f;
             _chargeTimeMultiplier = 1f;
-            _percentInvincBonus = _percentCritChance = 0f;
+            _invincMultiplier     = 1f;
+            _percentCritChance    = 0f;
             _percentCritDamage = _percentSkillDamage = 0f;
             OnStatChanged?.Invoke();
         }
@@ -179,7 +191,8 @@ namespace Game.Data.MetaStats
                     if (percent < 1f) _chargeTimeMultiplier *= (1f - percent);
                     break;
                 case StatType.InvincibilityBonus:
-                    _percentInvincBonus  += percent;
+                    // 감소율형 — DodgeCDR/ChargeTimeReduction과 동일 패턴 (STATS.md §3-2)
+                    if (percent < 1f) _invincMultiplier *= (1f - percent);
                     break;
                 case StatType.CritChance:
                     _percentCritChance   += percent;

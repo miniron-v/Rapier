@@ -24,8 +24,8 @@ namespace Game.Enemies
     {
         [Tooltip("인디케이터 없을 때 폴백 히트 반경")]
         public float hitRange = 1.5f;
-        [Tooltip("데미지 배율")]
-        public float damageMultiplier = 1f;
+        [Tooltip("데미지 배율 (%). 100 = ×1.0. COMBAT.md §4 참조")]
+        public int damagePercent = 100;
 
         public override IEnumerator Execute(EnemyAttackContext ctx, Action onComplete)
         {
@@ -53,7 +53,7 @@ namespace Game.Enemies
 
                 if (hit)
                     ctx.PlayerDamageable?.TakeDamage(
-                        ctx.GetAttackPower() * damageMultiplier,
+                        ctx.GetAttackPower() * (damagePercent / 100f),
                         ctx.LockedForward);
             }
 

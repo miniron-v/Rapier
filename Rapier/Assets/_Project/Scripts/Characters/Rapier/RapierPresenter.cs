@@ -224,7 +224,7 @@ namespace Game.Characters
             {
                 var enemy = hit.GetComponent<EnemyPresenterBase>();
                 if (enemy == null || !enemy.IsAlive) continue;
-                enemy.TakeDamage(Model.AttackPower, dir);
+                enemy.TakeDamage(Model.AttackPower * (_statData.markDamagePercent / 100f) * Model.SkillDamageMultiplier, dir);
                 AddMark(enemy);
                 hitCount++;
             }
@@ -284,7 +284,7 @@ namespace Game.Characters
                 var stacks = kvp.Value;
                 if (!enemy.IsAlive) continue;
 
-                float damage = stacks * Model.AttackPower * _statData.chargeMarkMultiplier * Model.SkillDamageMultiplier;
+                float damage = Model.AttackPower * (_statData.chargeSkillPercent / 100f) * stacks * Model.SkillDamageMultiplier;
                 var   dir    = ((Vector2)enemy.transform.position - (Vector2)transform.position).normalized;
                 enemy.TakeDamage(damage, dir);
                 Debug.Log($"[RapierPresenter] 차지 스킬 — {enemy.name}: {stacks}중첩 × {damage:F0} 데미지");

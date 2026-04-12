@@ -85,6 +85,7 @@ EnterHitPhase()
 | AttackAction | 공식 |
 |---|---|
 | MeleeAttackAction | `ATK × (damagePercent / 100)` |
+| AoeAttackAction | `ATK × (damagePercent / 100)` |
 | ChargeAttackAction | `ATK × (damagePercent / 100)` |
 | ProjectileAttackAction | `ATK × (damagePercent / 100)` |
 | GroundHazardAttackAction | `ATK × (tickDamagePercent / 100)` (틱당) |

@@ -14,6 +14,8 @@ namespace Game.Enemies
     {
         [Tooltip("광역 히트 판정 반경 (월드 단위)")]
         public float hitRange = 3f;
+        [Tooltip("데미지 배율 (%). 100 = ×1.0, 200 = ×2.0. COMBAT.md §4 참조")]
+        public int damagePercent = 100;
 
         public override IEnumerator Execute(EnemyAttackContext ctx, Action onComplete)
         {
@@ -21,7 +23,7 @@ namespace Game.Enemies
                 Vector2.Distance(ctx.SelfTransform.position, ctx.PlayerTransform.position) <= hitRange)
             {
                 ctx.PlayerDamageable?.TakeDamage(
-                    ctx.GetAttackPower(),
+                    ctx.GetAttackPower() * (damagePercent / 100f),
                     ctx.GetForward());
             }
             onComplete?.Invoke();

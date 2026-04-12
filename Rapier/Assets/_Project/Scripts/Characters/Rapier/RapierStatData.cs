@@ -18,10 +18,10 @@ namespace Game.Characters
     public class RapierStatData : CharacterStatData
     {
         [Header("표식 (Mark)")]
-        [Tooltip("표식 1회 적용 데미지")]
-        public float markDamage      = 5f;
+        [Tooltip("스킬 공격 데미지 배율 (%). 70 = ATK×0.7. COMBAT.md §4 참조")]
+        public int   markDamagePercent = 70;
         [Tooltip("표식 최대 중첩 수")]
-        public int   markMaxStack    = 5;
+        public int   markMaxStack      = 5;
 
         [Header("고유 스킬 이동 속도")]
         [Tooltip("스킬 대시 속도 (적에게 접근)")]
@@ -30,8 +30,8 @@ namespace Game.Characters
         public float skillReturnSpeed = 20f;
 
         [Header("차지 스킬")]
-        [Tooltip("표식 1중첩당 데미지 배율")]
-        public float chargeMarkMultiplier = 1.5f;
+        [Tooltip("차지 스킬 데미지 배율 (%). 100 = ATK×1.0×stacks×SkillDmgMult. COMBAT.md §4 참조")]
+        public int chargeSkillPercent = 100;
 
         [Header("스킬 공격 범위 — 레이피어 전용 (일반 공격과 독립)")]
         [Tooltip("스킬 공격 범위 가로 (월드 단위)")]

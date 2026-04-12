@@ -39,6 +39,10 @@ namespace Game.Characters
         [Header("스킬 차지")]
         [Min(0)] public float chargeRequiredTime = 0.3f;
 
+        [Header("데미지 배율")]
+        [Tooltip("일반 공격 데미지 배율 (%). 100 = ×1.0, 150 = ×1.5")]
+        public int normalAttackPercent = 100;
+
         [Header("공격 범위 (사각형)")]
         [Tooltip("공격 범위 가로 (월드 단위)")]
         [Min(0)] public float attackWidth  = 2.0f;

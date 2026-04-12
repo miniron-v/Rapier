@@ -16,13 +16,15 @@ namespace Game.Data.RunStats
         [NonSerialized] private float _hpPercent;
         [NonSerialized] private float _atkPercent;
         [NonSerialized] private float _msPercent;
-        [NonSerialized] private float _invincibilityPercent;
         [NonSerialized] private float _critChancePercent;
 
         // ── 감소율형 — 소스별 독립 곱연산 (STATS.md §3-2) ───────────
-        // 초기값 1f. Apply 시 *= (1 − value), Reset 시 = 1f.
+        // 초기값 1f. Apply 시 *= (1 − value) or *= (1 + value), Reset 시 = 1f.
         [NonSerialized] private float _dodgeCdrMultiplier    = 1f;
         [NonSerialized] private float _chargeTimeMultiplier  = 1f;
+        // InvincibilityBonus: 감소율형 — DodgeCDR/ChargeTimeReduction과 동일 패턴.
+        // Apply 시 *= (1 - value), Reset 시 = 1f.
+        [NonSerialized] private float _invincMultiplier      = 1f;
 
         // ── 읽기 전용 프로퍼티 (외부 노출) ──────────────────────────
         /// <summary>최대 HP에 곱할 RunStat % 합 (예: 0.25 = +25%).</summary>
@@ -44,8 +46,12 @@ namespace Game.Data.RunStats
         /// </summary>
         public float ChargeTimeMultiplier         => _chargeTimeMultiplier;
 
-        /// <summary>무적 시간 증가율 합 (양수 = 증가).</summary>
-        public float InvincibilityPercent         => _invincibilityPercent;
+        /// <summary>
+        /// InvincibilityBonus 누적 곱 multiplier. DodgeCDR/ChargeTimeReduction과 동일 감소율 패턴.
+        /// 기본값 1f. 0.64 이면 20% 2회 적용 상태(0.8×0.8). CharacterModel 에서 base × multiplier 로 적용.
+        /// STATS.md §3-2 소스별 독립 곱연산.
+        /// </summary>
+        public float InvincMultiplier             => _invincMultiplier;
         /// <summary>크리티컬 확률 합 (0~1 범위, 합산 후 클램프 권장).</summary>
         public float CritChancePercent            => _critChancePercent;
 
@@ -65,7 +71,8 @@ namespace Game.Data.RunStats
                 case RunStatType.MsPercent:                  _msPercent          += value; break;
                 case RunStatType.DodgeCdrPercent:            _dodgeCdrMultiplier   *= (1f - value); break;
                 case RunStatType.ChargeTimeReductionPercent: _chargeTimeMultiplier *= (1f - value); break;
-                case RunStatType.InvincibilityPercent:       _invincibilityPercent += value; break;
+                // InvincibilityBonus: 감소율형 — DodgeCDR/ChargeTimeReduction과 동일 패턴 (STATS.md §3-2)
+                case RunStatType.InvincibilityPercent:       _invincMultiplier     *= (1f - value); break;
                 case RunStatType.CritChancePercent:          _critChancePercent  += value; break;
             }
             OnStatChanged?.Invoke();
@@ -82,7 +89,7 @@ namespace Game.Data.RunStats
             _msPercent            = 0f;
             _dodgeCdrMultiplier   = 1f;
             _chargeTimeMultiplier = 1f;
-            _invincibilityPercent = 0f;
+            _invincMultiplier     = 1f;
             _critChancePercent    = 0f;
             OnStatChanged?.Invoke();
             Debug.Log("[RunStatContainer] 모든 RunStat 초기화.");
@@ -101,7 +108,7 @@ namespace Game.Data.RunStats
                 RunStatType.MsPercent                  => _msPercent,
                 RunStatType.DodgeCdrPercent            => _dodgeCdrMultiplier,   // multiplier 값
                 RunStatType.ChargeTimeReductionPercent => _chargeTimeMultiplier, // multiplier 값
-                RunStatType.InvincibilityPercent       => _invincibilityPercent,
+                RunStatType.InvincibilityPercent       => _invincMultiplier,     // multiplier 값
                 RunStatType.CritChancePercent          => _critChancePercent,
                 _                                       => 0f,
             };
@@ -115,7 +122,7 @@ namespace Game.Data.RunStats
         {
             return $"HP+{_hpPercent:P0} | ATK+{_atkPercent:P0} | MS+{_msPercent:P0} | " +
                    $"회피CDR multiplier={_dodgeCdrMultiplier:F4} | 차지시간 multiplier={_chargeTimeMultiplier:F4} | " +
-                   $"무적+{_invincibilityPercent:P0} | 크리+{_critChancePercent:P0}";
+                   $"무적 multiplier={_invincMultiplier:F4} | 크리+{_critChancePercent:P0}";
         }
 
         /// <summary>

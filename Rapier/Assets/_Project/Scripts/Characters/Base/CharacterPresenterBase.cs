@@ -329,7 +329,7 @@ namespace Game.Characters
             {
                 var damageable = hit.GetComponent<IDamageable>();
                 if (damageable == null || !damageable.IsAlive) continue;
-                damageable.TakeDamage(Model.AttackPower, dir);
+                damageable.TakeDamage(Model.AttackPower * (stat.normalAttackPercent / 100f), dir);
                 OnHitDamageable(damageable);
                 hitCount++;
             }
@@ -354,6 +354,7 @@ namespace Game.Characters
 
             StartCoroutine(DodgeCooldownRoutine());
             StartCoroutine(DodgeDashRoutine(stat.dashSpeed));
+            StartCoroutine(DodgeInvincibleRoutine(Model.DodgeInvincibleDuration));
 
             View.PlayDodge(direction);
             OnSwipe(direction);
@@ -397,21 +398,38 @@ namespace Game.Characters
 
         /// <summary>
         /// 회피 대시 완료 콜백.
-        /// 기본: 회피 대시 플래그 OFF + JustDodgeAvailable false + 무적 OFF + FreeMovement.
+        /// 기본: 회피 대시 플래그 OFF + JustDodgeAvailable false + FreeMovement(조건부).
+        /// 무적 해제는 DodgeInvincibleRoutine(DodgeInvincibleDuration 경과 후)이 담당한다.
         /// 저스트 회피 슬로우나 고유 스킬이 이어지는 경우에도 "회피 대시 자체는" 끝난 것이므로
-        /// _isDodgeDashActive는 항상 false로 내린다. 무적/이동 잠금 유지 여부는 자식이 override로 결정한다.
+        /// _isDodgeDashActive는 항상 false로 내린다. 이동 잠금 유지 여부는 자식이 override로 결정한다.
         /// </summary>
         protected virtual void OnDodgeDashComplete()
         {
             JustDodgeAvailable  = false;
             _isDodgeDashActive  = false;
 
-            // 저스트 회피 슬로우나 고유 스킬이 진행 중이면 무적/이동 잠금을 유지해야 하므로
-            // 해당 플래그들이 모두 꺼진 경우에만 여기서 해제한다.
+            // 무적 해제는 DodgeInvincibleRoutine이 DodgeInvincibleDuration 경과 후 담당한다.
+            // 대시 완료 시점에는 이동 잠금만 해제한다 (슬로우/스킬이 진행 중이 아닌 경우).
+            if (!_isJustDodgeSlowActive && !_isSignatureSkillActive)
+            {
+                FreeMovement();
+            }
+        }
+
+        /// <summary>
+        /// 회피 무적 구간 타이머. DodgeInvincibleDuration(InvincibilityBonus 반영 최종값) 경과 후
+        /// 조건이 허락하면 무적을 해제한다.
+        /// 저스트 회피 슬로우 또는 고유 스킬이 진행 중이면 해제를 건너뛴다 — 그 경로에서 자체 해제.
+        /// </summary>
+        private IEnumerator DodgeInvincibleRoutine(float duration)
+        {
+            yield return new WaitForSecondsRealtime(duration);
+
+            // 저스트 회피 슬로우 또는 고유 스킬이 진행 중이면 무적 해제 스킵.
+            // (OnDodgeDashComplete 혹은 OnSlowMotionEnd / EndSignatureSkillCleanup 에서 해제됨)
             if (!_isJustDodgeSlowActive && !_isSignatureSkillActive)
             {
                 Model.SetInvincible(false);
-                FreeMovement();
             }
         }
 

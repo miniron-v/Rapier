@@ -22,8 +22,8 @@ namespace Game.Enemies
         public float duration       = 4f;
         [Tooltip("틱 간격 (초)")]
         public float tickInterval   = 0.5f;
-        [Tooltip("틱당 데미지 배율 (GetAttackPower 기준)")]
-        public float tickDamage     = 0.3f;
+        [Tooltip("틱당 데미지 배율 (%). 30 = ×0.3. COMBAT.md §4 참조")]
+        public int tickDamagePercent = 30;
         [Tooltip("장판 반경 (히트 판정)")]
         public float hazardRadius   = 1.5f;
 
@@ -51,7 +51,7 @@ namespace Game.Enemies
             // ── 지속 데미지 루프 ──────────────────────────────────
             float elapsed  = 0f;
             float tickAcc  = 0f;
-            float dmg      = ctx.GetAttackPower() * tickDamage;
+            float dmg      = ctx.GetAttackPower() * (tickDamagePercent / 100f);
             Vector2 hazardPos = hazard.transform.position;
 
             while (elapsed < duration && hazard != null)

@@ -41,6 +41,11 @@ namespace Game.Characters
         [System.NonSerialized] private float _finalChargeRequiredTime;
         /// <summary>스킬 데미지 배수 = 1 + meta.SkillDamagePercent (가산형 누적). RunStat 미포함.</summary>
         [System.NonSerialized] private float _skillDamageMultiplier;
+        /// <summary>
+        /// 회피 무적 시간 최종값 = StatData.dodgeInvincibleDuration × meta.InvincMultiplier × run.InvincMultiplier.
+        /// STATS.md §3-2 소스별 독립 곱연산.
+        /// </summary>
+        [System.NonSerialized] private float _finalDodgeInvincibleDuration;
 
         /// <summary>최종 최대 HP (MetaStat + RunStat 포함).</summary>
         public float MaxHp                  => _finalMaxHp;
@@ -54,6 +59,12 @@ namespace Game.Characters
         public float ChargeRequiredTime     => _finalChargeRequiredTime;
         /// <summary>스킬 데미지 배수 (1.0 = 보너스 없음). 차지 스킬 데미지 계산 시 곱한다.</summary>
         public float SkillDamageMultiplier  => _skillDamageMultiplier;
+        /// <summary>
+        /// 회피 무적 시간 최종값 (InvincibilityBonus 감소율 적용 후). STATS.md §3-2.
+        /// InvincibilityBonus 20% 2회 = StatData.dodgeInvincibleDuration × 0.8 × 0.8 = ×0.64.
+        /// CharacterPresenterBase 가 DodgeInvincibleRoutine 타이머에 사용한다.
+        /// </summary>
+        public float DodgeInvincibleDuration => _finalDodgeInvincibleDuration;
 
         // ── 런타임 상태 ────────────────────────────────────────────
         public float CurrentHp          { get; private set; }
@@ -160,6 +171,13 @@ namespace Game.Characters
             _finalChargeRequiredTime = StatData.chargeRequiredTime
                 * (_meta?.ChargeTimeMultiplier    ?? 1f)
                 * (_runStat?.ChargeTimeMultiplier ?? 1f);
+
+            // InvincibilityBonus §3-2 — 감소율형, DodgeCDR/ChargeTimeReduction과 동일 패턴.
+            // base × Π_i(1 − metaP_i) × Π_j(1 − runP_j). 20% 2회 = 0.2s × 0.8 × 0.8 = 0.128s.
+            // MetaStatContainer / RunStatContainer 가 각각 _invincMultiplier 를 누적 보관한다.
+            _finalDodgeInvincibleDuration = StatData.dodgeInvincibleDuration
+                * (_meta?.InvincMultiplier    ?? 1f)
+                * (_runStat?.InvincMultiplier ?? 1f);
 
             // 스킬 데미지 배수 (가산형 누적, RunStat 미포함 — STATS.md §2 표)
             _skillDamageMultiplier = 1f + (_meta?.SkillDamagePercent ?? 0f);
