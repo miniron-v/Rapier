@@ -11,11 +11,52 @@
 | 객체 | 책임 |
 |---|---|
 | `RoomNode` (`[Serializable]`) | 방 종류(BossRoom/IntermissionRoom), 표시명, 보스 프리팹/SO 참조 |
-| `StageBuilder` (MonoBehaviour) | `RoomNode[]` 배열을 인스펙터에서 보유, `StageManager.Init()` 에 전달 |
-| `StageManager` (런타임) | 현재 방 인덱스, 보스 처치 수, RunStatContainer 소유, 포탈/이어하기 제어 |
-| `ProgressionManager` | 방 전환 오케스트레이션 (보스 스폰, 인터미션 UI, 사망 처리) |
+| `StageData` (SO) | 스테이지 정의 — `stageName`, `stageIndex`, `RoomNode[] rooms`, `hpMultiplier`, `atkMultiplier` |
+| `StageDatabase` (SO) | `StageData[]` 레지스트리, Resources 로드 |
+| `StageBuilder` (MonoBehaviour) | `StageDatabase`에서 현재 스테이지 SO 로드 → `StageManager.Init(stageData)` 전달 |
+| `StageManager` (런타임) | 현재 방 인덱스, 보스 처치 수, RunStatContainer 소유, 포탈/이어하기 제어, `CurrentStageIndex` 보유 |
+| `ProgressionManager` | 방 전환 오케스트레이션 (보스 스폰 시 스케일링 적용, 인터미션 UI, 사망 처리) |
 
-> **향후 과제**: `RoomNode[]` 를 `StageData` SO 로 분리하면 씬 외부 재사용·버전 관리가 용이해짐. 현재는 씬 내 `StageBuilder` 에 임베드.
+### 스테이지 스케일링
+
+보스 기본 스탯(BossStatData SO)에 StageData의 배율을 곱한다. 같은 보스가 다른 스테이지에 재등장하면 강화 버전이 된다.
+
+- 보스 런타임 HP = `bossStatData.maxHp × stageData.hpMultiplier`
+- 보스 런타임 ATK = `bossStatData.attackDamage × stageData.atkMultiplier`
+
+| Stage | HP/ATK 배율 | Stage | HP/ATK 배율 |
+|-------|-------------|-------|-------------|
+| 1 | ×1.0 | 6 | ×2.4 |
+| 2 | ×1.2 | 7 | ×2.8 |
+| 3 | ×1.4 | 8 | ×3.3 |
+| 4 | ×1.7 | 9 | ×3.9 |
+| 5 | ×2.0 | 10 | ×4.5 |
+
+### 10 스테이지 보스 배치
+
+보스 7종을 10×4=40 슬롯에 고정 배치. 같은 스테이지 내 동일 보스 중복 금지.
+
+| Stage | Boss 1 | Boss 2 | Boss 3 | Boss 4 |
+|-------|--------|--------|--------|--------|
+| 1 | Specter | Berserker | Gravekeeper | Titan |
+| 2 | Pyromancer | Stormcaller | TwinPhantoms | Specter |
+| 3 | Berserker | Gravekeeper | Pyromancer | Stormcaller |
+| 4 | TwinPhantoms | Titan | Specter | Berserker |
+| 5 | Stormcaller | Pyromancer | Titan | Gravekeeper |
+| 6 | Specter | TwinPhantoms | Berserker | Stormcaller |
+| 7 | Gravekeeper | Titan | Pyromancer | TwinPhantoms |
+| 8 | Berserker | Stormcaller | Specter | Titan |
+| 9 | Pyromancer | TwinPhantoms | Gravekeeper | Stormcaller |
+| 10 | Titan | Berserker | TwinPhantoms | Gravekeeper |
+
+### 스테이지 진행 / 선택
+
+- **순차 해금**: Stage N 클리어 → Stage N+1 해금. `SaveData.highestClearedStage` 로 영구 저장.
+- **재도전**: 로비에서 해금된 스테이지 중 원하는 것을 선택해 재입장 가능 (드롭 파밍 등).
+- **스테이지 선택 흐름**: 로비 "출격" 버튼 → 스테이지 선택 패널 (최고 도달+1 까지 표시) → `SceneController.LoadGame(stageIndex)`.
+- **스테이지 클리어 후**: "다음 스테이지" / "로비 복귀" 선택. 다음 스테이지 선택 시 `SceneController.LoadGame(stageIndex + 1)`.
+
+---
 
 ## 2. 인터미션 방
 

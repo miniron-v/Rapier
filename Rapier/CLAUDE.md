@@ -202,7 +202,7 @@ Assets/
 
 모든 Claude 인스턴스(팀장·작업 에이전트 공통)에 적용한다.
 
-- **`cd` 완전 금지.** 모든 경로는 절대 경로로 명시.
+- 모든 작업은 현재 위치한 루트 폴더에서 수행하고, 파일에 접근할 때는 반드시 ./... 형태의 상대 경로만 사용해.
 - **git은 반드시 `git -C "<절대경로>" <subcommand>` 형태**로 호출.
   - 나쁜 예: `cd C:/GitHub/Rapier && git status`
   - 좋은 예: `git -C "C:/GitHub/Rapier" status`

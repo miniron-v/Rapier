@@ -79,13 +79,49 @@ EquipmentManager ─OnEquipped/Unequipped→ EquipmentMetaStatProvider
 - **룬 처리**: 룬 `StatEffect` (StatEntry) 를 장비와 동일 파이프라인. 감소형은 룬 하나가 하나의 독립 소스. 캐릭터 전용 룬 (`_targetCharacterId` 불일치) 은 Provider 단계에서 필터링.
 - **저장 트리거**: `EquipmentManager.Equip/Unequip` 내부에서 `TrySave()` 호출 → `SaveManager.Save()` 로 체이닝 (`SaveManager` 는 `EquipmentManager.Init` 시 주입). 매 장착 변경 시 `save.json` 갱신. 레거시 `IEquipmentSaveProvider` 경로는 사용하지 않는다.
 
-## 5. 프로토타입 데이터
+## 5. 보스 드롭 시스템
 
-가챠/드롭은 후순위. 사전 정의 SO + 디버그 메뉴 제공.
+보스 처치 시 DropTable SO 기반 확률 장비 드롭.
 
-- 8 슬롯 각각 최소 1 SO (메인스탯이 §1 표와 일치), 룬 3종 (Rapier 고유 1 + 공통 2).
+### 데이터 구조
+
+| 객체 | 책임 |
+|------|------|
+| `DropTableData` (SO) | 보스별 드롭 테이블 — `List<DropEntry>` |
+| `DropEntry` (`[Serializable]`) | `EquipmentGrade grade`, `float dropRate` (0~1), `EquipmentItemData[] pool` |
+| `LootManager` (순수 C#) | 드롭 판정 + `EquipmentInstance` 생성 + `EquipmentManager` 연동 |
+| `DropNotificationView` (MonoBehaviour) | 드롭 아이템 표시 UI |
+
+### 드롭 판정 로직
+
+```
+foreach (DropEntry entry in dropTable.entries)  // 등급별 독립 판정
+    if (Random.value <= entry.dropRate)
+        pool 에서 랜덤 1개 선택 → EquipmentInstance 생성 → 인벤토리 추가
+```
+
+- 한 보스당 **최대 2개** 제한 (상위 등급 우선, 초과분 버림).
+- 기본 확률 (SO 에서 조정 가능): 노말 80%, 레어 30%, 에픽 10%, 유니크 2%.
+- 스테이지 스케일링은 드롭 확률에 영향 없음 — 등급 분포는 DropTable SO 에서 직접 조정.
+
+### 연동 흐름
+
+```
+보스 사망 (EnemyPresenterBase.OnDeath)
+  → ProgressionManager.HandleBossDefeated()
+    → LootManager.RollDrop(bossStatData.dropTable)
+    → 드롭 있으면: DropNotificationView 표시 (아이템 이름/등급/아이콘)
+    → 표시 완료 or 드롭 없으면: 포탈 스폰
+```
+
+### BossStatData 확장
+
+`BossStatData` SO 에 `DropTableData dropTable` 필드 추가. 각 보스 SO 에셋에 DropTable SO 연결. 7종 보스 × 1 DropTable SO.
+
+### 디버그 메뉴 (기존 유지)
+
 - 디버그 메뉴: `Rapier/Dev/Add Debug Equipment`, `Rapier/Dev/Add Debug Runes`.
-- `Add Debug Equipment` 는 **8 슬롯 전체 자동 장착 + Save** 한 번으로 완결. 재클릭 불필요. 빌드 시엔 보스 드롭으로 대체 예정.
+- `Add Debug Equipment` 는 **8 슬롯 전체 자동 장착 + Save** 한 번으로 완결. 디버그 전용.
 
 ## 6. UI
 
