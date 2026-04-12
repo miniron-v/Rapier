@@ -159,15 +159,6 @@ namespace Game.Editor
             phaseRt.anchoredPosition = new Vector2(-40f, -10f);
             phaseGo.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.MidlineRight;
 
-            var stageGo = CreateTMPText(bossStatusRoot.transform, "StageText", "STAGE 1 / 4", 28, FontStyles.Normal, new Color(0.8f, 0.8f, 0.8f));
-            var stageRt = stageGo.GetComponent<RectTransform>();
-            stageRt.anchorMin        = new Vector2(0.5f, 1f);
-            stageRt.anchorMax        = new Vector2(0.5f, 1f);
-            stageRt.pivot            = new Vector2(0.5f, 1f);
-            stageRt.sizeDelta        = new Vector2(800f, 30f);
-            stageRt.anchoredPosition = new Vector2(0f, -78f);
-            stageGo.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
-
             var hpBgGo = CreatePanel(bossStatusRoot.transform, "BossHpBg", HP_BG_COLOR, sq);
             var hpBgRt = hpBgGo.GetComponent<RectTransform>();
             hpBgRt.anchorMin        = new Vector2(0.5f, 0f);
@@ -281,7 +272,6 @@ namespace Game.Editor
                 bossHpTextGo.GetComponent<TextMeshProUGUI>(),
                 bossNameGo.GetComponent<TextMeshProUGUI>(),
                 phaseGo.GetComponent<TextMeshProUGUI>(),
-                stageGo.GetComponent<TextMeshProUGUI>(),
                 stageProgressRoot,
                 stagePrgTextGo.GetComponent<TextMeshProUGUI>(),
                 victoryPanel,

@@ -194,7 +194,7 @@ namespace Game.Core.Stage
 
             // 스테이지 진행도 표시 (보스 방의 보스 상태 HUD 숨김)
             if (_stageManager != null)
-                _bossHud?.ShowForIntermission(_stageManager.BossesDefeated, _stageManager.TotalBossRooms);
+                _bossHud?.ShowForIntermission(_stageManager.BossesDefeated + 1, _stageManager.TotalBossRooms);
 
             // 이어하기 진입이면 부활 처리, 아니면 HP 회복
             if (_stageManager != null && _stageManager.IsContinueMode)

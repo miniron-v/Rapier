@@ -40,7 +40,6 @@ namespace Game.UI
         [SerializeField] private TextMeshProUGUI _bossHpText;
         [SerializeField] private TextMeshProUGUI _bossNameText;
         [SerializeField] private TextMeshProUGUI _bossPhaseText;
-        [SerializeField] private TextMeshProUGUI _stageText;
 
         [Header("스테이지 진행도 (인터미션 전용)")]
         [SerializeField] private GameObject      _stageProgressRoot;
@@ -77,7 +76,6 @@ namespace Game.UI
             TextMeshProUGUI bossHpText,
             TextMeshProUGUI bossNameText,
             TextMeshProUGUI bossPhaseText,
-            TextMeshProUGUI stageText,
             GameObject      stageProgressRoot,
             TextMeshProUGUI stageProgressText,
             GameObject      victoryPanel,
@@ -92,7 +90,6 @@ namespace Game.UI
             _bossHpText        = bossHpText;
             _bossNameText      = bossNameText;
             _bossPhaseText     = bossPhaseText;
-            _stageText         = stageText;
             _stageProgressRoot = stageProgressRoot;
             _stageProgressText = stageProgressText;
             _victoryPanel      = victoryPanel;
@@ -121,27 +118,26 @@ namespace Game.UI
         // ── 외부 API ──────────────────────────────────────────────
 
         /// <summary>보스 방 진입 시 호출. 보스 상태 영역을 표시하고 스테이지 진행도 영역을 숨긴다.</summary>
-        public void ShowForBossRoom(int stage, int totalStages)
+        public void ShowForBossRoom()
         {
             _bossStatusRoot?.SetActive(true);
             _stageProgressRoot?.SetActive(false);
-            if (_stageText != null)
-                _stageText.text = $"STAGE {stage} / {totalStages}";
         }
 
         /// <summary>인터미션 진입 시 호출. 스테이지 진행도 영역을 표시하고 보스 상태 영역을 숨긴다.</summary>
-        public void ShowForIntermission(int bossesDefeated, int totalStages)
+        /// <param name="nextStage">다음에 싸울 보스 방 번호 (1-based).</param>
+        public void ShowForIntermission(int nextStage, int totalStages)
         {
             _bossStatusRoot?.SetActive(false);
             _stageProgressRoot?.SetActive(true);
             if (_stageProgressText != null)
-                _stageProgressText.text = $"STAGE  {bossesDefeated} / {totalStages}  CLEARED";
+                _stageProgressText.text = $"Stage {nextStage} / {totalStages}";
         }
 
         /// <summary>보스 스폰 시 호출. HP 구독 + UI 초기화. 보스 상태 영역을 자동으로 표시한다.</summary>
         public void SetupBoss(string bossName, BossPresenterBase boss, int stage, int totalStages)
         {
-            ShowForBossRoom(stage, totalStages);
+            ShowForBossRoom();
 
             if (_bossModel != null)
             {
@@ -161,7 +157,6 @@ namespace Game.UI
                 _bossHpText.text = _bossModel.CurrentHp.ToString("F0");
             if (_bossNameText  != null) _bossNameText.text      = bossName.ToUpper();
             if (_bossPhaseText != null) _bossPhaseText.text     = "PHASE 1";
-            if (_stageText     != null) _stageText.text         = $"STAGE {stage} / {totalStages}";
         }
 
         /// <summary>페이즈 변경 시 호출. phaseIndex는 0-based.</summary>
