@@ -58,7 +58,7 @@ namespace Game.Editor
                 lockIndicatorDirection = true,
                 chargeSpeed            = 14f,
                 chargeHitRange         = 1.8f,
-                chargeDamageMultiplier = 2f,
+                damagePercent          = 200,
                 chargeMaxDistance      = 20f,
                 grogyDuration          = 2.5f,
                 indicators             = new List<AttackIndicatorEntry>
