@@ -94,7 +94,7 @@ namespace Game.Enemies.Editor
                     projectileSpeed     = 7f,
                     maxRange            = 12f,
                     hitRadius           = 0.4f,
-                    damageMultiplier    = 1f,
+                    damagePercent       = 100,
                     homingStrength      = 0f,
                     lockIndicatorDirection = true,
                     indicators = new List<AttackIndicatorEntry>
@@ -112,7 +112,7 @@ namespace Game.Enemies.Editor
                     windupDuration  = 0.8f,
                     duration        = 4f,
                     tickInterval    = 0.5f,
-                    tickDamage      = 0.3f,
+                    tickDamagePercent = 30,
                     hazardRadius    = 1.5f
                 }
             };
@@ -126,7 +126,7 @@ namespace Game.Enemies.Editor
                     projectileSpeed     = 10f,
                     maxRange            = 15f,
                     hitRadius           = 0.4f,
-                    damageMultiplier    = 1.2f,
+                    damagePercent       = 120,
                     homingStrength      = 0f,
                     lockIndicatorDirection = true,
                     indicators = new List<AttackIndicatorEntry>
@@ -144,14 +144,14 @@ namespace Game.Enemies.Editor
                     windupDuration  = 0.8f,
                     duration        = 5f,
                     tickInterval    = 0.4f,
-                    tickDamage      = 0.35f,
+                    tickDamagePercent = 35,
                     hazardRadius    = 1.8f
                 },
                 new MultiDirectionalAttackAction
                 {
                     windupDuration      = 0.8f,
                     hitRange            = 2f,
-                    damageMultiplier    = 1.2f,
+                    damagePercent       = 120,
                     lockIndicatorDirection = true,
                     indicators = new List<AttackIndicatorEntry>
                     {
@@ -316,7 +316,7 @@ namespace Game.Enemies.Editor
                     windupDuration          = 0.6f,
                     chargeSpeed             = 16f,
                     chargeHitRange          = 1.8f,
-                    chargeDamageMultiplier  = 2.2f,
+                    damagePercent           = 220,
                     chargeMaxDistance       = 20f,
                     grogyDuration           = 2f,
                     lockIndicatorDirection   = true,
@@ -360,7 +360,7 @@ namespace Game.Enemies.Editor
                 {
                     windupDuration      = 0.9f,
                     hitRange            = 2f,
-                    damageMultiplier    = 1f,
+                    damagePercent       = 100,
                     lockIndicatorDirection = true,
                     indicators = new List<AttackIndicatorEntry>
                     {
@@ -376,7 +376,7 @@ namespace Game.Enemies.Editor
                     projectileSpeed     = 8f,
                     maxRange            = 15f,
                     hitRadius           = 0.45f,
-                    damageMultiplier    = 1f,
+                    damagePercent       = 100,
                     homingStrength      = 0f,
                     lockIndicatorDirection = true,
                     indicators = new List<AttackIndicatorEntry>
@@ -398,7 +398,7 @@ namespace Game.Enemies.Editor
                 {
                     windupDuration      = 0.85f,
                     hitRange            = 2f,
-                    damageMultiplier    = 1.1f,
+                    damagePercent       = 110,
                     lockIndicatorDirection = true,
                     indicators = new List<AttackIndicatorEntry>
                     {
@@ -414,7 +414,7 @@ namespace Game.Enemies.Editor
                     projectileSpeed     = 10f,
                     maxRange            = 20f,
                     hitRadius           = 0.45f,
-                    damageMultiplier    = 1.2f,
+                    damagePercent       = 120,
                     homingStrength      = 45f,  // 유도 활성화
                     lockIndicatorDirection = true,
                     indicators = new List<AttackIndicatorEntry>
