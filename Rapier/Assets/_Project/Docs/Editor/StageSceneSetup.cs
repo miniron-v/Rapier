@@ -54,8 +54,11 @@ namespace Game.Editor
         private const string SCENE_SAVE_PATH =
             "Assets/_Project/Scenes/StageDemo.unity";
 
-        private const string PLAYER_PREFAB_PATH =
+        private const string RAPIER_PREFAB_PATH =
             "Assets/_Project/Prefabs/Player/Rapier_Player.prefab";
+
+        private const string ASSASSIN_PREFAB_PATH =
+            "Assets/_Project/Prefabs/Player/AssassinPresenter.prefab";
 
         private const string SPECTER_PREFAB_PATH     = "Assets/_Project/Prefabs/Boss/Specter_Boss.prefab";
         private const string BERSERKER_PREFAB_PATH   = "Assets/_Project/Prefabs/Boss/Berserker_Boss.prefab";
@@ -138,20 +141,41 @@ namespace Game.Editor
             var progressionManager = coreGo.AddComponent<ProgressionManager>();
             var stageBuilder       = coreGo.AddComponent<StageBuilder>();
 
-            // ── Player ────────────────────────────────────────────
-            var playerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(PLAYER_PREFAB_PATH);
+            // ── CharacterSpawnPoint (동적 캐릭터 스폰) ───────────────
+            // Rapier_Player를 하드코딩 배치하는 대신, CharacterSpawner 컴포넌트가
+            // SaveData.lastCharacterId 를 읽어 런타임에 올바른 캐릭터를 동적 스폰한다.
+            var spawnPointGo = new GameObject("CharacterSpawnPoint");
+            Undo.RegisterCreatedObjectUndo(spawnPointGo, "Create CharacterSpawnPoint");
+            spawnPointGo.transform.position = new Vector3(0f, -3f, 0f);
+
+            var spawner = spawnPointGo.AddComponent<CharacterSpawner>();
+
+            var rapierPrefab   = AssetDatabase.LoadAssetAtPath<GameObject>(RAPIER_PREFAB_PATH);
+            var assassinPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(ASSASSIN_PREFAB_PATH);
+
+            if (rapierPrefab == null)
+                Debug.LogWarning($"[StageSceneSetup] Rapier 프리팹 없음: {RAPIER_PREFAB_PATH}");
+            if (assassinPrefab == null)
+                Debug.LogWarning($"[StageSceneSetup] Assassin 프리팹 없음: {ASSASSIN_PREFAB_PATH}");
+
+            // SerializedObject 로 _entries 배열 구성
+            var spawnerSo = new SerializedObject(spawner);
+            var entriesProp = spawnerSo.FindProperty("_entries");
+            entriesProp.arraySize = 2;
+
+            var rapierEntry = entriesProp.GetArrayElementAtIndex(0);
+            rapierEntry.FindPropertyRelative("characterId").stringValue          = "Rapier";
+            rapierEntry.FindPropertyRelative("prefab").objectReferenceValue      = rapierPrefab;
+
+            var assassinEntry = entriesProp.GetArrayElementAtIndex(1);
+            assassinEntry.FindPropertyRelative("characterId").stringValue        = "Assassin";
+            assassinEntry.FindPropertyRelative("prefab").objectReferenceValue    = assassinPrefab;
+
+            spawnerSo.ApplyModifiedProperties();
+            EditorUtility.SetDirty(spawner);
+
+            // CameraFollow 용 placeholder — 스폰 전이므로 null. 런타임에 ProgressionManager가 처리.
             GameObject playerGo = null;
-            if (playerPrefab != null)
-            {
-                playerGo = (GameObject)PrefabUtility.InstantiatePrefab(playerPrefab);
-                Undo.RegisterCreatedObjectUndo(playerGo, "Create Player");
-                playerGo.name = "Player";
-                playerGo.transform.position = new Vector3(0f, -3f, 0f);
-            }
-            else
-            {
-                Debug.LogWarning($"[StageSceneSetup] Player 프리팹 없음: {PLAYER_PREFAB_PATH}");
-            }
 
             // ── Main Camera ───────────────────────────────────────
             var cameraGo = new GameObject("Main Camera");

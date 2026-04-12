@@ -71,7 +71,7 @@ namespace Game.Characters.Assassin
                 _sr.flipY        = sourceSr.flipY;
             }
 
-            _baseColor   = new Color(0.6f, 0.6f, 1.0f, PHANTOM_ALPHA); // 청보라 반투명
+            _baseColor   = new Color(0.7f, 0.5f, 1.0f, PHANTOM_ALPHA); // 연보라 반투명 (포탈 진보라와 구분)
             _sr.color    = _baseColor;
 
             _lifetimeCoroutine = StartCoroutine(LifetimeRoutine(duration));

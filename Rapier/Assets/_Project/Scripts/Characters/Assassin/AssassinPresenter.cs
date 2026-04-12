@@ -66,8 +66,9 @@ namespace Game.Characters.Assassin
 
             Init(_statData, _view);
 
-            if (_statData.sprite != null)
-                _view.SetSprite(_statData.sprite);
+            // SO에 sprite가 설정되어 있으면 그것을 사용, 없으면 런타임 원형 스프라이트 생성
+            var sprite = _statData.sprite != null ? _statData.sprite : CreateCircleSprite(64, Color.white);
+            _view.SetSprite(sprite);
 
             ServiceLocator.Register<IPlayerCharacter>(this);
             ServiceLocator.Register(this);
@@ -314,6 +315,37 @@ namespace Game.Characters.Assassin
         {
             _activePhantoms.Remove(phantom);
             Debug.Log($"[AssassinPresenter] 잔상 수명 만료. 잔여 활성 잔상: {_activePhantoms.Count}");
+        }
+
+        // ── 스프라이트 유틸 ──────────────────────────────────────
+        /// <summary>
+        /// 지정 크기·색상의 원형 Sprite를 런타임에 생성한다.
+        /// SO에 sprite가 할당되지 않은 경우 폴백으로 사용한다.
+        /// </summary>
+        /// <param name="size">텍스처 한 변 크기 (픽셀). 64 권장.</param>
+        /// <param name="color">원의 색상.</param>
+        private static Sprite CreateCircleSprite(int size, Color color)
+        {
+            var tex    = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            var pixels = new Color32[size * size];
+            float cx   = size * 0.5f - 0.5f;
+            float cy   = size * 0.5f - 0.5f;
+            float rSq  = (size * 0.5f) * (size * 0.5f);
+            var   c32  = (Color32)color;
+
+            for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+            {
+                float dx = x - cx;
+                float dy = y - cy;
+                pixels[y * size + x] = (dx * dx + dy * dy) <= rSq
+                    ? c32
+                    : new Color32(0, 0, 0, 0);
+            }
+
+            tex.SetPixels32(pixels);
+            tex.Apply();
+            return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), size);
         }
 
         // ── 잔상 전체 정리 ────────────────────────────────────────

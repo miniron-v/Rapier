@@ -1,5 +1,6 @@
 using Game.Core;
 using Game.Data.Equipment;
+using Game.Data.Save;
 using Game.UI.Lobby.Equipment;
 using UnityEngine;
 
@@ -9,18 +10,19 @@ namespace Game.UI.Lobby
     /// 탭 2 — 캐릭터 관리 탭 Presenter.
     ///
     /// [역할]
-    ///   - Rapier 슬롯 활성화, 나머지 3칸 Coming Soon 상태 설정
-    ///   - B2 장비 영역 / B3 레벨업 영역 hook: 연결만 예약, 실구현 없음
+    ///   - Rapier + Assassin 슬롯 활성화, 나머지 2칸 Coming Soon 상태 설정
+    ///   - CharacterTabView.OnCharacterSelected 구독 → lastCharacterId 저장
+    ///   - 장비 패널 characterId 동적 변경
     ///
     /// [이벤트 구독/해제]
-    ///   OnTabShown (LobbyPresenter가 탭 활성화 시 호출): 슬롯 초기화
-    ///   OnTabHidden (LobbyPresenter가 탭 비활성화 시 호출): 정리
+    ///   OnTabShown : 슬롯 초기화 + 현재 선택 캐릭터 하이라이트 + View 이벤트 구독
+    ///   OnTabHidden : View 이벤트 구독 해제
     ///
-    /// ── 구독/이벤트 매핑 ────────────────────────────────────────────────
-    /// | 이벤트          | 구독 위치    | 해제 위치    | 핸들러             |
-    /// |-----------------|-------------|-------------|-------------------|
-    /// | (없음 — 슬롯 버튼 Coming Soon 비인터랙티브) |
-    /// ─────────────────────────────────────────────────────────────────────
+    /// ── 구독/이벤트 매핑 ─────────────────────────────────────────────
+    /// | 이벤트                        | 구독 위치    | 해제 위치    | 핸들러                   |
+    /// |-------------------------------|-------------|-------------|--------------------------|
+    /// | CharacterTabView.OnCharacterSelected | OnTabShown  | OnTabHidden  | HandleCharacterSelected  |
+    /// ────────────────────────────────────────────────────────────────────
     /// </summary>
     public class CharacterTabPresenter : MonoBehaviour
     {
@@ -45,27 +47,72 @@ namespace Game.UI.Lobby
             _equipmentPanel = equipmentPanel;
         }
 
-        // ── 탭 전환 진입점 (LobbyPresenter가 호출) ───────────────
+        // ── 탭 전환 진입점 (LobbyPresenter가 호출) ────────────────
         /// <summary>탭이 표시될 때 LobbyPresenter가 호출한다.</summary>
         public void OnTabShown()
         {
             if (_view == null) return;
+
+            // 이벤트 중복 구독 방지
+            _view.OnCharacterSelected -= HandleCharacterSelected;
+            _view.OnCharacterSelected += HandleCharacterSelected;
+
             _view.SetupCharacterSlots();
 
-            if (_equipmentPanel == null) return;
-            if (!_equipmentPanel.IsInitialized)
-            {
-                var manager = ServiceLocator.TryGet<EquipmentManager>();
-                if (manager != null)
-                    _equipmentPanel.Init(manager, "Rapier");
-            }
-            _equipmentPanel.Show();
+            // 현재 저장된 lastCharacterId 로 하이라이트 초기화
+            string currentId = GetCurrentCharacterId();
+            _view.SetHighlight(currentId);
+
+            ShowEquipmentPanel(currentId);
         }
 
         /// <summary>탭이 숨겨질 때 LobbyPresenter가 호출한다.</summary>
         public void OnTabHidden()
         {
-            // 현재 등록된 버튼 리스너 없음 (Coming Soon 슬롯은 비인터랙티브)
+            if (_view != null)
+                _view.OnCharacterSelected -= HandleCharacterSelected;
+        }
+
+        // ── 이벤트 핸들러 ────────────────────────────────────────
+        private void HandleCharacterSelected(string characterId)
+        {
+            // lastCharacterId 저장
+            var saveManager = ServiceLocator.TryGet<SaveManager>();
+            if (saveManager != null)
+            {
+                saveManager.Current.lastCharacterId = characterId;
+                saveManager.Save();
+                Debug.Log($"[CharacterTabPresenter] 캐릭터 선택 → {characterId} 저장 완료.");
+            }
+            else
+            {
+                Debug.LogWarning("[CharacterTabPresenter] SaveManager 미등록. lastCharacterId 저장 불가.");
+            }
+
+            // 하이라이트 갱신
+            _view?.SetHighlight(characterId);
+
+            // 장비 패널 갱신
+            ShowEquipmentPanel(characterId);
+        }
+
+        // ── Private 메서드 ────────────────────────────────────────
+        private string GetCurrentCharacterId()
+        {
+            var saveManager = ServiceLocator.TryGet<SaveManager>();
+            return saveManager?.Current.lastCharacterId ?? "Rapier";
+        }
+
+        private void ShowEquipmentPanel(string characterId)
+        {
+            if (_equipmentPanel == null) return;
+
+            // 캐릭터가 바뀌면 재초기화 (EquipmentPanelPresenter._characterId 갱신 목적)
+            var manager = ServiceLocator.TryGet<EquipmentManager>();
+            if (manager != null)
+                _equipmentPanel.Init(manager, characterId);
+
+            _equipmentPanel.Show();
         }
     }
 }
