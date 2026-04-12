@@ -58,7 +58,7 @@ namespace Game.Data.Equipment
         // 향후 Warrior/Assassin/Ranger 추가 시 여기에 등록할 것.
         // PascalCase 리터럴 정책으로 통일 — OrdinalIgnoreCase 비교자 불필요.
         private static readonly HashSet<string> _implementedCharacters
-            = new HashSet<string> { "Rapier" };
+            = new HashSet<string> { "Rapier", "Assassin" };
 
         // ── 초기화 ───────────────────────────────────────────────────────────
 

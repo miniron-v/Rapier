@@ -79,7 +79,7 @@ namespace Game.UI
             _playerModel.OnChargeChanged        += OnChargeChanged;
             _playerModel.OnDodgeCooldownChanged += OnDodgeCooldownChanged;
 
-            SetHp(_playerModel.CurrentHp / _playerModel.StatData.maxHp, _playerModel.CurrentHp);
+            SetHp(_playerModel.CurrentHp / _playerModel.MaxHp, _playerModel.CurrentHp);
             SetCharge(0f);
             SetDodgeCooldown(1f);
 
@@ -100,7 +100,7 @@ namespace Game.UI
         private void OnHpChanged(float currentHp)
         {
             if (_playerModel == null) return;
-            SetHp(currentHp / _playerModel.StatData.maxHp, currentHp);
+            SetHp(currentHp / _playerModel.MaxHp, currentHp);
         }
 
         private void OnChargeChanged(float ratio)        => SetCharge(ratio);

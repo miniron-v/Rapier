@@ -78,6 +78,10 @@ namespace Game.Core.Stage
             // (보스방은 이전 방의 포탈 위치 잔재 제거, 인터미션은 스탯 선택 대기 위치 확보)
             ResetPlayerPosition(_playerSpawnPosition);
 
+            // 방 전환 알림 — 씬 전환이 아닌 방 전환이므로 OnDisable이 호출되지 않는다.
+            // 자식 Presenter(예: AssassinPresenter)가 방 전환 시 자체 상태(잔상 등)를 정리할 수 있도록 훅을 호출한다.
+            FindObjectOfType<CharacterPresenterBase>()?.NotifyRoomTransition();
+
             switch (room.roomType)
             {
                 case RoomType.BossRoom:
@@ -237,20 +241,17 @@ namespace Game.Core.Stage
         // ── 플레이어 HP 회복 ─────────────────────────────────────────
         private void HealPlayerToFull()
         {
-            var player = FindObjectOfType<CharacterPresenterBase>();
+            var player = ServiceLocator.TryGet<IPlayerCharacter>();
             if (player == null)
             {
-                Debug.LogWarning("[ProgressionManager] 플레이어를 찾을 수 없어 HP 회복 불가.");
+                Debug.LogWarning("[ProgressionManager] IPlayerCharacter 미등록 — HP 회복 불가.");
                 return;
             }
 
-            var rapier = player as RapierPresenter;
-            if (rapier != null && rapier.PublicModel != null)
-            {
-                var model = rapier.PublicModel;
-                model.Heal(model.MaxHp);
-                Debug.Log($"[ProgressionManager] HP 100% 회복 완료. 현재: {model.CurrentHp}/{model.MaxHp}");
-            }
+            var model = player.PublicModel;
+            if (model == null) return;
+            model.Heal(model.MaxHp);
+            Debug.Log($"[ProgressionManager] HP 100% 회복 완료. 현재: {model.CurrentHp}/{model.MaxHp}");
         }
 
         // ── 포탈 수명 관리 ────────────────────────────────────────────

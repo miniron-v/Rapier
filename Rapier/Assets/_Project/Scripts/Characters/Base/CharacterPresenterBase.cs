@@ -305,6 +305,8 @@ namespace Game.Characters
 
         private void PerformAttack()
         {
+            OnPerformAttack();
+
             EnemyPresenterBase nearestEnemy = FindNearestEnemy(30f);
 
             var stat = Model.StatData;
@@ -555,6 +557,11 @@ namespace Game.Characters
             _isSignatureSkillActive = false;
             _isChargeSkillActive    = false;
 
+            // 회피 쿨다운 타이머 리셋 — 쿨다운 진행 중 사망 시 DodgeCooldownRoutine이 강제 중단되어
+            // _dodgeCooldownTimer가 0이 아닌 값에 멈추면 부활 후 HandleSwipe가 영구 차단된다.
+            _dodgeCooldownTimer = 0f;
+            Model.SetDodgeCooldownRatio(1f);
+
             // View.PlayDeath()가 gameObject.SetActive(false)를 호출하면 코루틴이 강제 중단된다.
             // AttackRoutine이 중단되면 _isAttacking·인디케이터가 정리되지 않아 좀비 상태가 남으므로,
             // SetActive(false) 전에 먼저 정리한다.
@@ -573,6 +580,21 @@ namespace Game.Characters
         /// 자식은 override 해서 자신의 인디케이터·코루틴·상태를 정리한다.
         /// </summary>
         protected virtual void OnBeforeDeath() { }
+
+        /// <summary>
+        /// 방 전환(씬 전환 없이 포탈 진입) 시 ProgressionManager.HandleRoomEntered()가 호출한다.
+        /// 내부에서 <see cref="OnRoomTransition"/>을 호출하여 자식이 방 전환 정리를 수행할 수 있도록 한다.
+        /// </summary>
+        public void NotifyRoomTransition()
+        {
+            OnRoomTransition();
+        }
+
+        /// <summary>
+        /// 방 전환 시 자식이 override하여 자신의 상태(예: 잔상)를 정리하는 훅.
+        /// 기본 구현은 no-op.
+        /// </summary>
+        protected virtual void OnRoomTransition() { }
 
         /// <summary>
         /// 이어하기 전용 부활. HP 복구 + View 재활성화 + 제스처 재구독.
@@ -799,6 +821,12 @@ namespace Game.Characters
         protected virtual void OnJustDodge(Vector2 direction)                          { }
         protected virtual void OnRelease(InputState lastState)                         { }
         protected virtual void OnHitDamageable(IDamageable target)                     { }
+
+        /// <summary>
+        /// PerformAttack() 시작 시 호출되는 훅. 본체 히트 여부와 무관하게 항상 호출된다.
+        /// 잔상 독자 공격 등 공격 시도 자체에 반응해야 하는 자식 로직에 사용한다.
+        /// </summary>
+        protected virtual void OnPerformAttack()                                         { }
 
         protected virtual void Start()
         {

@@ -1,0 +1,374 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using Game.Core;
+using Game.Combat;
+using Game.Enemies;
+using Game.Data.Characters;
+
+namespace Game.Characters.Assassin
+{
+    /// <summary>
+    /// 어새신 캐릭터 Presenter.
+    ///
+    /// [잔상(Phantom) 관리]
+    ///   저스트 회피 발동 시 회피 전 위치에 PhantomController를 Instantiate.
+    ///   동시 최대 maxPhantoms 개. 초과 시 가장 오래된 잔상(인덱스 0) 제거.
+    ///   잔상은 수명 만료 시 자동 페이드 아웃 후 Destroy.
+    ///
+    /// [동참 공격]
+    ///   OnPerformAttack override: 본체 Tap 공격 시작 시(히트 여부 무관) 활성 잔상 전부에
+    ///   AttackNearestEnemy(ATK) 를 호출한다. 잔상이 각자 위치에서 독자적으로 가장 가까운
+    ///   적을 탐색하여 공격한다.
+    ///   잔상 데미지 = ATK × (phantomDamagePercent / 100).
+    ///
+    /// [차지 스킬 — 360도 광역 베기]
+    ///   OnSkillRelease(fullyCharged=true) 시 비동기 코루틴으로 360도 원형 광역 공격.
+    ///   BeginSignatureSkill() + LockMovement() → 공격 → FreeMovement() + EndSignatureSkill().
+    ///
+    /// [잠금↔해제 매핑]
+    ///   BeginSignatureSkill   ↔  EndSignatureSkill
+    ///     · 정상: AoeSkillRoutine 완료 시 EndAoeSkillCleanup()
+    ///     · 취소: OnBeforeDeath() → 코루틴 Stop → EndSignatureSkill 즉시
+    ///     · OnDisable: StopAllCoroutines + EndSignatureSkill
+    ///   LockMovement          ↔  FreeMovement
+    ///     · 위와 동일 경로
+    /// </summary>
+    [RequireComponent(typeof(CharacterView))]
+    public class AssassinPresenter : CharacterPresenterBase, IDamageable, IPlayerCharacter
+    {
+        // ── 직렬화 필드 ───────────────────────────────────────────
+        [Header("데이터")]
+        [SerializeField] private AssassinStatData _statData;
+
+        [Header("잔상 프리팹")]
+        [Tooltip("PhantomController가 부착된 프리팹. null이면 빈 GameObject로 대체.")]
+        [SerializeField] private GameObject _phantomPrefab;
+
+        // ── 런타임 비직렬화 필드 ──────────────────────────────────
+        private CharacterView _view;
+
+        [NonSerialized] private readonly List<PhantomController> _activePhantoms
+            = new List<PhantomController>();
+
+        [NonSerialized] private Coroutine _aoeSkillCoroutine;
+
+        // ── 초기화 ────────────────────────────────────────────────
+        private void Awake()
+        {
+            _view = GetComponent<CharacterView>();
+
+            if (_statData == null)
+            {
+                Debug.LogError("[AssassinPresenter] AssassinStatData가 할당되지 않음.");
+                return;
+            }
+
+            Init(_statData, _view);
+
+            // SO에 sprite가 설정되어 있으면 그것을 사용, 없으면 런타임 원형 스프라이트 생성
+            var sprite = _statData.sprite != null ? _statData.sprite : CreateCircleSprite(64, Color.white);
+            _view.SetSprite(sprite);
+
+            ServiceLocator.Register<IPlayerCharacter>(this);
+            ServiceLocator.Register(this);
+        }
+
+        protected override void OnDestroy()
+        {
+            base.OnDestroy();
+            ServiceLocator.Unregister<IPlayerCharacter>();
+            ServiceLocator.Unregister<AssassinPresenter>();
+        }
+
+        // ── OnDisable — 씬 전환 / 오브젝트 비활성화 시 잔상 정리 ─
+        protected override void OnDisable()
+        {
+            base.OnDisable();
+            CleanupAllPhantoms();
+
+            // 차지 스킬 코루틴이 진행 중이면 즉시 잠금 해제
+            if (_aoeSkillCoroutine != null)
+            {
+                StopCoroutine(_aoeSkillCoroutine);
+                _aoeSkillCoroutine = null;
+                EndAoeSkillCleanup();
+            }
+        }
+
+        // ── IDamageable / IPlayerCharacter ────────────────────────
+        /// <inheritdoc/>
+        public bool IsAlive => Model != null && Model.IsAlive;
+
+        /// <inheritdoc/>
+        public void TakeDamage(float amount, Vector2 knockbackDir)
+        {
+            if (!IsAlive) return;
+
+            if (JustDodgeAvailable)
+            {
+                ConsumeJustDodge();
+                Debug.Log("[AssassinPresenter] 회피 중 피격 → 저스트 회피 발동!");
+                Gesture?.TriggerJustDodge(knockbackDir * -1f);
+                return;
+            }
+
+            if (Model.IsInvincible) return;
+
+            Model.TakeDamage(amount);
+            View.PlayHit();
+        }
+
+        /// <inheritdoc/>
+        public CharacterModel PublicModel => Model;
+
+        // ── DodgeDash 완료 콜백 ───────────────────────────────────
+        protected override void OnDodgeDashComplete()
+        {
+            base.OnDodgeDashComplete();
+            ConsumeJustDodge();
+        }
+
+        // ── 저스트 회피 훅 — 잔상 생성 ───────────────────────────
+        /// <summary>
+        /// 저스트 회피 발동 순간에 현재 위치(회피 전 위치)에 잔상을 생성한다.
+        /// 활성 잔상이 maxPhantoms를 초과하면 가장 오래된 잔상(인덱스 0)을 먼저 제거한다.
+        /// </summary>
+        protected override void OnJustDodge(Vector2 direction)
+        {
+            Vector2 spawnPos = transform.position;
+
+            // 초과 시 가장 오래된 잔상 제거
+            if (_activePhantoms.Count >= _statData.MaxPhantoms)
+            {
+                var oldest = _activePhantoms[0];
+                _activePhantoms.RemoveAt(0);
+                if (oldest != null)
+                    oldest.ForceDestroy();
+            }
+
+            // 잔상 생성
+            var phantom = SpawnPhantom(spawnPos);
+            if (phantom != null)
+            {
+                // 잔상 룬 효과 반영: 지속 시간 조정 (추후 룬 로직 연동 확장점)
+                float duration = _statData.PhantomDuration;
+                // TODO: 룬 효과 적용 시 duration *= (1f + phantomDurationBonus)
+
+                var sourceSr = GetComponent<SpriteRenderer>();
+                phantom.Init(sourceSr, duration, _statData.PhantomDamagePercent);
+                phantom.OnPhantomExpired += HandlePhantomExpired;
+                _activePhantoms.Add(phantom);
+
+                Debug.Log($"[AssassinPresenter] 잔상 생성 @ {spawnPos}. 활성 잔상: {_activePhantoms.Count}");
+            }
+        }
+
+        // ── 공격 실행 훅 — 잔상 독자 공격 ──────────────────────
+        /// <summary>
+        /// 본체 PerformAttack() 시작 시 호출된다 (히트 여부와 무관).
+        /// 각 잔상이 독자적으로 가장 가까운 적을 탐색해 공격한다.
+        /// 본체가 빗나가도 잔상 근처에 적이 있으면 잔상은 공격한다.
+        /// </summary>
+        protected override void OnPerformAttack()
+        {
+            if (_activePhantoms.Count == 0) return;
+            float baseAtk = Model != null ? Model.AttackPower : 0f;
+            for (int i = _activePhantoms.Count - 1; i >= 0; i--)
+            {
+                var phantom = _activePhantoms[i];
+                if (phantom == null) { _activePhantoms.RemoveAt(i); continue; }
+                phantom.AttackNearestEnemy(baseAtk);
+            }
+        }
+
+        // ── 슬로우모션 종료 훅 ────────────────────────────────────
+        protected override void OnSlowMotionEnd()
+        {
+            base.OnSlowMotionEnd();
+        }
+
+        // ── 방 전환 훅 — 잔상 정리 ───────────────────────────────
+        /// <summary>
+        /// 포탈 진입으로 인한 방 전환 시 호출된다. 이전 방에 남은 잔상을 전부 파괴한다.
+        /// </summary>
+        protected override void OnRoomTransition()
+        {
+            CleanupAllPhantoms();
+        }
+
+        // ── 사망 전처리 훅 ────────────────────────────────────────
+        /// <summary>
+        /// 사망 처리 직전 훅. 모든 활성 잔상을 즉시 파괴한다.
+        /// 차지 스킬 코루틴이 진행 중이면 중단 후 잠금을 해제한다.
+        /// </summary>
+        protected override void OnBeforeDeath()
+        {
+            // 차지 스킬 코루틴 중단 + 잠금 해제
+            if (_aoeSkillCoroutine != null)
+            {
+                StopCoroutine(_aoeSkillCoroutine);
+                _aoeSkillCoroutine = null;
+                EndAoeSkillCleanup();
+            }
+
+            CleanupAllPhantoms();
+        }
+
+        // ── 스킬 발동 훅 ──────────────────────────────────────────
+        /// <summary>
+        /// Hold → Release 시 Base에서 호출된다.
+        /// fullyCharged=true : 차지 스킬(360도 광역 베기)를 비동기 코루틴으로 시작.
+        /// justDodgeReady=true : Assassin은 저스트 회피 후 별도 고유 스킬 없음.
+        ///   (잔상은 OnJustDodge에서 이미 생성됨. 추가 스킬 분기 불필요.)
+        /// </summary>
+        protected override void OnSkillRelease(bool fullyCharged, bool justDodgeReady)
+        {
+            if (fullyCharged)
+            {
+                // 차지 스킬: 360도 광역 베기. Base가 _isChargeSkillActive 플래그를 자동 해제하므로
+                // 코루틴에서 추가 Tap 차단을 원하면 BeginSignatureSkill을 사용한다.
+                BeginSignatureSkill();
+                LockMovement();
+                _aoeSkillCoroutine = StartCoroutine(AoeSkillRoutine());
+            }
+            // justDodgeReady 분기: Assassin은 별도 고유 스킬 없음 — 아무 것도 하지 않음.
+        }
+
+        // ── 360도 광역 베기 코루틴 ────────────────────────────────
+        private IEnumerator AoeSkillRoutine()
+        {
+            // 짧은 선모션 (공격 예고)
+            yield return new WaitForSecondsRealtime(0.15f);
+
+            ExecuteAoeAttack();
+
+            // 후딜 (공격 완료 후 짧은 경직)
+            yield return new WaitForSecondsRealtime(0.25f);
+
+            _aoeSkillCoroutine = null;
+            EndAoeSkillCleanup();
+        }
+
+        private void ExecuteAoeAttack()
+        {
+            float radius     = _statData.AoeSkillRadius;
+            float damage     = Model.AttackPower * (_statData.AoeSkillDamagePercent / 100f)
+                               * Model.SkillDamageMultiplier;
+            int   enemyLayer = LayerMask.GetMask("Enemy");
+
+            var hits     = Physics2D.OverlapCircleAll(transform.position, radius, enemyLayer);
+            int hitCount = 0;
+
+            foreach (var hit in hits)
+            {
+                var enemy = hit.GetComponent<EnemyPresenterBase>();
+                if (enemy == null || !enemy.IsAlive) continue;
+
+                var dir = ((Vector2)enemy.transform.position - (Vector2)transform.position).normalized;
+                enemy.TakeDamage(damage, dir);
+                hitCount++;
+            }
+
+            Debug.Log($"[AssassinPresenter] 360도 광역 베기 히트: {hitCount}명 / 반지름: {radius}");
+
+            // 잔상 동참 AoE — 각 잔상 위치에서도 동일한 AoE 실행
+            float phantomAoeDamage = Model.AttackPower * (_statData.AoeSkillDamagePercent / 100f)
+                                     * Model.SkillDamageMultiplier * (_statData.PhantomDamagePercent / 100f);
+            for (int i = _activePhantoms.Count - 1; i >= 0; i--)
+            {
+                var phantom = _activePhantoms[i];
+                if (phantom == null) { _activePhantoms.RemoveAt(i); continue; }
+                phantom.ExecuteAoe(phantomAoeDamage);
+            }
+        }
+
+        /// <summary>
+        /// 차지 스킬(AoeSkillRoutine) 종료 시 공통 뒷정리.
+        /// EndSignatureSkill과 FreeMovement를 동시에 해제한다.
+        /// </summary>
+        private void EndAoeSkillCleanup()
+        {
+            EndSignatureSkill();
+            FreeMovement();
+        }
+
+        // ── 잔상 스폰 ─────────────────────────────────────────────
+        private PhantomController SpawnPhantom(Vector2 position)
+        {
+            GameObject go;
+            if (_phantomPrefab != null)
+            {
+                go = Instantiate(_phantomPrefab, position, Quaternion.identity);
+            }
+            else
+            {
+                // 프리팹 미할당 시 빈 GameObject로 대체
+                go = new GameObject("Phantom");
+                go.transform.position = position;
+            }
+
+            var ctrl = go.GetComponent<PhantomController>();
+            if (ctrl == null)
+                ctrl = go.AddComponent<PhantomController>();
+
+            return ctrl;
+        }
+
+        // ── 잔상 이벤트 핸들러 ────────────────────────────────────
+        private void HandlePhantomExpired(PhantomController phantom)
+        {
+            _activePhantoms.Remove(phantom);
+            Debug.Log($"[AssassinPresenter] 잔상 수명 만료. 잔여 활성 잔상: {_activePhantoms.Count}");
+        }
+
+        // ── 스프라이트 유틸 ──────────────────────────────────────
+        /// <summary>
+        /// 지정 크기·색상의 원형 Sprite를 런타임에 생성한다.
+        /// SO에 sprite가 할당되지 않은 경우 폴백으로 사용한다.
+        /// </summary>
+        /// <param name="size">텍스처 한 변 크기 (픽셀). 64 권장.</param>
+        /// <param name="color">원의 색상.</param>
+        private static Sprite CreateCircleSprite(int size, Color color)
+        {
+            var tex    = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            var pixels = new Color32[size * size];
+            float cx   = size * 0.5f - 0.5f;
+            float cy   = size * 0.5f - 0.5f;
+            float rSq  = (size * 0.5f) * (size * 0.5f);
+            var   c32  = (Color32)color;
+
+            for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+            {
+                float dx = x - cx;
+                float dy = y - cy;
+                pixels[y * size + x] = (dx * dx + dy * dy) <= rSq
+                    ? c32
+                    : new Color32(0, 0, 0, 0);
+            }
+
+            tex.SetPixels32(pixels);
+            tex.Apply();
+            return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), size);
+        }
+
+        // ── 잔상 전체 정리 ────────────────────────────────────────
+        private void CleanupAllPhantoms()
+        {
+            // 역순 순회로 안전하게 제거
+            for (int i = _activePhantoms.Count - 1; i >= 0; i--)
+            {
+                var phantom = _activePhantoms[i];
+                if (phantom != null)
+                {
+                    phantom.OnPhantomExpired -= HandlePhantomExpired;
+                    phantom.ForceDestroy();
+                }
+            }
+            _activePhantoms.Clear();
+            Debug.Log("[AssassinPresenter] 모든 잔상 정리 완료.");
+        }
+    }
+}
