@@ -196,6 +196,17 @@ namespace Game.Enemies
             var entry = GetPhase(newIndex);
             if (entry == null) yield break;
 
+            // ── 진행 중인 공격 즉시 취소 ─────────────────────────────
+            // 인디케이터가 표시된 채 페이즈 전환이 일어나면 공격 없이 인디케이터만 사라지고
+            // 플레이어 입장에서 예고 없이 피해를 받은 것처럼 느껴질 수 있다.
+            if (_actionCoroutine != null)
+            {
+                StopCoroutine(_actionCoroutine);
+                _actionCoroutine = null;
+            }
+            _view.StopWindup();
+            _attackPhase = AttackPhase.Chase;
+
             // 색상 전환
             if (_sr != null)
             {

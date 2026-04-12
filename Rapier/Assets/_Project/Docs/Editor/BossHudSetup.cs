@@ -124,26 +124,24 @@ namespace Game.Editor
             safeAreaRt.anchoredPosition = Vector2.zero;
             safeAreaGo.AddComponent<SafeAreaFitter>();
 
-            // ── 상단 보스 HP 영역 ──────────────────────────────────
-            // [레이아웃 원칙]
-            //  - 모든 자식은 단일 anchor(=min==max) + 고정 sizeDelta 로 배치.
-            //    anchor stretch + anchoredPosition 병용은 RectTransform 상호작용이
-            //    꼬여 예측이 어려우므로 단순화한다.
-            //  - topBar 총 높이 200. 내부 Y 배치(상단 원점, pivot top 기준):
+            // ── 보스 상태 영역 (보스 방 전용) ─────────────────────
+            // [레이아웃]
+            //  - 총 높이 170. 내부 Y 배치(상단 원점, pivot top 기준):
             //      [-10 ~ -70] BossName(좌) / Phase(우)  60
             //      [-80 ~ -110] StageText                 30
-            //      [-140 ~ -180] HpBg                     40   (하단에서 20 띄움)
-            var topBar = CreatePanel(safeAreaGo.transform, "BossHpArea", BG_DARK, sq);
-            var topRt  = topBar.GetComponent<RectTransform>();
-            topRt.anchorMin        = new Vector2(0f, 1f);
-            topRt.anchorMax        = new Vector2(1f, 1f);
-            topRt.pivot            = new Vector2(0.5f, 1f);
-            topRt.offsetMin        = Vector2.zero;
-            topRt.offsetMax        = Vector2.zero;
-            topRt.sizeDelta        = new Vector2(0f, 200f);
-            topRt.anchoredPosition = Vector2.zero;
+            //      [-130 ~ -160] HpBg                     30
+            var bossStatusRoot = CreatePanel(safeAreaGo.transform, "BossStatusArea", BG_DARK, sq);
+            var bossStatusRt   = bossStatusRoot.GetComponent<RectTransform>();
+            bossStatusRt.anchorMin        = new Vector2(0f, 1f);
+            bossStatusRt.anchorMax        = new Vector2(1f, 1f);
+            bossStatusRt.pivot            = new Vector2(0.5f, 1f);
+            bossStatusRt.offsetMin        = Vector2.zero;
+            bossStatusRt.offsetMax        = Vector2.zero;
+            bossStatusRt.sizeDelta        = new Vector2(0f, 170f);
+            bossStatusRt.anchoredPosition = Vector2.zero;
+            bossStatusRoot.SetActive(false); // 보스 방 진입 시에만 표시
 
-            var bossNameGo = CreateTMPText(topBar.transform, "BossNameText", "BOSS NAME", 48, FontStyles.Bold, Color.white);
+            var bossNameGo = CreateTMPText(bossStatusRoot.transform, "BossNameText", "BOSS NAME", 48, FontStyles.Bold, Color.white);
             var bossNameRt = bossNameGo.GetComponent<RectTransform>();
             bossNameRt.anchorMin        = new Vector2(0f, 1f);
             bossNameRt.anchorMax        = new Vector2(0f, 1f);
@@ -152,7 +150,7 @@ namespace Game.Editor
             bossNameRt.anchoredPosition = new Vector2(40f, -10f);
             bossNameGo.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.MidlineLeft;
 
-            var phaseGo = CreateTMPText(topBar.transform, "BossPhaseText", "PHASE 1", 36, FontStyles.Bold, Color.white);
+            var phaseGo = CreateTMPText(bossStatusRoot.transform, "BossPhaseText", "PHASE 1", 36, FontStyles.Bold, Color.white);
             var phaseRt = phaseGo.GetComponent<RectTransform>();
             phaseRt.anchorMin        = new Vector2(1f, 1f);
             phaseRt.anchorMax        = new Vector2(1f, 1f);
@@ -161,22 +159,22 @@ namespace Game.Editor
             phaseRt.anchoredPosition = new Vector2(-40f, -10f);
             phaseGo.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.MidlineRight;
 
-            var stageGo = CreateTMPText(topBar.transform, "StageText", "STAGE 1 / 2", 28, FontStyles.Normal, new Color(0.8f, 0.8f, 0.8f));
+            var stageGo = CreateTMPText(bossStatusRoot.transform, "StageText", "STAGE 1 / 4", 28, FontStyles.Normal, new Color(0.8f, 0.8f, 0.8f));
             var stageRt = stageGo.GetComponent<RectTransform>();
             stageRt.anchorMin        = new Vector2(0.5f, 1f);
             stageRt.anchorMax        = new Vector2(0.5f, 1f);
             stageRt.pivot            = new Vector2(0.5f, 1f);
             stageRt.sizeDelta        = new Vector2(800f, 30f);
-            stageRt.anchoredPosition = new Vector2(0f, -80f);
+            stageRt.anchoredPosition = new Vector2(0f, -78f);
             stageGo.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
 
-            var hpBgGo = CreatePanel(topBar.transform, "BossHpBg", HP_BG_COLOR, sq);
+            var hpBgGo = CreatePanel(bossStatusRoot.transform, "BossHpBg", HP_BG_COLOR, sq);
             var hpBgRt = hpBgGo.GetComponent<RectTransform>();
             hpBgRt.anchorMin        = new Vector2(0.5f, 0f);
             hpBgRt.anchorMax        = new Vector2(0.5f, 0f);
             hpBgRt.pivot            = new Vector2(0.5f, 0f);
-            hpBgRt.sizeDelta        = new Vector2(1020f, 40f);
-            hpBgRt.anchoredPosition = new Vector2(0f, 20f);
+            hpBgRt.sizeDelta        = new Vector2(1020f, 36f);
+            hpBgRt.anchoredPosition = new Vector2(0f, 16f);
 
             var hpFillGo  = CreatePanel(hpBgGo.transform, "BossHpFill", HP_FILL_COLOR, sq);
             var hpFillImg = hpFillGo.GetComponent<Image>();
@@ -199,6 +197,30 @@ namespace Game.Editor
             bossHpTextRt.offsetMin        = bossHpTextRt.offsetMax = Vector2.zero;
             bossHpTextRt.anchoredPosition = Vector2.zero;
             bossHpTextGo.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+
+            // ── 스테이지 진행도 영역 (인터미션 전용) ─────────────────
+            // 화면 상단 중앙에 크게 표시. 보스 방에서는 숨김.
+            // 위치: safeArea 상단에서 60px 아래, 높이 100px
+            var stageProgressRoot = CreatePanel(safeAreaGo.transform, "StageProgressArea", BG_DARK, sq);
+            var stagePrgRt        = stageProgressRoot.GetComponent<RectTransform>();
+            stagePrgRt.anchorMin        = new Vector2(0.05f, 1f);
+            stagePrgRt.anchorMax        = new Vector2(0.95f, 1f);
+            stagePrgRt.pivot            = new Vector2(0.5f, 1f);
+            stagePrgRt.offsetMin        = Vector2.zero;
+            stagePrgRt.offsetMax        = Vector2.zero;
+            stagePrgRt.sizeDelta        = new Vector2(0f, 100f);
+            stagePrgRt.anchoredPosition = new Vector2(0f, -60f);
+            stageProgressRoot.SetActive(false); // 인터미션 진입 시에만 표시
+
+            var stagePrgTextGo = CreateTMPText(stageProgressRoot.transform, "StageProgressText",
+                "STAGE  0 / 4  CLEARED", 52, FontStyles.Bold, new Color(0.9f, 0.9f, 0.4f));
+            var stagePrgTextRt = stagePrgTextGo.GetComponent<RectTransform>();
+            stagePrgTextRt.anchorMin = Vector2.zero;
+            stagePrgTextRt.anchorMax = Vector2.one;
+            stagePrgTextRt.offsetMin = new Vector2(16f, 0f);
+            stagePrgTextRt.offsetMax = new Vector2(-16f, 0f);
+            stagePrgTextRt.anchoredPosition = Vector2.zero;
+            stagePrgTextGo.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
 
             // ── 승리 패널 ─────────────────────────────────────────
             var victoryPanel   = CreatePanel(safeAreaGo.transform, "VictoryPanel", PANEL_BG_COLOR, sq);
@@ -254,11 +276,14 @@ namespace Game.Editor
             // ── BossHudView 부착 및 Init() 주입 ───────────────────
             var hudView = cvGo.AddComponent<BossHudView>();
             hudView.Init(
+                bossStatusRoot,
                 hpFillImg,
                 bossHpTextGo.GetComponent<TextMeshProUGUI>(),
                 bossNameGo.GetComponent<TextMeshProUGUI>(),
                 phaseGo.GetComponent<TextMeshProUGUI>(),
                 stageGo.GetComponent<TextMeshProUGUI>(),
+                stageProgressRoot,
+                stagePrgTextGo.GetComponent<TextMeshProUGUI>(),
                 victoryPanel,
                 victoryTextGo.GetComponent<TextMeshProUGUI>(),
                 nextBtnGo.GetComponent<Button>(),

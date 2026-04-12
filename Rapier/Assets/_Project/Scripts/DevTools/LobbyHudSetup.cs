@@ -192,10 +192,10 @@ namespace Game.DevTools
             hLayout.childForceExpandHeight = true;
             hLayout.padding = new RectOffset(20, 20, 20, 20);
 
-            var rapierSlot = CreateCharacterSlot(slotContainer.gameObject, "RapierSlot",    "Rapier",      true);
-            var slot2      = CreateCharacterSlot(slotContainer.gameObject, "CharSlot2",     "Warrior",     false);
-            var slot3      = CreateCharacterSlot(slotContainer.gameObject, "CharSlot3",     "Assassin",    false);
-            var slot4      = CreateCharacterSlot(slotContainer.gameObject, "CharSlot4",     "Ranger",      false);
+            var rapierSlot = CreateCharacterSlot(slotContainer.gameObject, "RapierSlot",    "기사",      true);
+            var slot2      = CreateCharacterSlot(slotContainer.gameObject, "AssassinSlot",  "암살자",    true);
+            var slot3      = CreateCharacterSlot(slotContainer.gameObject, "CharSlot3",     "전사",      false);
+            var slot4      = CreateCharacterSlot(slotContainer.gameObject, "CharSlot4",     "사냥꾼",    false);
 
             // B2: EquipmentPanelRoot — 장비 슬롯 8개 + 인벤토리 ScrollRect 실장
             var equipRoot = CreateRectChild(panel, "EquipmentPanelRoot");

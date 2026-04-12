@@ -12,7 +12,8 @@ namespace Game.UI
     /// ProgressionManager, BossRushManager 등 보스를 스폰하는 모든 드라이버가 공용으로 사용.
     ///
     /// [구성]
-    ///   - 화면 상단: 보스 이름 + 페이즈 텍스트 + 대형 HP바 + 스테이지 텍스트
+    ///   - 보스 방: BossStatusRoot — 보스 이름 + 페이즈 텍스트 + HP 바 (인터미션 진입 시 숨김)
+    ///   - 인터미션: StageProgressRoot — 스테이지 진행도 (보스 방 진입 시 숨김)
     ///   - 승리 패널: "보스 처치!" + 스테이지 정보 + "다음 스테이지" 버튼
     ///   - 결과 패널: ALL CLEAR / GAME OVER 텍스트 + "로비로" 버튼
     ///
@@ -24,19 +25,26 @@ namespace Game.UI
     ///   OnNextStageRequested: 다음 스테이지 요청을 외부 드라이버에 위임 (HUD는 매니저 타입을 모른다).
     ///
     /// [게임 루프]
-    ///   플레이어 사망 → ShowResult(false)
-    ///   전체 클리어   → ShowResult(true)
-    ///   "로비로" 버튼 → SceneController.LoadLobby()
+    ///   보스 방 진입      → ShowForBossRoom()  → BossStatusRoot 표시, StageProgressRoot 숨김
+    ///   인터미션 진입     → ShowForIntermission() → StageProgressRoot 표시, BossStatusRoot 숨김
+    ///   플레이어 사망     → ShowResult(false)
+    ///   전체 클리어       → ShowResult(true)
+    ///   "로비로" 버튼     → SceneController.LoadLobby()
     /// </summary>
     public class BossHudView : MonoBehaviour
     {
         // ── Inspector / Init으로 주입 ──────────────────────────────
-        [Header("보스 HP 바 (상단)")]
+        [Header("보스 상태 영역 (보스 방 전용)")]
+        [SerializeField] private GameObject      _bossStatusRoot;
         [SerializeField] private Image           _bossHpFill;
         [SerializeField] private TextMeshProUGUI _bossHpText;
         [SerializeField] private TextMeshProUGUI _bossNameText;
         [SerializeField] private TextMeshProUGUI _bossPhaseText;
         [SerializeField] private TextMeshProUGUI _stageText;
+
+        [Header("스테이지 진행도 (인터미션 전용)")]
+        [SerializeField] private GameObject      _stageProgressRoot;
+        [SerializeField] private TextMeshProUGUI _stageProgressText;
 
         [Header("승리 패널")]
         [SerializeField] private GameObject      _victoryPanel;
@@ -64,11 +72,14 @@ namespace Game.UI
         /// Reflection 없이 직접 [SerializeField] 필드에 주입한다.
         /// </summary>
         public void Init(
+            GameObject      bossStatusRoot,
             Image           bossHpFill,
             TextMeshProUGUI bossHpText,
             TextMeshProUGUI bossNameText,
             TextMeshProUGUI bossPhaseText,
             TextMeshProUGUI stageText,
+            GameObject      stageProgressRoot,
+            TextMeshProUGUI stageProgressText,
             GameObject      victoryPanel,
             TextMeshProUGUI victoryText,
             Button          nextStageButton,
@@ -76,17 +87,20 @@ namespace Game.UI
             TextMeshProUGUI resultText,
             Button          toLobbyButton)
         {
-            _bossHpFill      = bossHpFill;
-            _bossHpText      = bossHpText;
-            _bossNameText    = bossNameText;
-            _bossPhaseText   = bossPhaseText;
-            _stageText       = stageText;
-            _victoryPanel    = victoryPanel;
-            _victoryText     = victoryText;
-            _nextStageButton = nextStageButton;
-            _resultPanel     = resultPanel;
-            _resultText      = resultText;
-            _toLobbyButton   = toLobbyButton;
+            _bossStatusRoot    = bossStatusRoot;
+            _bossHpFill        = bossHpFill;
+            _bossHpText        = bossHpText;
+            _bossNameText      = bossNameText;
+            _bossPhaseText     = bossPhaseText;
+            _stageText         = stageText;
+            _stageProgressRoot = stageProgressRoot;
+            _stageProgressText = stageProgressText;
+            _victoryPanel      = victoryPanel;
+            _victoryText       = victoryText;
+            _nextStageButton   = nextStageButton;
+            _resultPanel       = resultPanel;
+            _resultText        = resultText;
+            _toLobbyButton     = toLobbyButton;
         }
 
         // ── 초기화 ────────────────────────────────────────────────
@@ -98,15 +112,37 @@ namespace Game.UI
             if (_toLobbyButton != null)
                 _toLobbyButton.onClick.AddListener(OnToLobbyClicked);
 
+            _bossStatusRoot?.SetActive(false);
+            _stageProgressRoot?.SetActive(false);
             _victoryPanel?.SetActive(false);
             _resultPanel?.SetActive(false);
         }
 
         // ── 외부 API ──────────────────────────────────────────────
 
-        /// <summary>보스 스폰 시 호출. HP 구독 + UI 초기화.</summary>
+        /// <summary>보스 방 진입 시 호출. 보스 상태 영역을 표시하고 스테이지 진행도 영역을 숨긴다.</summary>
+        public void ShowForBossRoom(int stage, int totalStages)
+        {
+            _bossStatusRoot?.SetActive(true);
+            _stageProgressRoot?.SetActive(false);
+            if (_stageText != null)
+                _stageText.text = $"STAGE {stage} / {totalStages}";
+        }
+
+        /// <summary>인터미션 진입 시 호출. 스테이지 진행도 영역을 표시하고 보스 상태 영역을 숨긴다.</summary>
+        public void ShowForIntermission(int bossesDefeated, int totalStages)
+        {
+            _bossStatusRoot?.SetActive(false);
+            _stageProgressRoot?.SetActive(true);
+            if (_stageProgressText != null)
+                _stageProgressText.text = $"STAGE  {bossesDefeated} / {totalStages}  CLEARED";
+        }
+
+        /// <summary>보스 스폰 시 호출. HP 구독 + UI 초기화. 보스 상태 영역을 자동으로 표시한다.</summary>
         public void SetupBoss(string bossName, BossPresenterBase boss, int stage, int totalStages)
         {
+            ShowForBossRoom(stage, totalStages);
+
             if (_bossModel != null)
             {
                 _bossModel.OnHpChanged -= UpdateHp;
