@@ -42,7 +42,16 @@
       "Bash(pip install:*)",
       "Bash(python -m git_filter_repo --invert-paths --path \"Rapier/Assets/Rapier-Private/Fonts\" --path \"Rapier/Assets/Rapier-Private/Fonts.meta\")",
       "Bash(python -m git_filter_repo --force --invert-paths --path \"Rapier/Assets/Rapier-Private/Fonts\" --path \"Rapier/Assets/Rapier-Private/Fonts.meta\")",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Read(//c/GitHub/Rapier-phase14/**)",
+      "Read(//c/GitHub/Rapier-phase14/Rapier/**)",
+      "Bash(wc -l C:/GitHub/Rapier/Docs/Domains/*.md C:/GitHub/Rapier/Docs/Rapier_Prototype_DesignDoc.md)",
+      "Bash(wc:*)",
+      "Read(//c/GitHub/Rapier-equipsave/**)",
+      "Read(//c/Users/Kim MinCheol/AppData/LocalLow/**)",
+      "Bash(find:*)",
+      "Bash(find Rapier/Assets -name \"StageManager.cs.meta\" -exec cat {} \\\\;)",
+      "Bash(find Rapier/Assets -name \"ProgressionManager.cs.meta\" -exec cat {} \\\\;)"
     ]
   }
 }
