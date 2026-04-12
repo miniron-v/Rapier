@@ -189,6 +189,15 @@ namespace Game.Characters.Assassin
             base.OnSlowMotionEnd();
         }
 
+        // ── 방 전환 훅 — 잔상 정리 ───────────────────────────────
+        /// <summary>
+        /// 포탈 진입으로 인한 방 전환 시 호출된다. 이전 방에 남은 잔상을 전부 파괴한다.
+        /// </summary>
+        protected override void OnRoomTransition()
+        {
+            CleanupAllPhantoms();
+        }
+
         // ── 사망 전처리 훅 ────────────────────────────────────────
         /// <summary>
         /// 사망 처리 직전 훅. 모든 활성 잔상을 즉시 파괴한다.
