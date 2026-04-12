@@ -81,27 +81,36 @@ namespace Game.Characters.Assassin
 
         /// <summary>
         /// 본체 Tap 공격 시 잔상이 동참하는 메서드.
-        /// 잔상 위치에서 targetDir 방향으로 박스 히트 판정을 수행한다.
+        /// 잔상 자신의 위치에서 targetPos 방향으로 방향을 재계산하여 박스 히트 판정을 수행한다.
+        /// 본체→적 방향이 아니라 잔상→적 방향을 사용하므로 기하학적으로 정확하다.
         /// </summary>
-        /// <param name="targetDir">공격 방향 (정규화된 Vector2)</param>
+        /// <param name="targetPos">공격 대상의 월드 좌표</param>
         /// <param name="baseDamage">본체 기준 공격력 (ATK × normalAttackPercent/100 이전 값)</param>
-        public void AttackWithPlayer(Vector2 targetDir, float baseDamage)
+        public void AttackWithPlayer(Vector2 targetPos, float baseDamage)
         {
             if (_isExpired) return;
 
+            // 잔상 위치에서 타겟 방향을 재계산 — 본체→타겟 방향과 다를 수 있음
+            Vector2 dir = (targetPos - (Vector2)transform.position).normalized;
+            if (dir == Vector2.zero) dir = Vector2.up;
+
             float damage     = baseDamage * (_damagePercent / 100f);
-            var   boxCenter  = (Vector2)transform.position + targetDir * ATTACK_BOX_OFFSET;
+            var   boxCenter  = (Vector2)transform.position + dir * ATTACK_BOX_OFFSET;
             var   boxSize    = new Vector2(ATTACK_BOX_WIDTH, ATTACK_BOX_HEIGHT);
-            float angle      = Vector2.SignedAngle(Vector2.up, targetDir);
+            float angle      = Vector2.SignedAngle(Vector2.up, dir);
             int   enemyLayer = LayerMask.GetMask("Enemy");
 
-            var hits = Physics2D.OverlapBoxAll(boxCenter, boxSize, angle, enemyLayer);
+            var hits     = Physics2D.OverlapBoxAll(boxCenter, boxSize, angle, enemyLayer);
+            int hitCount = 0;
             foreach (var hit in hits)
             {
                 var enemy = hit.GetComponent<EnemyPresenterBase>();
                 if (enemy == null || !enemy.IsAlive) continue;
-                enemy.TakeDamage(damage, targetDir);
+                enemy.TakeDamage(damage, dir);
+                hitCount++;
             }
+
+            Debug.Log($"[PhantomController] 동참 공격 @ {transform.position} → 타겟 {targetPos}, 히트: {hitCount}");
         }
 
         // ── 수명 코루틴 ───────────────────────────────────────────

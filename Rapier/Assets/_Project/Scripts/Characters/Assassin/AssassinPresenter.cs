@@ -167,19 +167,18 @@ namespace Game.Characters.Assassin
         // ── 공격 히트 훅 — 잔상 동참 공격 ───────────────────────
         /// <summary>
         /// 본체 Tap 공격이 IDamageable을 맞혔을 때 호출된다.
-        /// 활성 잔상 전부에 AttackWithPlayer를 전달한다.
-        /// 공격 방향은 피격 타겟(EnemyPresenterBase)의 위치로부터 즉시 계산한다.
+        /// 활성 잔상 전부에 AttackWithPlayer(타겟 위치)를 전달한다.
+        /// 방향은 각 잔상 내부에서 "잔상→타겟"으로 재계산하여 기하학적 정확도를 보장한다.
         /// </summary>
         protected override void OnHitDamageable(IDamageable target)
         {
             if (_activePhantoms.Count == 0) return;
 
-            // 공격 방향: 타겟 위치 기반으로 즉시 계산.
-            // target 이 EnemyPresenterBase 이면 정확한 방향, 아니면 기본 Vector2.up 사용.
+            // 타겟 위치 추출: EnemyPresenterBase면 정확한 위치, 아니면 본체 전방 기본값
             var enemy = target as EnemyPresenterBase;
-            Vector2 attackDir = enemy != null
-                ? ((Vector2)enemy.transform.position - (Vector2)transform.position).normalized
-                : Vector2.up;
+            Vector2 targetPos = enemy != null
+                ? (Vector2)enemy.transform.position
+                : (Vector2)transform.position + Vector2.up;
 
             // 본체 ATK만 전달 — 잔상 내부에서 damagePercent 비율 적용
             float baseAtk = Model != null ? Model.AttackPower : 0f;
@@ -192,7 +191,7 @@ namespace Game.Characters.Assassin
                     _activePhantoms.RemoveAt(i);
                     continue;
                 }
-                phantom.AttackWithPlayer(attackDir, baseAtk);
+                phantom.AttackWithPlayer(targetPos, baseAtk);
             }
         }
 

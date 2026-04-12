@@ -58,7 +58,7 @@ namespace Game.Editor
             "Assets/_Project/Prefabs/Player/Rapier_Player.prefab";
 
         private const string ASSASSIN_PREFAB_PATH =
-            "Assets/_Project/Prefabs/Player/AssassinPresenter.prefab";
+            "Assets/_Project/Prefabs/Player/Assassin_Player.prefab";
 
         private const string SPECTER_PREFAB_PATH     = "Assets/_Project/Prefabs/Boss/Specter_Boss.prefab";
         private const string BERSERKER_PREFAB_PATH   = "Assets/_Project/Prefabs/Boss/Berserker_Boss.prefab";
