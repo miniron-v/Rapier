@@ -94,15 +94,9 @@ namespace Game.DevTools
 
             root.AddComponent<GraphicRaycaster>();
 
-            // SafeAreaRoot — Canvas 바로 아래 자식에 SafeAreaFitter 적용.
-            // (Canvas 자체의 RectTransform 은 screen-driven 이라 anchor 조정이 무효)
-            var safeRoot = CreateRectChild(root, "SafeAreaRoot");
-            SetAnchors(safeRoot, Vector2.zero, Vector2.one);
-            safeRoot.offsetMin = safeRoot.offsetMax = Vector2.zero;
-            safeRoot.gameObject.AddComponent<SafeAreaFitter>();
-
             // 2. 탭 패널 영역 (탭 바 위쪽, 전체 화면에서 하단 바 높이 제외)
-            var contentArea = CreateRectChild(safeRoot.gameObject, "ContentArea");
+            // 배경 패널은 full-screen 유지 — SafeAreaFitter 는 각 패널 내부 콘텐츠에만 적용
+            var contentArea = CreateRectChild(root, "ContentArea");
             SetAnchors(contentArea, Vector2.zero, Vector2.one);
             contentArea.offsetMin = new Vector2(0, 180); // 하단 탭 바 높이
             contentArea.offsetMax = Vector2.zero;
@@ -121,8 +115,8 @@ namespace Game.DevTools
             var missionView  = SetupMissionPanel(missionPanel);
             var settingsView = SetupSettingsPanel(settingsPanel);
 
-            // 5. 하단 탭 바 (SafeAreaRoot 하위로 — Safe Area 적용)
-            var tabBar = CreateTabBar(safeRoot.gameObject);
+            // 5. 하단 탭 바 (root 하위 — 배경과 동일 레벨, safe area 미적용)
+            var tabBar = CreateTabBar(root);
 
             // 6. LobbyTabView 컴포넌트 연결
             var tabViewGo    = new GameObject("LobbyTabView");
@@ -193,10 +187,18 @@ namespace Game.DevTools
         {
             var view = panel.AddComponent<CharacterTabView>();
 
+            // SafeAreaInset — 배경(panel)은 full-screen, 위젯은 Safe Area 인셋 안에만 배치
+            var safeInset = new GameObject("SafeAreaInset", typeof(RectTransform));
+            safeInset.transform.SetParent(panel.transform, false);
+            var safeInsetRect = safeInset.GetComponent<RectTransform>();
+            SetAnchors(safeInsetRect, Vector2.zero, Vector2.one);
+            safeInsetRect.offsetMin = safeInsetRect.offsetMax = Vector2.zero;
+            safeInset.AddComponent<SafeAreaFitter>();
+
             // ── 캐릭터 정보 패널 (Phase 23c) ───────────────────────────────────
             // 패널 레이아웃 (2:2:1): 상단 40% = 캐릭터 정보, 중간 40% = 인벤토리+탭바, 하단 20% = B3
             var infoPanel = new GameObject("CharacterInfoPanel", typeof(RectTransform));
-            infoPanel.transform.SetParent(panel.transform, false);
+            infoPanel.transform.SetParent(safeInset.transform, false);
             var infoBg   = infoPanel.AddComponent<Image>();
             infoBg.color = new Color(0.10f, 0.10f, 0.13f, 1.0f);
             var infoRect = infoPanel.GetComponent<RectTransform>();
@@ -287,7 +289,7 @@ namespace Game.DevTools
             );
 
             // ── 캐릭터 변경 모달 ───────────────────────────────────────────────
-            var modal = BuildCharacterSelectModal(panel);
+            var modal = BuildCharacterSelectModal(safeInset);
 
             // CharacterSelectModalPresenter
             var modalPresenter = panel.AddComponent<CharacterSelectModalPresenter>();
@@ -303,7 +305,7 @@ namespace Game.DevTools
             modalPresenter.InitReferences(modal, rapierData, assassinData);
 
             // B2: EquipmentPanelRoot — 장비 슬롯 8개 + 인벤토리 ScrollRect 실장
-            var equipRoot = CreateRectChild(panel, "EquipmentPanelRoot");
+            var equipRoot = CreateRectChild(safeInset, "EquipmentPanelRoot");
             SetAnchors(equipRoot, new Vector2(0f, 0.20f), new Vector2(1f, 0.60f));
             equipRoot.offsetMin = equipRoot.offsetMax = Vector2.zero;
 
@@ -514,7 +516,7 @@ namespace Game.DevTools
             equipRoot.gameObject.SetActive(false);
 
             // B3 hook: LevelUpPanelRoot (2:2:1 하단 20%)
-            var levelRoot = CreateRectChild(panel, "LevelUpPanelRoot");
+            var levelRoot = CreateRectChild(safeInset, "LevelUpPanelRoot");
             SetAnchors(levelRoot, new Vector2(0f, 0f), new Vector2(1f, 0.20f));
             levelRoot.offsetMin = levelRoot.offsetMax = Vector2.zero;
             CreateLabel(levelRoot.gameObject, "[B3] 레벨업 패널 영역", 32, TextAlignmentOptions.Center,
