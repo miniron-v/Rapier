@@ -81,42 +81,145 @@ EquipmentManager ─OnEquipped/Unequipped→ EquipmentMetaStatProvider
 
 ## 5. 보스 드롭 시스템
 
-보스 처치 시 DropTable SO 기반 확률 장비 드롭.
+보스 처치 시 사망 연출 → 드롭 흩뿌림 → 플레이어 접촉 획득. 스테이지 클리어 후 획득 아이템 목록 표시.
 
-### 데이터 구조
+### 신규 컴포넌트
 
-| 객체 | 책임 |
-|------|------|
-| `DropTableData` (SO) | 보스별 드롭 테이블 — `List<DropEntry>` |
-| `DropEntry` (`[Serializable]`) | `EquipmentGrade grade`, `float dropRate` (0~1), `EquipmentItemData[] pool` |
-| `LootManager` (순수 C#) | 드롭 판정 + `EquipmentInstance` 생성 + `EquipmentManager` 연동 |
-| `DropNotificationView` (MonoBehaviour) | 드롭 아이템 표시 UI |
+| 컴포넌트 | 종류 | 책임 |
+|------|------|------|
+| `DropTableData` | SO | 보스별 드롭 테이블 (`List<DropEntry>`) |
+| `DropEntry` | `[Serializable]` | `EquipmentGrade grade`, `float dropRate`(0~1), `EquipmentItemData[] pool` |
+| `LootManager` | 순수 C# | 드롭 판정 + `EquipmentInstance` 생성 (`EquipmentManager` 미참조 — 결과 반환만) |
+| `BossDeathSequencer` | MonoBehaviour (씬 배치) | 사망 연출 오케스트레이터 (슬로우모션·카메라·드롭 스폰) |
+| `DroppedItemView` | MonoBehaviour (프리팹) | 월드 아이템 — 비주얼·충돌·획득·자동수거 |
+| `RunDropListView` | MonoBehaviour (씬 배치) | 스테이지 클리어 시 획득 아이템 스크롤 목록 |
+
+### 기존 코드 변경 최소화 원칙 (SOLID)
+
+- `EnemyPresenterBase`, `CameraFollow`, `StageClearView`, `LootManager`, `RunStatContainer` — **무수정**.
+- `BossStatData`: 필드 1개(`dropTable`) 추가.
+- `ProgressionManager`: 3곳 추가 (SerializeField 2개, 메서드 2곳 최소 수정).
+- `IntermissionManager`: HandleStageCleared 1줄 추가.
+
+### 사망 연출 시퀀스
+
+```
+보스 HP = 0
+  → EnemyPresenterBase.OnDeath 이벤트
+  → ProgressionManager.HandleBossDeath()
+    → _runDrops 초기화 (이번 보스 방 한정)
+    → BossDeathSequencer.Execute(bossPos, bossTransform, statData, onComplete)
+
+BossDeathSequencer.Execute():
+  ① 슬로우모션 (총 2.0초 — 저스트 회피 동일 커브)
+     Phase 1 (Hold):   holdCurve   → 1.4초, 최저 0.1배속
+     Phase 2 (Exit):   exitCurve   → 0.6초, 1.0배속 복귀
+  ② 카메라 (unscaledDeltaTime 기반, 슬로우모션 중에도 정상 동작)
+     진입: CameraFollow.SetTarget(bossTransform) + TriggerZoomIn()
+     Exit 시점: TriggerZoomReturn(0.6f) + SetTarget(playerTransform)
+  ③ 보스 SpriteRenderer 페이드아웃 0.3초 (Exit 완료 후)
+  ④ LootManager.RollDrop(statData.dropTable) → List<EquipmentInstance>
+  ⑤ DroppedItemView 원형 흩뿌림
+     foreach drop:
+       angle  = Random.Range(0f, 360f)          // 랜덤 방향
+       dist   = Random.Range(minDropDist, maxDropDist)  // 랜덤 거리
+       target = bossPos + Rotate(Vector2.up, angle) * dist
+       Instantiate(DroppedItemView prefab).Init(instance, bossPos, target)
+         // scale 0→1, bossPos → target 이동
+  ⑥ onComplete() 호출
+
+ProgressionManager.onComplete():
+  → SpawnPortal(bossPos + Vector2.up * portalOffset)
+     portalOffset > maxDropDist (Inspector 설정, 겹침 방지)
+```
 
 ### 드롭 판정 로직
 
 ```
-foreach (DropEntry entry in dropTable.entries)  // 등급별 독립 판정
+foreach (DropEntry entry in dropTable.entries)  // 등급별 독립 판정 (높은 등급 먼저)
     if (Random.value <= entry.dropRate)
-        pool 에서 랜덤 1개 선택 → EquipmentInstance 생성 → 인벤토리 추가
+        pool에서 랜덤 1개 선택 → new EquipmentInstance(data)
+최대 2개 제한 (상위 등급 우선, 초과분 버림)
 ```
 
-- 한 보스당 **최대 2개** 제한 (상위 등급 우선, 초과분 버림).
-- 기본 확률 (SO 에서 조정 가능): 노말 80%, 레어 30%, 에픽 10%, 유니크 2%.
-- 스테이지 스케일링은 드롭 확률에 영향 없음 — 등급 분포는 DropTable SO 에서 직접 조정.
+기본 확률 (SO에서 조정): 노말 80% / 레어 30% / 에픽 10% / 유니크 2%.
+스테이지 스케일링은 드롭 확률에 영향 없음.
 
-### 연동 흐름
+### DroppedItemView 비주얼
+
+- **Inner**: SpriteRenderer (Circle 스프라이트, `EquipmentGradeHelper.GetGradeColor(grade)`)
+- **Outer shimmer**: SpriteRenderer (같은 Circle, 동일 색 + alpha 펄스 코루틴 — "일렁이는 기운")
+  - scale 1.2~1.5 고정, alpha 0.3↔0.7 sin 루프 (0.8초 주기)
+- **충돌**: CircleCollider2D (isTrigger) — 플레이어 레이어 감지 → Collect()
+- 아이콘: 현재 Circle만 사용. SO에 Sprite가 추가되면 추후 Inner에 덮어씀.
 
 ```
-보스 사망 (EnemyPresenterBase.OnDeath)
-  → ProgressionManager.HandleBossDefeated()
-    → LootManager.RollDrop(bossStatData.dropTable)
-    → 드롭 있으면: DropNotificationView 표시 (아이템 이름/등급/아이콘)
-    → 표시 완료 or 드롭 없으면: 포탈 스폰
+DroppedItemView.Init(EquipmentInstance item, Vector2 from, Vector2 to):
+  spawnAnim: 0.4초, from→to 이동 + scale 0→1
+
+DroppedItemView.Collect():
+  OnCollected?.Invoke(item)
+  Destroy(gameObject)
+```
+
+### 아이템 획득 / 자동 수거
+
+**플레이어 접촉**: `OnTriggerEnter2D` → `Collect()`
+
+**포탈 진입 시 자동 수거** (`ProgressionManager.HandlePortalEntered()` 에 추가):
+```
+FindObjectsOfType<DroppedItemView>() → foreach → item.Collect()
+```
+
+수집 콜백(`OnCollected`):
+```
+ProgressionManager.HandleItemCollected(EquipmentInstance):
+  → _runDrops.Add(instance)
+  → EquipmentManager.AddEquipmentToInventory(instance)
+  → SaveManager.Save()
 ```
 
 ### BossStatData 확장
 
-`BossStatData` SO 에 `DropTableData dropTable` 필드 추가. 각 보스 SO 에셋에 DropTable SO 연결. 7종 보스 × 1 DropTable SO.
+```csharp
+[Header("드롭")]
+public DropTableData dropTable; // null = 드롭 없음
+```
+
+7종 보스 × 1 DropTable SO. DropTable이 null인 보스는 드롭 없이 포탈만 스폰.
+
+### 스테이지 클리어 UI (RunDropListView)
+
+**표시 시점**: 마지막 보스 포탈 진입 → StageManager가 클리어 판정 → IntermissionManager.HandleStageCleared()
+
+```
+IntermissionManager.HandleStageCleared():
+  StageClearView.Show()                           // 기존 유지
+  var drops = ServiceLocator.Get<ProgressionManager>()?.RunDrops;
+  _runDropListView?.Show(drops)                   // 신규
+```
+
+**RunDropListView**: StageClearView와 동일 캔버스에 배치. 독립 패널.
+
+- Scroll Rect (vertical)
+- 각 슬롯: Circle 아이콘(등급 색상) + 아이템명 + 등급 텍스트
+- `Show(IReadOnlyList<EquipmentInstance>)` / `Hide()`
+- 드롭 없으면 "획득한 장비 없음" 안내 텍스트
+
+**ProgressionManager 추가 사항**:
+- `public IReadOnlyList<EquipmentInstance> RunDrops => _runDrops;`
+- Awake에서 `ServiceLocator.Register(this)` (IntermissionManager가 ServiceLocator로 조회)
+- `_runDrops.Clear()` 위치: 스테이지 진입 시 (StageManager 이벤트 구독 기존 코드 내)
+
+### 타이밍 요약
+
+| 단계 | 시간 | 비고 |
+|------|------|------|
+| SlowMotion Hold | 1.4초 | timeScale 0.1까지 |
+| SlowMotion Exit | 0.6초 | timeScale 복귀 |
+| 보스 페이드아웃 | 0.3초 | Exit 완료 직후 |
+| 드롭 스폰 애니 | 0.4초 | 페이드와 겹침 가능 |
+| **연출 합계** | **~2.7초** | 포탈은 스폰 애니 완료 후 |
 
 ### 디버그 메뉴 (기존 유지)
 
