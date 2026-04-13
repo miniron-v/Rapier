@@ -5,49 +5,65 @@ using UnityEngine;
 namespace Game.UI.Lobby.Equipment
 {
     /// <summary>
-    /// 장비 패널 Presenter. EquipmentManager(Model)와 IEquipmentPanelView(View) 사이를 중재한다.
-    /// 장착/해제/룬 관리 로직을 담당한다.
+    /// 장비 패널 Presenter. EquipmentManager(Model) 와 View 계층 사이를 중재한다.
+    ///
+    /// Phase 24 변경:
+    ///   - 인벤토리 아이템 클릭 → "즉시 장착" 제거, ItemDetailPopupPresenter 위임
+    ///   - SlotType 기반 인벤토리 탭 필터링 (무기/방어구/장신구) 추가
+    ///   - 룬 소켓 클릭 → RuneInventoryPopupPresenter 위임
     /// </summary>
     public class EquipmentPanelPresenter : MonoBehaviour
     {
         // ── Serialized Fields ────────────────────────────────────────────────
 
-        [SerializeField] private EquipmentPanelView _view;
+        [SerializeField] private EquipmentPanelView         _view;
+        [SerializeField] private ItemDetailPopupPresenter   _itemDetailPresenter;
+        [SerializeField] private RuneInventoryPopupPresenter _runeInventoryPresenter;
 
         // ── Private Fields ───────────────────────────────────────────────────
 
-        private bool _isInitialized;
-        private EquipmentManager _manager;
-        private string _characterId;
-
-        // 현재 선택된 슬롯 (인벤토리에서 아이템 선택 시 이 슬롯에 장착)
-        private EquipmentSlotType? _selectedSlot;
+        private bool               _isInitialized;
+        private EquipmentManager   _manager;
+        private string             _characterId;
 
         // ── Properties ──────────────────────────────────────────────────────
 
         /// <summary>
-        /// Init 이 한 번 이상 호출되었는지 여부. 단방향 플래그 (true → false 전환 없음).
+        /// Init 이 한 번 이상 호출되었는지 여부.
         /// CharacterTabPresenter 가 중복 초기화를 방지하기 위해 사용한다.
         /// </summary>
         public bool IsInitialized => _isInitialized;
 
         // ── 초기화 ───────────────────────────────────────────────────────────
 
+        /// <summary>런타임 생성 시 View 참조를 주입한다 (LobbyHudSetup 에서 호출).</summary>
+        public void InitReferences(
+            EquipmentPanelView         view,
+            ItemDetailPopupPresenter   itemDetailPresenter,
+            RuneInventoryPopupPresenter runeInventoryPresenter)
+        {
+            _view                    = view;
+            _itemDetailPresenter     = itemDetailPresenter;
+            _runeInventoryPresenter  = runeInventoryPresenter;
+        }
+
         /// <summary>
-        /// 런타임 생성 시 View 참조를 외부에서 주입한다 (LobbyHudSetup 에서 호출).
+        /// 하위 호환: view 단독 주입 경로 (기존 LobbyHudSetup 호환).
         /// </summary>
-        /// <param name="view">연결할 EquipmentPanelView.</param>
         public void InitReferences(EquipmentPanelView view)
         {
             _view = view;
         }
 
-        /// <summary>수동 DI. B1 또는 12-E에서 호출한다.</summary>
+        /// <summary>수동 DI. CharacterTabPresenter 에서 호출한다.</summary>
         public void Init(EquipmentManager manager, string characterId)
         {
-            _manager        = manager;
-            _characterId    = characterId;
-            _isInitialized  = true;
+            _manager       = manager;
+            _characterId   = characterId;
+            _isInitialized = true;
+
+            _itemDetailPresenter?.Init(manager, characterId);
+            _runeInventoryPresenter?.Init(manager, characterId);
         }
 
         // ── Unity Lifecycle ──────────────────────────────────────────────────
@@ -87,13 +103,13 @@ namespace Game.UI.Lobby.Equipment
             if (_manager == null) return;
 
             // 8슬롯 갱신
-            var set = _manager.GetCharacterSet(_characterId);
+            var set     = _manager.GetCharacterSet(_characterId);
             var equipped = new Dictionary<EquipmentSlotType, EquipmentInstance>();
             foreach (var pair in set.GetAllEquipped())
                 equipped[pair.Key] = pair.Value;
             _view.RefreshSlots(equipped);
 
-            // 인벤토리 갱신
+            // 인벤토리 갱신 — 현재 선택된 탭 기반으로 필터링
             _view.RefreshInventory(_manager.EquipmentInventory);
         }
 
@@ -103,6 +119,7 @@ namespace Game.UI.Lobby.Equipment
             _view.OnSlotClicked          += HandleSlotClicked;
             _view.OnInventoryItemClicked += HandleInventoryItemClicked;
             _view.OnRuneSocketClicked    += HandleRuneSocketClicked;
+            _view.OnInventoryTabChanged  += HandleInventoryTabChanged;
         }
 
         private void UnsubscribeViewEvents()
@@ -111,104 +128,88 @@ namespace Game.UI.Lobby.Equipment
             _view.OnSlotClicked          -= HandleSlotClicked;
             _view.OnInventoryItemClicked -= HandleInventoryItemClicked;
             _view.OnRuneSocketClicked    -= HandleRuneSocketClicked;
+            _view.OnInventoryTabChanged  -= HandleInventoryTabChanged;
         }
 
         private void SubscribeManagerEvents()
         {
             if (_manager == null) return;
-            _manager.OnEquipped       += HandleManagerEquipped;
-            _manager.OnUnequipped     += HandleManagerUnequipped;
-            _manager.OnRuneEquipped   += HandleManagerRuneEquipped;
-            _manager.OnRuneUnequipped += HandleManagerRuneUnequipped;
+            _manager.OnEquipped         += HandleManagerEquipped;
+            _manager.OnUnequipped       += HandleManagerUnequipped;
+            _manager.OnRuneEquipped     += HandleManagerRuneEquipped;
+            _manager.OnRuneUnequipped   += HandleManagerRuneUnequipped;
             _manager.OnInventoryChanged += HandleInventoryChanged;
         }
 
         private void UnsubscribeManagerEvents()
         {
             if (_manager == null) return;
-            _manager.OnEquipped       -= HandleManagerEquipped;
-            _manager.OnUnequipped     -= HandleManagerUnequipped;
-            _manager.OnRuneEquipped   -= HandleManagerRuneEquipped;
-            _manager.OnRuneUnequipped -= HandleManagerRuneUnequipped;
+            _manager.OnEquipped         -= HandleManagerEquipped;
+            _manager.OnUnequipped       -= HandleManagerUnequipped;
+            _manager.OnRuneEquipped     -= HandleManagerRuneEquipped;
+            _manager.OnRuneUnequipped   -= HandleManagerRuneUnequipped;
             _manager.OnInventoryChanged -= HandleInventoryChanged;
         }
 
         private void HandleInventoryChanged() => RefreshAll();
 
+        private void HandleInventoryTabChanged(EquipmentPanelView.InventoryTab tab)
+        {
+            // 탭 전환 → 인벤토리 목록 재필터링
+            if (_manager == null) return;
+            _view.RefreshInventory(_manager.EquipmentInventory);
+        }
+
         // ── Event Handlers (View → Presenter) ────────────────────────────────
 
         private void HandleSlotClicked(EquipmentSlotType slot)
         {
-            // 슬롯 선택 토글: 이미 선택된 슬롯 재클릭 시 해제
-            if (_selectedSlot == slot)
-            {
-                _selectedSlot = null;
-                _view.SetSlotSelected(slot, false);
-            }
-            else
-            {
-                if (_selectedSlot.HasValue)
-                    _view.SetSlotSelected(_selectedSlot.Value, false);
-                _selectedSlot = slot;
-                _view.SetSlotSelected(slot, true);
-            }
+            if (_manager == null) return;
+            var instance = _manager.GetEquipped(_characterId, slot);
+            if (instance == null) return;
+
+            // 슬롯 클릭 → 상세 팝업 표시
+            _itemDetailPresenter?.Show(instance, slot);
         }
 
         private void HandleInventoryItemClicked(EquipmentInstance instance)
         {
             if (_manager == null || instance == null) return;
 
-            // 슬롯 미선택 상태이면 아이템의 슬롯 타입에 맞는 슬롯에 자동 장착
-            var targetSlot = _selectedSlot ?? instance.Data.SlotType;
-
-            // 슬롯 타입 불일치 시 무시
-            if (instance.Data.SlotType != targetSlot)
-            {
-                Debug.Log($"[EquipmentPanelPresenter] 슬롯 타입 불일치: {instance.Data.SlotType} → {targetSlot}");
-                return;
-            }
-
-            _manager.Equip(_characterId, instance);
-
-            // 선택 해제
-            if (_selectedSlot.HasValue)
-            {
-                _view.SetSlotSelected(_selectedSlot.Value, false);
-                _selectedSlot = null;
-            }
+            // Phase 24: 즉시 장착 제거 → 상세 팝업 표시
+            // 어느 슬롯에 장착될지 결정 (아이템 슬롯 타입 기준)
+            _itemDetailPresenter?.Show(instance, instance.Data.SlotType);
         }
 
         private void HandleRuneSocketClicked(EquipmentSlotType slot, int socketIndex)
         {
-            // 현재는 해제 동작만 수행 (룬 선택 UI는 12-E에서 연결)
-            _manager?.UnequipRune(_characterId, slot, socketIndex);
+            if (_manager == null) return;
+            var instance = _manager.GetEquipped(_characterId, slot);
+            // 장비가 없어도 룬 인벤토리 팝업 표시 가능 (빈 소켓 context)
+            _runeInventoryPresenter?.Show(instance, slot, socketIndex);
         }
 
         // ── Event Handlers (Manager → Presenter) ─────────────────────────────
 
-        private void HandleManagerEquipped(string characterId, EquipmentSlotType slot,
-                                           EquipmentInstance instance)
+        private void HandleManagerEquipped(string characterId, EquipmentSlotType slot, EquipmentInstance instance)
         {
             if (characterId != _characterId) return;
             RefreshAll();
         }
 
-        private void HandleManagerUnequipped(string characterId, EquipmentSlotType slot,
-                                             EquipmentInstance instance)
+        private void HandleManagerUnequipped(string characterId, EquipmentSlotType slot, EquipmentInstance instance)
         {
             if (characterId != _characterId) return;
             RefreshAll();
         }
 
-        private void HandleManagerRuneEquipped(string characterId, EquipmentSlotType slot,
-                                               int socketIndex, RuneItemData rune)
+        private void HandleManagerRuneEquipped(string characterId, EquipmentSlotType slot, int socketIndex, RuneItemData rune)
         {
             if (characterId != _characterId) return;
             RefreshAll();
         }
 
-        private void HandleManagerRuneUnequipped(string characterId, EquipmentSlotType slot,
-                                                  int socketIndex)
+        private void HandleManagerRuneUnequipped(string characterId, EquipmentSlotType slot, int socketIndex)
         {
             if (characterId != _characterId) return;
             RefreshAll();

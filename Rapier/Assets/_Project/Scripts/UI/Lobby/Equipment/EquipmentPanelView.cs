@@ -1,13 +1,20 @@
 using System;
 using System.Collections.Generic;
 using Game.Data.Equipment;
+using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Game.UI.Lobby.Equipment
 {
     /// <summary>
-    /// 장비 패널 전체 View. 8슬롯 그리드 + 인벤토리 탭을 표시한다.
+    /// 장비 패널 전체 View. 8슬롯 그리드 + 인벤토리 3탭(무기/방어구/장신구)을 표시한다.
     /// IEquipmentPanelView 구현. 로직 없음.
+    ///
+    /// Phase 24 변경:
+    ///   - 인벤토리 탭 3개 (무기/방어구/장신구) 추가
+    ///   - 탭 전환 이벤트 OnInventoryTabChanged 추가
+    ///   - RefreshInventory 는 현재 탭에 맞게 필터링된 목록만 표시
     /// </summary>
     public class EquipmentPanelView : MonoBehaviour, IEquipmentPanelView
     {
@@ -16,13 +23,32 @@ namespace Game.UI.Lobby.Equipment
         [Header("8 슬롯 뷰 (순서: Weapon/Hat/Top/Bottom/Shoes/Gloves/Necklace/Ring)")]
         [SerializeField] private List<EquipmentSlotView> _slotViews = new();
 
+        [Header("인벤토리 탭 버튼")]
+        [SerializeField] private Button          _weaponTabButton;
+        [SerializeField] private TextMeshProUGUI _weaponTabText;
+        [SerializeField] private Button          _armorTabButton;
+        [SerializeField] private TextMeshProUGUI _armorTabText;
+        [SerializeField] private Button          _accessoryTabButton;
+        [SerializeField] private TextMeshProUGUI _accessoryTabText;
+
         [Header("인벤토리")]
-        [SerializeField] private Transform _inventoryContent;
+        [SerializeField] private Transform        _inventoryContent;
         [SerializeField] private InventoryItemView _inventoryItemPrefab;
+
+        // ── 상수 ─────────────────────────────────────────────────────────────
+
+        private static readonly Color COLOR_TAB_ACTIVE   = new Color(0.9f, 0.8f, 0.2f, 1f);
+        private static readonly Color COLOR_TAB_INACTIVE = new Color(0.5f, 0.5f, 0.5f, 1f);
 
         // ── Private Fields ───────────────────────────────────────────────────
 
         private readonly List<InventoryItemView> _inventoryItems = new();
+        private InventoryTab _currentTab = InventoryTab.Weapon;
+
+        // ── 인벤토리 탭 정의 ────────────────────────────────────────────────
+
+        /// <summary>인벤토리 탭 분류.</summary>
+        public enum InventoryTab { Weapon, Armor, Accessory }
 
         // ── IEquipmentPanelView 이벤트 ──────────────────────────────────────
 
@@ -35,28 +61,46 @@ namespace Game.UI.Lobby.Equipment
         /// <inheritdoc/>
         public event Action<EquipmentSlotType, int> OnRuneSocketClicked;
 
+        /// <summary>인벤토리 탭 전환 이벤트.</summary>
+        public event Action<InventoryTab> OnInventoryTabChanged;
+
         // ── Unity Lifecycle ──────────────────────────────────────────────────
 
         private void Awake()
         {
             InitSlotViews();
+            InitTabButtons();
         }
 
         // ── Public 초기화 ────────────────────────────────────────────────────
 
         /// <summary>
         /// 런타임 생성 시 SerializeField 참조를 외부에서 주입한다 (LobbyHudSetup 에서 호출).
-        /// Awake 보다 먼저 호출되어야 하므로 AddComponent 직후 즉시 호출할 것.
         /// </summary>
-        /// <param name="slots">8개 슬롯 뷰 목록 (순서: Weapon/Hat/Top/Bottom/Shoes/Gloves/Necklace/Ring).</param>
-        /// <param name="inventoryContent">인벤토리 아이템의 부모 Transform.</param>
-        /// <param name="inventoryItemPrefab">인벤토리 아이템 복제 템플릿.</param>
         public void InitReferences(List<EquipmentSlotView> slots, Transform inventoryContent,
                                    InventoryItemView inventoryItemPrefab)
         {
             _slotViews           = slots ?? new List<EquipmentSlotView>();
             _inventoryContent    = inventoryContent;
             _inventoryItemPrefab = inventoryItemPrefab;
+        }
+
+        /// <summary>탭 버튼 참조를 주입한다 (LobbyHudSetup 에서 호출).</summary>
+        public void InitTabReferences(
+            Button          weaponTabButton,
+            TextMeshProUGUI weaponTabText,
+            Button          armorTabButton,
+            TextMeshProUGUI armorTabText,
+            Button          accessoryTabButton,
+            TextMeshProUGUI accessoryTabText)
+        {
+            _weaponTabButton    = weaponTabButton;
+            _weaponTabText      = weaponTabText;
+            _armorTabButton     = armorTabButton;
+            _armorTabText       = armorTabText;
+            _accessoryTabButton = accessoryTabButton;
+            _accessoryTabText   = accessoryTabText;
+            InitTabButtons();
         }
 
         // ── IEquipmentPanelView 메서드 ──────────────────────────────────────
@@ -75,11 +119,14 @@ namespace Game.UI.Lobby.Equipment
         /// <inheritdoc/>
         public void RefreshInventory(IReadOnlyList<EquipmentInstance> inventory)
         {
+            // 현재 탭에 맞게 필터링
+            var filtered = FilterByTab(inventory, _currentTab);
+
             // 기존 뷰 비활성화 후 재사용
             foreach (var item in _inventoryItems)
                 item.gameObject.SetActive(false);
 
-            for (int i = 0; i < inventory.Count; i++)
+            for (int i = 0; i < filtered.Count; i++)
             {
                 InventoryItemView view;
                 if (i < _inventoryItems.Count)
@@ -93,7 +140,7 @@ namespace Game.UI.Lobby.Equipment
                     _inventoryItems.Add(view);
                 }
                 view.gameObject.SetActive(true);
-                view.Refresh(inventory[i]);
+                view.Refresh(filtered[i]);
             }
         }
 
@@ -110,7 +157,71 @@ namespace Game.UI.Lobby.Equipment
             gameObject.SetActive(visible);
         }
 
-        // ── Private Methods ──────────────────────────────────────────────────
+        // ── Private 탭 메서드 ────────────────────────────────────────────────
+
+        private void InitTabButtons()
+        {
+            if (_weaponTabButton != null)
+            {
+                _weaponTabButton.onClick.RemoveAllListeners();
+                _weaponTabButton.onClick.AddListener(() => HandleTabClicked(InventoryTab.Weapon));
+            }
+            if (_armorTabButton != null)
+            {
+                _armorTabButton.onClick.RemoveAllListeners();
+                _armorTabButton.onClick.AddListener(() => HandleTabClicked(InventoryTab.Armor));
+            }
+            if (_accessoryTabButton != null)
+            {
+                _accessoryTabButton.onClick.RemoveAllListeners();
+                _accessoryTabButton.onClick.AddListener(() => HandleTabClicked(InventoryTab.Accessory));
+            }
+            RefreshTabHighlight();
+        }
+
+        private void HandleTabClicked(InventoryTab tab)
+        {
+            _currentTab = tab;
+            RefreshTabHighlight();
+            OnInventoryTabChanged?.Invoke(tab);
+        }
+
+        private void RefreshTabHighlight()
+        {
+            if (_weaponTabText    != null) _weaponTabText.color    = _currentTab == InventoryTab.Weapon    ? COLOR_TAB_ACTIVE : COLOR_TAB_INACTIVE;
+            if (_armorTabText     != null) _armorTabText.color     = _currentTab == InventoryTab.Armor     ? COLOR_TAB_ACTIVE : COLOR_TAB_INACTIVE;
+            if (_accessoryTabText != null) _accessoryTabText.color = _currentTab == InventoryTab.Accessory ? COLOR_TAB_ACTIVE : COLOR_TAB_INACTIVE;
+        }
+
+        private static List<EquipmentInstance> FilterByTab(IReadOnlyList<EquipmentInstance> inventory, InventoryTab tab)
+        {
+            var result = new List<EquipmentInstance>();
+            foreach (var inst in inventory)
+            {
+                if (inst == null || inst.Data == null) continue;
+                if (BelongsToTab(inst.Data.SlotType, tab))
+                    result.Add(inst);
+            }
+            return result;
+        }
+
+        private static bool BelongsToTab(EquipmentSlotType slot, InventoryTab tab)
+        {
+            return tab switch
+            {
+                InventoryTab.Weapon    => slot == EquipmentSlotType.Weapon,
+                InventoryTab.Armor     => slot == EquipmentSlotType.Hat
+                                       || slot == EquipmentSlotType.Top
+                                       || slot == EquipmentSlotType.Bottom
+                                       || slot == EquipmentSlotType.Shoes
+                                       || slot == EquipmentSlotType.Gloves,
+                InventoryTab.Accessory => slot == EquipmentSlotType.Necklace
+                                       || slot == EquipmentSlotType.Ring,
+                _                      => false
+            };
+        }
+
+        // ── Private Slot 메서드 ──────────────────────────────────────────────
 
         private void InitSlotViews()
         {
@@ -132,8 +243,6 @@ namespace Game.UI.Lobby.Equipment
             }
             return null;
         }
-
-
 
         // ── Event Handlers ───────────────────────────────────────────────────
 

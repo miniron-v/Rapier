@@ -26,7 +26,7 @@ namespace Game.UI.Lobby.Equipment
         /// <summary>8슬롯을 전달된 장착 상태로 갱신한다.</summary>
         void RefreshSlots(IReadOnlyDictionary<EquipmentSlotType, EquipmentInstance> equipped);
 
-        /// <summary>인벤토리 목록을 갱신한다.</summary>
+        /// <summary>인벤토리 목록을 갱신한다. View 내부에서 현재 탭에 맞게 필터링한다.</summary>
         void RefreshInventory(IReadOnlyList<EquipmentInstance> inventory);
 
         /// <summary>특정 슬롯 뷰의 선택 하이라이트를 켜거나 끈다.</summary>

@@ -85,11 +85,18 @@ namespace Game.UI.Lobby.Equipment
                     out var gradeColor))
                 _gradeBackground.color = gradeColor;
 
-            // 메인 스탯 텍스트 간단 표시
-            var ms = instance.Data.MainStat;
+            // 메인 스탯 텍스트 간단 표시 (Phase 22-B: 장신구는 RolledMainStat 우선)
+            bool isAccessory = instance.Data.SlotType == Game.Data.Equipment.EquipmentSlotType.Necklace
+                            || instance.Data.SlotType == Game.Data.Equipment.EquipmentSlotType.Ring;
+            Game.Data.Equipment.StatEntry ms;
+            if (isAccessory && instance.RolledMainStat.HasValue)
+                ms = instance.RolledMainStat.Value;
+            else
+                ms = instance.Data.MainStat;
+
             _mainStatText.text = ms.flatValue > 0
-                ? $"{ms.statType} +{ms.flatValue}"
-                : $"{ms.statType} +{ms.percentValue * 100f:F0}%";
+                ? $"{ms.statType} +{ms.flatValue:F0}"
+                : $"{ms.statType} +{ms.percentValue:F1}%";
         }
 
         // ── Event Handlers ───────────────────────────────────────────────────
