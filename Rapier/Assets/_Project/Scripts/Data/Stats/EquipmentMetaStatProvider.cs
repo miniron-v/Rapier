@@ -44,10 +44,16 @@ namespace Game.Data.MetaStats
                 if (instance?.Data == null) continue;
 
                 // 메인 스탯 누산
-                container.Apply(instance.Data.MainStat);
+                // Phase 22-B: 장신구(Necklace/Ring)는 RolledMainStat 우선, null 이면 SO._mainStat fallback
+                bool isAccessory = instance.Data.SlotType == EquipmentSlotType.Necklace
+                                || instance.Data.SlotType == EquipmentSlotType.Ring;
+                var mainStat = isAccessory
+                    ? (instance.RolledMainStat ?? instance.Data.MainStat)
+                    : instance.Data.MainStat;
+                container.Apply(mainStat);
 
-                // 서브 스탯 누산
-                var subStats = instance.Data.SubStats;
+                // 서브 스탯 누산 (Phase 22-B: 인스턴스 롤 결과 사용)
+                var subStats = instance.SubStats;
                 if (subStats != null)
                 {
                     foreach (var sub in subStats)

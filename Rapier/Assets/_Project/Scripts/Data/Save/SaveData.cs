@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Game.Data.Equipment;
 
 namespace Game.Data.Save
 {
@@ -88,6 +89,16 @@ namespace Game.Data.Save
         public int    grade        = 0;    // EquipmentGrade enum int
         /// <summary>룬 소켓에 장착된 룬 에셋 이름 목록</summary>
         public List<string> runeAssetIds = new();
+
+        // Phase 22-B: 서브스탯 롤 결과
+        /// <summary>드롭 시 롤된 서브스탯 목록. JsonUtility 직렬화 가능.</summary>
+        public List<StatEntry> subStats = new();
+
+        // Phase 22-B: 장신구 메인스탯 롤 결과 (JsonUtility 는 nullable 미지원 → bool+값 쌍)
+        /// <summary>true 면 장신구 메인스탯이 롤됨 (rolledMain 유효). false 면 SO 고정값 사용.</summary>
+        public bool hasRolledMain = false;
+        /// <summary>장신구 드롭 시 롤된 메인스탯. hasRolledMain 이 true 일 때만 유효.</summary>
+        public StatEntry rolledMain;
     }
 
     [Serializable]

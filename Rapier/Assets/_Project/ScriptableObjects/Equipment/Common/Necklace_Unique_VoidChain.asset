@@ -18,16 +18,8 @@ MonoBehaviour:
   _slotType: 6
   _grade: 3
   _mainStat:
-    statType: 9
+    statType: 0
     flatValue: 0
-    percentValue: 0.3
-  _subStats:
-  - statType: 4
-    flatValue: 0
-    percentValue: 0.1
-  - statType: 6
-    flatValue: 0
-    percentValue: 0.1
-  - statType: 7
-    flatValue: 0
-    percentValue: 0.2
+    percentValue: 0
+  _subStatPool: {fileID: 11400000, guid: 30d31299a6d64671bea9915d3d9bf799, type: 2}
+  _mainStatPool: {fileID: 11400000, guid: f5f2b3cb625c40d591b902e2253a840e, type: 2}

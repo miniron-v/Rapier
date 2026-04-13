@@ -19,6 +19,7 @@ MonoBehaviour:
   _grade: 0
   _mainStat:
     statType: 0
-    flatValue: 80
+    flatValue: 120
     percentValue: 0
-  _subStats: []
+  _subStatPool: {fileID: 11400000, guid: 1d3348c472be49cb8f4f91d5b4b90c66, type: 2}
+  _mainStatPool: {fileID: 0}

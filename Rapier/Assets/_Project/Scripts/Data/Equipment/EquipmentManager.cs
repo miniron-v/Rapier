@@ -276,6 +276,17 @@ namespace Game.Data.Equipment
             {
                 if (instance == null) continue;
 
+                // Phase 22-B: 서브스탯 롤 결과 직렬화
+                var subStatsCopy = new List<StatEntry>();
+                if (instance.SubStats != null)
+                {
+                    foreach (var sub in instance.SubStats)
+                        subStatsCopy.Add(sub);
+                }
+
+                bool hasRolled = instance.RolledMainStat.HasValue;
+                StatEntry rolledMainVal = hasRolled ? instance.RolledMainStat.Value : default;
+
                 var entry = new EquipmentSaveEntry
                 {
                     instanceId  = instance.InstanceId,
@@ -285,7 +296,11 @@ namespace Game.Data.Equipment
                         ? instance.EquippedRunes
                             .Select(r => r != null ? r.name : "")
                             .ToList()
-                        : new List<string>()
+                        : new List<string>(),
+                    // Phase 22-B
+                    subStats      = subStatsCopy,
+                    hasRolledMain = hasRolled,
+                    rolledMain    = rolledMainVal,
                 };
                 result.Add(entry);
             }
@@ -344,8 +359,18 @@ namespace Game.Data.Equipment
                 }
 
                 // EquipmentInstance 재구성 (내부 복원 생성자 사용 — §7-4: 저장값 Grade 우선)
+                // Phase 22-B: 저장된 subStats / rolledMain 으로 복원 (재롤 없음)
                 var grade    = (EquipmentGrade)entry.grade;
-                var instance = new EquipmentInstance(entry.instanceId, foundData, grade);
+                var savedSubs = entry.subStats != null
+                    ? new List<StatEntry>(entry.subStats)
+                    : null;
+                var instance = new EquipmentInstance(
+                    entry.instanceId,
+                    foundData,
+                    grade,
+                    savedSubs,
+                    entry.hasRolledMain,
+                    entry.rolledMain);
 
                 // 룬 소켓 복원
                 if (entry.runeAssetIds != null)

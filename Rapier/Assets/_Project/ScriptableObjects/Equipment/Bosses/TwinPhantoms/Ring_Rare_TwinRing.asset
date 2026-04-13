@@ -13,15 +13,13 @@ MonoBehaviour:
   m_Name: Ring_Rare_TwinRing
   m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Equipment.EquipmentItemData
   _itemName: "\uC30D\uB465\uC774 \uBC18\uC9C0"
-  _description: "\uD56D\uC0C1 \uC30D\uC73C\uB85C \uC874\uC7AC\uD558\uB294 \uC30D\uB465\uC774 \uC58C\uC2DC \uBC18\uC9C0. \uC758\uC9C0\uAC00 \uC11C\uB85C\uB97C \uB2F4\uACE0\uC788\uB2E4."
+  _description: "\uD56D\uC0C1 \uC30D\uC73C\uB85C \uC874\uC7AC\uD558\uB294 \uC30D\uB465\uC774 \uC30D\uC2DC \uBC18\uC9C0. \uC758\uC9C0\uAC00 \uC11C\uB85C\uB97C \uB2F4\uACE0\uC788\uB2E4."
   _icon: {fileID: 21300000, guid: 5443c72a5e69485fab31a11a5f33f5cc, type: 3}
   _slotType: 7
   _grade: 1
   _mainStat:
-    statType: 7
+    statType: 0
     flatValue: 0
-    percentValue: 0.14
-  _subStats:
-  - statType: 6
-    flatValue: 0
-    percentValue: 0.07
+    percentValue: 0
+  _subStatPool: {fileID: 11400000, guid: a52821e776a14a6e99d7a5fbfd5ec8e3, type: 2}
+  _mainStatPool: {fileID: 11400000, guid: f5f2b3cb625c40d591b902e2253a840e, type: 2}

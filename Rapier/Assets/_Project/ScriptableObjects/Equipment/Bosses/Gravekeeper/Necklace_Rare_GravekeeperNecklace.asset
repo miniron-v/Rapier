@@ -13,15 +13,13 @@ MonoBehaviour:
   m_Name: Necklace_Rare_GravekeeperNecklace
   m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Equipment.EquipmentItemData
   _itemName: "\uBB18\uC9C0\uAE30\uC758 \uBAA9\uAC78\uC774"
-  _description: "\uBB18\uC9C0\uAE30\uAC00 \uCC3D\uACC4 \uD6A4\uC5D0 \uD56D\uC0C1 \uD3B4\uB358 \uBAA9\uAC78\uC774. \uC8E3\uC740 \uC601\uD63C\uC758 \uD798\uC774 \uC2A4\uBBBC\uC5B4 \uC624\uB978\uB2E4."
+  _description: "\uBB18\uC9C0\uAE30\uAC00 \uCC3D\uACC4 \uD6A4\uC5D0 \uD56D\uC0C1 \uD3F4\uB358 \uBAA9\uAC78\uC774. \uC8E3\uC740 \uC601\uD63C\uC758 \uD798\uC774 \uC2A4\uBBBC\uC5B4 \uC624\uB978\uB2E4."
   _icon: {fileID: 21300000, guid: 5443c72a5e69485fab31a11a5f33f5cc, type: 3}
   _slotType: 6
   _grade: 1
   _mainStat:
-    statType: 9
+    statType: 0
     flatValue: 0
-    percentValue: 0.14
-  _subStats:
-  - statType: 4
-    flatValue: 0
-    percentValue: 0.05
+    percentValue: 0
+  _subStatPool: {fileID: 11400000, guid: 30d31299a6d64671bea9915d3d9bf799, type: 2}
+  _mainStatPool: {fileID: 11400000, guid: f5f2b3cb625c40d591b902e2253a840e, type: 2}
