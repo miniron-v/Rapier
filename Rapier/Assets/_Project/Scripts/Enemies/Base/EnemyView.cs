@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -66,10 +67,29 @@ namespace Game.Enemies
             _flashTimer = FLASH_DURATION;
         }
 
-        /// <summary>사망 시 즉시 비활성화.</summary>
-        public void PlayDeath()
+        /// <summary>사망 시 0.3s 페이드 후 비활성화. 보스는 BossView가 override하여 no-op.</summary>
+        public virtual void PlayDeath()
         {
             StopWindup();
+            StartCoroutine(FadeOutAndDeactivate(0.3f));
+        }
+
+        private IEnumerator FadeOutAndDeactivate(float duration)
+        {
+            if (_sr != null)
+            {
+                float elapsed = 0f;
+                Color startColor = _sr.color;
+                while (elapsed < duration)
+                {
+                    elapsed += Time.deltaTime;
+                    float t = Mathf.Clamp01(elapsed / duration);
+                    Color c = startColor;
+                    c.a = 1f - t;
+                    _sr.color = c;
+                    yield return null;
+                }
+            }
             gameObject.SetActive(false);
         }
 
