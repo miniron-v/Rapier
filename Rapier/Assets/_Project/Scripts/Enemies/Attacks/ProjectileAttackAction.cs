@@ -18,6 +18,14 @@ namespace Game.Enemies
     {
         public GameObject ActiveProjectile { get; private set; }
 
+        /// <summary>외부(Presenter)에서 강제 제거 시 호출. Destroy 후 참조를 null로 정리한다.</summary>
+        public void DestroyActiveProjectile()
+        {
+            if (ActiveProjectile == null) return;
+            UnityEngine.Object.Destroy(ActiveProjectile);
+            ActiveProjectile = null;
+        }
+
         [Tooltip("투사체 이동 속도")]
         public float projectileSpeed    = 8f;
         [Tooltip("투사체 최대 사거리")]

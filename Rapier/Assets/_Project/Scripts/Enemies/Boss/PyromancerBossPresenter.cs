@@ -35,11 +35,8 @@ namespace Game.Enemies
                 if (phase.sequence == null) continue;
                 foreach (var action in phase.sequence)
                 {
-                    if (action is ProjectileAttackAction proj && proj.ActiveProjectile != null)
-                    {
-                        Destroy(proj.ActiveProjectile);
-                        proj.ActiveProjectile = null;
-                    }
+                    if (action is ProjectileAttackAction proj)
+                        proj.DestroyActiveProjectile();
                 }
             }
         }
