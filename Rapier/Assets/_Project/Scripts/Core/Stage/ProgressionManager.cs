@@ -51,11 +51,15 @@ namespace Game.Core.Stage
 
         // ── 런타임 ───────────────────────────────────────────────────
         private EnemyPresenterBase _currentBoss;
-        private BossPresenterBase  _currentBossPresenter; // BossPresenterBase 캐스팅 캐시
+        private BossPresenterBase  _currentBossPresenter; // BossPresenterBase 캐스팅 캐시 (첫 번째 인스턴스)
         private bool               _bossAlive;
         private bool               _playerDeathHandled;
         private Portal             _activePortal;
         private int                _currentBossRoomIndex; // 보스 방 진입 순번 (1-based)
+
+        // ── 다중 스폰 지원 ──────────────────────────────────────────
+        private readonly List<EnemyPresenterBase> _activeBossInstances = new List<EnemyPresenterBase>();
+        private int _aliveCount;
 
         // 이번 스테이지에서 수집된 드롭 인스턴스
         private readonly List<EquipmentInstance> _runDrops = new List<EquipmentInstance>();
@@ -133,46 +137,89 @@ namespace Game.Core.Stage
                 yield break;
             }
 
-            var go = Instantiate(room.bossPrefab, _bossSpawnPosition, Quaternion.identity);
-            _currentBoss = go.GetComponent<EnemyPresenterBase>();
+            // ── 다중 스폰 파라미터 결정 ──────────────────────────────
+            var bossStatData = room.bossStatData as Game.Enemies.BossStatData;
+            int spawnCount   = bossStatData != null ? bossStatData.SpawnCount : 1;
+            var spawnOffsets = bossStatData?.SpawnOffsets;
 
-            if (_currentBoss == null)
+            // StageData multiplier (공통)
+            float hpMult  = 1f;
+            float atkMult = 1f;
+            var stageData = _stageManager != null ? _stageManager.CurrentStageData : null;
+            if (stageData != null)
             {
-                Debug.LogError($"[ProgressionManager] {room.bossPrefab.name}에 EnemyPresenterBase가 없음!");
+                hpMult  = stageData.HpMultiplier;
+                atkMult = stageData.AtkMultiplier;
+            }
+
+            // ── 인스턴스 생성 루프 ───────────────────────────────────
+            for (int i = 0; i < spawnCount; i++)
+            {
+                Vector2 offset   = (spawnOffsets != null && i < spawnOffsets.Count)
+                    ? spawnOffsets[i]
+                    : Vector2.zero;
+                Vector2 spawnPos = _bossSpawnPosition + offset;
+
+                var go   = Instantiate(room.bossPrefab, spawnPos, Quaternion.identity);
+                var boss = go.GetComponent<EnemyPresenterBase>();
+
+                if (boss == null)
+                {
+                    Debug.LogError($"[ProgressionManager] {room.bossPrefab.name}에 EnemyPresenterBase가 없음! (인스턴스 {i})");
+                    Destroy(go);
+                    continue;
+                }
+
+                if (room.bossStatData != null)
+                {
+                    boss.Spawn(room.bossStatData, spawnPos);
+                    if (hpMult != 1f || atkMult != 1f)
+                    {
+                        boss.ApplyStageMultipliers(hpMult, atkMult);
+                        Debug.Log($"[ProgressionManager] 스테이지 배율 적용 (인스턴스 {i}): HP×{hpMult}, ATK×{atkMult}");
+                    }
+                }
+
+                boss.OnDeath += HandleBossDeath;
+                _activeBossInstances.Add(boss);
+
+                // 첫 번째 인스턴스를 레거시 단일 참조에도 저장 (HUD 연결용)
+                if (i == 0)
+                    _currentBoss = boss;
+            }
+
+            if (_activeBossInstances.Count == 0)
+            {
+                Debug.LogError($"[ProgressionManager] 유효한 보스 인스턴스 없음: {room.displayName}");
                 yield break;
             }
 
-            if (room.bossStatData != null)
-            {
-                // 스테이지 스케일링: EnemyModel 레벨에서 multiplier 적용.
-                // BossStatData SO는 불변이므로, Spawn 후 EnemyPresenterBase.ApplyStageMultipliers 호출.
-                _currentBoss.Spawn(room.bossStatData, _bossSpawnPosition);
+            _bossAlive   = true;
+            _aliveCount  = _activeBossInstances.Count;
 
-                // StageData multiplier 적용 (있는 경우)
-                var stageData = _stageManager != null ? _stageManager.CurrentStageData : null;
-                if (stageData != null)
+            // IMultiBossSibling 주입 (형제 인스턴스 상호 참조)
+            bool hasSibling = false;
+            foreach (var b in _activeBossInstances)
+                if (b is IMultiBossSibling) { hasSibling = true; break; }
+            if (hasSibling)
+            {
+                var bossList = new List<BossPresenterBase>();
+                foreach (var b in _activeBossInstances)
                 {
-                    float hp  = stageData.HpMultiplier;
-                    float atk = stageData.AtkMultiplier;
-                    if (hp != 1f || atk != 1f)
-                    {
-                        _currentBoss.ApplyStageMultipliers(hp, atk);
-                        Debug.Log($"[ProgressionManager] 스테이지 배율 적용: HP×{hp}, ATK×{atk}");
-                    }
+                    var bp = b as BossPresenterBase;
+                    if (bp != null) bossList.Add(bp);
                 }
+                foreach (var b in _activeBossInstances)
+                    if (b is IMultiBossSibling sibling)
+                        sibling.SetSiblings(bossList);
             }
 
-            _bossAlive = true;
-            _currentBoss.OnDeath += HandleBossDeath;
-
-            // BossPresenterBase 캐스팅 → HUD + 페이즈 이벤트 연결
+            // BossPresenterBase 캐스팅 → HUD + 페이즈 이벤트 연결 (첫 번째 인스턴스 기준)
             _currentBossPresenter = _currentBoss as BossPresenterBase;
             if (_currentBossPresenter != null)
             {
                 _currentBossPresenter.OnPhaseChanged += HandleBossPhaseChanged;
 
-                // StageManager.BossesDefeated(처치 수) 기반으로 현재 보스 방 번호를 계산한다.
-                // 사망 후 이어하기로 같은 보스 방에 재진입해도 누적 증가하지 않는다.
                 _currentBossRoomIndex = _stageManager != null ? _stageManager.BossesDefeated + 1 : _currentBossRoomIndex + 1;
                 int totalBossRooms    = _stageManager != null ? _stageManager.TotalBossRooms       : 0;
                 string bossDisplayName = room.bossStatData?.enemyName
@@ -190,7 +237,7 @@ namespace Game.Core.Stage
             // 플레이어 사망 구독 (방 진입마다 갱신)
             SubscribePlayer();
 
-            Debug.Log($"[ProgressionManager] 보스 스폰: {room.displayName} @ {_bossSpawnPosition}");
+            Debug.Log($"[ProgressionManager] 보스 스폰: {room.displayName} ×{_activeBossInstances.Count} @ 기준위치={_bossSpawnPosition}");
         }
 
         private void HandleBossPhaseChanged(int phaseIndex)
@@ -201,6 +248,11 @@ namespace Game.Core.Stage
         private void HandleBossDeath()
         {
             if (!_bossAlive) return;
+
+            _aliveCount--;
+            Debug.Log($"[ProgressionManager] 보스 1체 처치. 남은 생존 카운트: {_aliveCount}");
+            if (_aliveCount > 0) return; // 아직 살아있는 인스턴스 있음
+
             _bossAlive = false;
             UnsubscribeBoss();
             // _runDrops는 스테이지 전체 누적 — 보스 방마다 초기화하지 않는다.
@@ -426,8 +478,12 @@ namespace Game.Core.Stage
         // ── 정리 유틸 ────────────────────────────────────────────────
         private void UnsubscribeBoss()
         {
-            if (_currentBoss != null)
-                _currentBoss.OnDeath -= HandleBossDeath;
+            // 모든 활성 인스턴스의 OnDeath 구독 해제
+            foreach (var b in _activeBossInstances)
+            {
+                if (b != null)
+                    b.OnDeath -= HandleBossDeath;
+            }
             if (_currentBossPresenter != null)
             {
                 _currentBossPresenter.OnPhaseChanged -= HandleBossPhaseChanged;
@@ -437,12 +493,16 @@ namespace Game.Core.Stage
 
         private void CleanupCurrentBoss()
         {
-            if (_currentBoss != null)
+            foreach (var b in _activeBossInstances)
             {
-                Destroy(_currentBoss.gameObject);
-                _currentBoss = null;
+                if (b != null)
+                    Destroy(b.gameObject);
             }
-            _bossAlive = false;
+            _activeBossInstances.Clear();
+            _currentBoss          = null;
+            _currentBossPresenter = null;
+            _bossAlive            = false;
+            _aliveCount           = 0;
         }
 
         // ── 공개 세터 (에디터 Setup 툴 등 외부에서 HUD 주입용) ──────
