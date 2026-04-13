@@ -115,6 +115,22 @@ namespace Game.Editor
                 {
                     if (forceRebuild)
                     {
+                        // 버튼을 ButtonRow에서 panel 직속으로 먼저 이동 (ButtonRow 파괴 전)
+                        var cleanSo    = new SerializedObject(scv);
+                        var cleanPanel = cleanSo.FindProperty("_panel")?.objectReferenceValue as GameObject;
+                        if (cleanPanel != null)
+                        {
+                            var nb = cleanSo.FindProperty("_nextStageButton")?.objectReferenceValue as UnityEngine.UI.Button;
+                            var lb = cleanSo.FindProperty("_returnToLobbyButton")?.objectReferenceValue as UnityEngine.UI.Button;
+                            if (nb != null) nb.transform.SetParent(cleanPanel.transform, false);
+                            if (lb != null) lb.transform.SetParent(cleanPanel.transform, false);
+                            foreach (var n in new[] { "ButtonRow", "TopSpacer" })
+                            {
+                                var child = cleanPanel.transform.Find(n);
+                                if (child != null) Undo.DestroyObjectImmediate(child.gameObject);
+                            }
+                        }
+
                         Undo.DestroyObjectImmediate(existingView.gameObject);
                         existingView = null;
                     }
@@ -176,8 +192,8 @@ namespace Game.Editor
             var vlg = panel.GetComponent<VerticalLayoutGroup>();
             if (vlg == null)
                 vlg = Undo.AddComponent<VerticalLayoutGroup>(panel);
-            vlg.spacing               = 12f;
-            vlg.padding               = new RectOffset(20, 20, 20, 80);  // 하단 여백 = 버튼 높이
+            vlg.spacing               = 120f;
+            vlg.padding               = new RectOffset(20, 20, 540, 320);
             vlg.childAlignment        = TextAnchor.UpperCenter;
             vlg.childForceExpandWidth  = true;
             vlg.childForceExpandHeight = false;
@@ -196,13 +212,6 @@ namespace Game.Editor
                 le.flexibleHeight  = 0f;
             }
 
-            // ── TopSpacer (TitleText 위 여백) ─────────────────────────
-            var topSpacer = new GameObject("TopSpacer", typeof(RectTransform));
-            Undo.RegisterCreatedObjectUndo(topSpacer, "Create TopSpacer");
-            topSpacer.transform.SetParent(panel.transform, false);
-            var spacerLe = topSpacer.AddComponent<LayoutElement>();
-            spacerLe.flexibleHeight = 0.6f;
-
             // ── ScrollView (드롭 목록) ─────────────────────────────
             var scrollGo = new GameObject("DropListScrollView");
             Undo.RegisterCreatedObjectUndo(scrollGo, "Create DropListScrollView");
@@ -215,7 +224,9 @@ namespace Game.Editor
             if (sq != null) scrollImg.sprite = sq;
 
             var scrollLe = scrollGo.AddComponent<LayoutElement>();
-            scrollLe.flexibleHeight = 1f;  // VLG에서 남은 공간 차지
+            scrollLe.minHeight       = 200f;
+            scrollLe.preferredHeight = 400f;
+            scrollLe.flexibleHeight  = 1f;  // 남은 공간도 차지 (해상도 대응)
 
             // Viewport
             var vpGo  = new GameObject("Viewport");
@@ -240,8 +251,8 @@ namespace Game.Editor
             contentRt.sizeDelta = Vector2.zero;
 
             var contentVlg = contentGo.AddComponent<VerticalLayoutGroup>();
-            contentVlg.spacing               = 6f;
-            contentVlg.padding               = new RectOffset(12, 12, 12, 12);
+            contentVlg.spacing               = 12f;
+            contentVlg.padding               = new RectOffset(16, 16, 16, 16);
             contentVlg.childForceExpandWidth  = true;
             contentVlg.childForceExpandHeight = false;
             contentVlg.childControlWidth     = true;
@@ -306,10 +317,9 @@ namespace Game.Editor
             if (nextBtn  != null) nextBtn.transform.SetParent(btnRowGo.transform, false);
             if (lobbyBtn != null) lobbyBtn.transform.SetParent(btnRowGo.transform, false);
 
-            // hierarchy 순서: TopSpacer(0) → TitleText(1) → ScrollView(2) → ButtonRow(3)
-            topSpacer.transform.SetAsFirstSibling();
-            if (titleText != null) titleText.transform.SetSiblingIndex(1);
-            scrollGo.transform.SetSiblingIndex(2);
+            // hierarchy 순서: TitleText(0) → ScrollView(1) → ButtonRow(2)
+            if (titleText != null) titleText.transform.SetAsFirstSibling();
+            scrollGo.transform.SetSiblingIndex(1);
             btnRowGo.transform.SetAsLastSibling();
 
             return view;

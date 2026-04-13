@@ -73,12 +73,12 @@ namespace Game.UI.Stage
             slot.transform.SetParent(_listParent, false);
 
             var slotRect = slot.GetComponent<RectTransform>();
-            slotRect.sizeDelta = new Vector2(0f, 50f);
+            slotRect.sizeDelta = new Vector2(0f, 100f);
 
             // HorizontalLayoutGroup으로 아이콘+이름+등급 배치
             var layout = slot.AddComponent<HorizontalLayoutGroup>();
-            layout.spacing              = 10f;
-            layout.padding              = new RectOffset(5, 5, 5, 5);
+            layout.spacing              = 20f;
+            layout.padding              = new RectOffset(10, 10, 10, 10);
             layout.childAlignment       = TextAnchor.MiddleLeft;
             layout.childForceExpandWidth  = false;
             layout.childForceExpandHeight = false;
@@ -89,7 +89,7 @@ namespace Game.UI.Stage
             var iconGo   = new GameObject("Icon", typeof(RectTransform));
             iconGo.transform.SetParent(slot.transform, false);
             var iconRect = iconGo.GetComponent<RectTransform>();
-            iconRect.sizeDelta = new Vector2(40f, 40f);
+            iconRect.sizeDelta = new Vector2(80f, 80f);
             var img         = iconGo.AddComponent<Image>();
             img.sprite      = CreateCircleSprite(32);
             img.color       = gradeColor;
@@ -98,10 +98,10 @@ namespace Game.UI.Stage
             var nameGo   = new GameObject("Name", typeof(RectTransform));
             nameGo.transform.SetParent(slot.transform, false);
             var nameRect = nameGo.GetComponent<RectTransform>();
-            nameRect.sizeDelta = new Vector2(200f, 40f);
+            nameRect.sizeDelta = new Vector2(400f, 80f);
             var nameText     = nameGo.AddComponent<TextMeshProUGUI>();
             nameText.text    = drop.Data?.ItemName ?? "Unknown";
-            nameText.fontSize = 18f;
+            nameText.fontSize = 36f;
             nameText.color   = Color.white;
             nameText.alignment = TextAlignmentOptions.MidlineLeft;
             if (_font != null) nameText.font = _font;
@@ -110,10 +110,10 @@ namespace Game.UI.Stage
             var gradeGo   = new GameObject("Grade", typeof(RectTransform));
             gradeGo.transform.SetParent(slot.transform, false);
             var gradeRect = gradeGo.GetComponent<RectTransform>();
-            gradeRect.sizeDelta = new Vector2(100f, 40f);
+            gradeRect.sizeDelta = new Vector2(200f, 80f);
             var gradeText     = gradeGo.AddComponent<TextMeshProUGUI>();
             gradeText.text    = drop.Grade.ToString();
-            gradeText.fontSize = 16f;
+            gradeText.fontSize = 32f;
             gradeText.color   = gradeColor;
             gradeText.alignment = TextAlignmentOptions.MidlineLeft;
             if (_font != null) gradeText.font = _font;
