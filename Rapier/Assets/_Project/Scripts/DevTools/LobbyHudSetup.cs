@@ -911,7 +911,7 @@ namespace Game.DevTools
         private static (ItemDetailPopupView view, ItemDetailPopupPresenter presenter)
             CreateItemDetailPopup(GameObject panelParent, TMP_FontAsset font)
         {
-            var popupGo = new GameObject("ItemDetailPopup");
+            var popupGo = new GameObject("ItemDetailPopup", typeof(RectTransform));
             popupGo.transform.SetParent(panelParent.transform, false);
 
             // 반투명 배경
@@ -1038,7 +1038,7 @@ namespace Game.DevTools
             CreateRuneInventoryPopup(GameObject panelParent, TMP_FontAsset font)
         {
             // 룬 인벤토리 팝업
-            var popupGo = new GameObject("RuneInventoryPopup");
+            var popupGo = new GameObject("RuneInventoryPopup", typeof(RectTransform));
             popupGo.transform.SetParent(panelParent.transform, false);
             var popBg   = popupGo.AddComponent<Image>();
             popBg.color = new Color(0f, 0f, 0f, 0.75f);
@@ -1061,7 +1061,7 @@ namespace Game.DevTools
             (Button assassinTab, TextMeshProUGUI assassinTabTxt) = CreateTabButtonPair(tabRowGo, "Assassin");
 
             // 룬 목록 ScrollRect
-            var scrollGo = new GameObject("RuneScroll");
+            var scrollGo = new GameObject("RuneScroll", typeof(RectTransform));
             scrollGo.transform.SetParent(popupGo.transform, false);
             SetAnchors(scrollGo.GetComponent<RectTransform>(), new Vector2(0f, 0.15f), new Vector2(1f, 0.87f));
             scrollGo.GetComponent<RectTransform>().offsetMin = scrollGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
@@ -1159,7 +1159,7 @@ namespace Game.DevTools
         private static (RuneDetailPopupView view, RuneDetailPopupPresenter presenter)
             CreateRuneDetailPopup(GameObject panelParent, TMP_FontAsset font)
         {
-            var popupGo = new GameObject("RuneDetailPopup");
+            var popupGo = new GameObject("RuneDetailPopup", typeof(RectTransform));
             popupGo.transform.SetParent(panelParent.transform, false);
             popupGo.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0.8f);
             var rt = popupGo.GetComponent<RectTransform>();
