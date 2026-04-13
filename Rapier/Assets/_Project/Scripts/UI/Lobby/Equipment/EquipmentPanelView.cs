@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Game.Data.Equipment;
 using TMPro;
 using UnityEngine;
@@ -202,6 +203,8 @@ namespace Game.UI.Lobby.Equipment
                 if (BelongsToTab(inst.Data.SlotType, tab))
                     result.Add(inst);
             }
+            // Grade 내림차순 정렬 (동일 등급 내 기존 순서 유지)
+            result.Sort((a, b) => b.Grade.CompareTo(a.Grade));
             return result;
         }
 

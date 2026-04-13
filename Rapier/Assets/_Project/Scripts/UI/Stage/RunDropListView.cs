@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -43,7 +44,9 @@ namespace Game.UI.Stage
 
             _emptyText?.SetActive(false);
 
-            foreach (var drop in drops)
+            // Grade 내림차순 정렬 후 표시
+            var sorted = drops.OrderByDescending(d => d.Grade);
+            foreach (var drop in sorted)
                 CreateSlot(drop);
         }
 
