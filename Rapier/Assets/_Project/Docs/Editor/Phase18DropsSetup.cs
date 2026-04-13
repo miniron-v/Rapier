@@ -102,15 +102,16 @@ namespace Game.Editor
             EditorUtility.SetDirty(pm);
 
             // ⑥ StageClearView + RunDropListView 연결
-            var scv = Object.FindObjectOfType<StageClearView>();
+            // includeInactive:true — _panel이 비활성이어도 컴포넌트를 찾아야 함
+            var scv = Object.FindObjectOfType<StageClearView>(true);
             if (scv == null)
             {
                 Debug.LogWarning("[Phase18DropsSetup] StageClearView 없음 → RunDropListView 연결 생략.");
             }
             else
             {
-                // 기존 RunDropListView 처리
-                var existingView = Object.FindObjectOfType<RunDropListView>();
+                // 기존 RunDropListView 처리 (SetActive(false) 상태이므로 includeInactive:true 필수)
+                var existingView = Object.FindObjectOfType<RunDropListView>(true);
                 if (existingView != null)
                 {
                     if (forceRebuild)
