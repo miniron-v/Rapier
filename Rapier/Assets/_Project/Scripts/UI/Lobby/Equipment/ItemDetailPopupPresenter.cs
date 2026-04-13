@@ -81,6 +81,7 @@ namespace Game.UI.Lobby.Equipment
             bool equippedOther = !isEquipped && IsEquippedByAnyChar(instance);
 
             _view.SetData(instance, isEquipped, equippedOther);
+            _view.transform.SetAsLastSibling();
             _view.SetVisible(true);
         }
 

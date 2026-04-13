@@ -52,7 +52,9 @@
       "Bash(find:*)",
       "Bash(find Rapier/Assets -name \"StageManager.cs.meta\" -exec cat {} \\\\;)",
       "Bash(find Rapier/Assets -name \"ProgressionManager.cs.meta\" -exec cat {} \\\\;)",
-      "Bash(awk '{print $1}')"
+      "Bash(awk '{print $1}')",
+      "Bash(mkdir:*)",
+      "Bash(xargs -I{} basename {})"
     ]
   }
 }

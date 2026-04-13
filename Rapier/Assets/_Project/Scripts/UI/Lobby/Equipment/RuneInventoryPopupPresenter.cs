@@ -98,6 +98,7 @@ namespace Game.UI.Lobby.Equipment
             RefreshRuneList();
             RefreshUnequipButton();
 
+            _view.transform.SetAsLastSibling();
             _view.SetVisible(true);
         }
 

@@ -342,7 +342,7 @@ namespace Game.DevTools
             nameGo.transform.SetParent(templateGo.transform, false);
             var nameTmp = nameGo.AddComponent<TextMeshProUGUI>();
             nameTmp.text      = "Item";
-            nameTmp.fontSize  = 18f;
+            nameTmp.fontSize  = 32f;
             nameTmp.alignment = TextAlignmentOptions.Center;
             nameTmp.color     = Color.white;
             var nameFont = GetFont();
@@ -356,7 +356,7 @@ namespace Game.DevTools
             statGo.transform.SetParent(templateGo.transform, false);
             var statTmp = statGo.AddComponent<TextMeshProUGUI>();
             statTmp.text      = "Stat";
-            statTmp.fontSize  = 14f;
+            statTmp.fontSize  = 32f;
             statTmp.alignment = TextAlignmentOptions.Center;
             statTmp.color     = new Color(0.8f, 0.8f, 0.5f);
             var statFont = GetFont();
@@ -451,7 +451,7 @@ namespace Game.DevTools
             var mailRect = mailboxGo.GetComponent<RectTransform>();
             SetAnchors(mailRect, new Vector2(0.78f, 0.88f), new Vector2(0.95f, 0.98f));
             mailRect.offsetMin = mailRect.offsetMax = Vector2.zero;
-            CreateLabel(mailboxGo, "우편", 24, TextAlignmentOptions.Center);
+            CreateLabel(mailboxGo, "우편", 32, TextAlignmentOptions.Center);
 
             // 미리보기 영역 컨테이너 (stageText 아래, enterBtn 위)
             var previewArea = new GameObject("StagePreviewArea");
@@ -706,7 +706,7 @@ namespace Game.DevTools
             nameGo.transform.SetParent(slotGo.transform, false);
             var nameTmp = nameGo.AddComponent<TextMeshProUGUI>();
             nameTmp.text      = charName;
-            nameTmp.fontSize  = 28;
+            nameTmp.fontSize  = 32;
             nameTmp.alignment = TextAlignmentOptions.Center;
             nameTmp.color     = Color.white;
             var charFont = GetFont();
@@ -720,7 +720,7 @@ namespace Game.DevTools
             csGo.transform.SetParent(slotGo.transform, false);
             var csTmp = csGo.AddComponent<TextMeshProUGUI>();
             csTmp.text      = "Coming\nSoon";
-            csTmp.fontSize  = 22;
+            csTmp.fontSize  = 32;
             csTmp.alignment = TextAlignmentOptions.Center;
             csTmp.color     = new Color(1f, 0.8f, 0.3f);
             var csFont = GetFont();
@@ -894,7 +894,7 @@ namespace Game.DevTools
             labelGo.transform.SetParent(btnGo.transform, false);
             var tmp     = labelGo.AddComponent<TextMeshProUGUI>();
             tmp.text      = label;
-            tmp.fontSize  = 26f;
+            tmp.fontSize  = 32f;
             tmp.alignment = TextAlignmentOptions.Center;
             tmp.color     = new Color(0.5f, 0.5f, 0.5f);
             var f = GetFont();
@@ -914,9 +914,9 @@ namespace Game.DevTools
             var popupGo = new GameObject("ItemDetailPopup", typeof(RectTransform));
             popupGo.transform.SetParent(panelParent.transform, false);
 
-            // 반투명 배경
+            // 불투명 배경 (다크)
             var bg   = popupGo.AddComponent<Image>();
-            bg.color = new Color(0f, 0f, 0f, 0.7f);
+            bg.color = new Color(0.08f, 0.08f, 0.10f, 1f);
             var rt   = popupGo.GetComponent<RectTransform>();
             SetAnchors(rt, new Vector2(0.05f, 0.08f), new Vector2(0.95f, 0.95f));
             rt.offsetMin = rt.offsetMax = Vector2.zero;
@@ -942,7 +942,7 @@ namespace Game.DevTools
             SetAnchors(statPanel.GetComponent<RectTransform>(), new Vector2(0.30f, 0.62f), new Vector2(0.98f, 0.88f));
             statPanel.GetComponent<RectTransform>().offsetMin = statPanel.GetComponent<RectTransform>().offsetMax = Vector2.zero;
 
-            var mainStatGo = CreateTmpLabel(statPanel, "MainStat", "메인 스탯", 22f, font);
+            var mainStatGo = CreateTmpLabel(statPanel, "MainStat", "메인 스탯", 32f, font);
             SetAnchors(mainStatGo.GetComponent<RectTransform>(), new Vector2(0f, 0.75f), new Vector2(1f, 1f));
             mainStatGo.GetComponent<RectTransform>().offsetMin = mainStatGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
             mainStatGo.GetComponent<TextMeshProUGUI>().color = new Color(1f, 0.9f, 0.5f);
@@ -952,7 +952,7 @@ namespace Game.DevTools
             {
                 float yMax = 0.72f - i * 0.25f;
                 float yMin = yMax - 0.23f;
-                var subGo  = CreateTmpLabel(statPanel, $"SubStat_{i}", string.Empty, 20f, font);
+                var subGo  = CreateTmpLabel(statPanel, $"SubStat_{i}", string.Empty, 32f, font);
                 SetAnchors(subGo.GetComponent<RectTransform>(), new Vector2(0f, yMin), new Vector2(1f, yMax));
                 subGo.GetComponent<RectTransform>().offsetMin = subGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
                 subGo.GetComponent<TextMeshProUGUI>().color = new Color(0.8f, 0.8f, 0.8f);
@@ -998,7 +998,7 @@ namespace Game.DevTools
             }
 
             // 5. 설명
-            var descGo = CreateTmpLabel(popupGo, "Description", "설명 텍스트", 22f, font);
+            var descGo = CreateTmpLabel(popupGo, "Description", "설명 텍스트", 32f, font);
             var descTmp = descGo.GetComponent<TextMeshProUGUI>();
             descTmp.color = new Color(0.7f, 0.7f, 0.7f);
             descTmp.textWrappingMode = TMPro.TextWrappingModes.Normal;
@@ -1140,11 +1140,11 @@ namespace Game.DevTools
             SetAnchors(iconGo.GetComponent<RectTransform>(), new Vector2(0.01f, 0.1f), new Vector2(0.15f, 0.9f));
             iconGo.GetComponent<RectTransform>().offsetMin = iconGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
 
-            var nameGo  = CreateTmpLabel(rowGo, "RuneName", "룬 이름", 24f, font);
+            var nameGo  = CreateTmpLabel(rowGo, "RuneName", "룬 이름", 32f, font);
             SetAnchors(nameGo.GetComponent<RectTransform>(), new Vector2(0.17f, 0.5f), new Vector2(1f, 0.95f));
             nameGo.GetComponent<RectTransform>().offsetMin = nameGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
 
-            var effectGo = CreateTmpLabel(rowGo, "EffectText", "효과", 18f, font);
+            var effectGo = CreateTmpLabel(rowGo, "EffectText", "효과", 32f, font);
             effectGo.GetComponent<TextMeshProUGUI>().color = new Color(0.7f, 0.7f, 0.7f);
             SetAnchors(effectGo.GetComponent<RectTransform>(), new Vector2(0.17f, 0.05f), new Vector2(1f, 0.5f));
             effectGo.GetComponent<RectTransform>().offsetMin = effectGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
@@ -1179,7 +1179,7 @@ namespace Game.DevTools
             iconGo.GetComponent<RectTransform>().offsetMin = iconGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
 
             // 효과 설명
-            var effectGo  = CreateTmpLabel(popupGo, "EffectText", "효과 설명", 22f, font);
+            var effectGo  = CreateTmpLabel(popupGo, "EffectText", "효과 설명", 32f, font);
             var effectTmp = effectGo.GetComponent<TextMeshProUGUI>();
             effectTmp.color = new Color(0.8f, 0.8f, 0.8f);
             effectTmp.textWrappingMode = TMPro.TextWrappingModes.Normal;
@@ -1243,7 +1243,7 @@ namespace Game.DevTools
             lGo.transform.SetParent(btnGo.transform, false);
             var tmp  = lGo.AddComponent<TextMeshProUGUI>();
             tmp.text      = label;
-            tmp.fontSize  = 28f;
+            tmp.fontSize  = 32f;
             tmp.alignment = TextAlignmentOptions.Center;
             tmp.color     = Color.white;
             if (font != null) tmp.font = font;

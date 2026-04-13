@@ -48,3 +48,4 @@ MonoBehaviour:
   _shimmerPeriod: 0.8
   _shimmerMinAlpha: 0.3
   _shimmerMaxAlpha: 0.7
+  _labelFont: {fileID: 11400000, guid: ecc292873819a9247be6f4f8e31da8c9, type: 2}

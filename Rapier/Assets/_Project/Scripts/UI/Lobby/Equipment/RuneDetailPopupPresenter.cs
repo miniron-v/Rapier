@@ -89,6 +89,7 @@ namespace Game.UI.Lobby.Equipment
             bool canEquip = contextEquipment != null;
             _view.SetEquipButtonState("장착", canEquip);
 
+            _view.transform.SetAsLastSibling();
             _view.SetVisible(true);
         }
 

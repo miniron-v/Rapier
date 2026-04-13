@@ -209,7 +209,7 @@ namespace Game.Core.Stage
             var tmp     = textGo.AddComponent<TextMeshProUGUI>();
             tmp.text      = itemName;
             tmp.color     = gradeColor;
-            tmp.fontSize  = 16f;
+            tmp.fontSize  = 32f;
             tmp.alignment = TMPro.TextAlignmentOptions.Center;
             tmp.overflowMode = TMPro.TextOverflowModes.Ellipsis;
 
