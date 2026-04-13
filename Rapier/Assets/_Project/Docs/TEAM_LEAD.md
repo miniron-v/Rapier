@@ -147,6 +147,11 @@ git branch -d [브랜치명]   # 또는 -D (deny되어 있음, 사용자 확인)
 | 17 (StageData SO 분리 + 10 스테이지) | **완료** — StageData SO 10개 + 스테이지 선택 UI + 해금/스케일링 |
 | 18 (보스 드롭 시스템) | **완료** — DropTable/LootManager/DroppedItemView/BossDeathSequencer/RunDropListView (develop @ 12cd2e4) |
 | 19 (Assassin 캐릭터) | **완료** — 잔상 3개 + 360도 차지 + CharacterSpawner 동적 스폰 |
+| 20 (보스별 테마 드롭 세트) | **완료** — 28개 장비 SO + 7개 드롭 테이블 + SO 폴더 재정리 |
+| 21 (MaxDrops 설정 가능화) | **완료** — DropTable.MaxDrops (기본 5) |
+| 22-A (서브스탯 슬롯 Grade-1) | **완료** — 36 SO 일괄 재조정 |
+| 22-B (서브스탯/장신구 메인 랜덤 풀) | **완료** — SubStatPoolData/MainStatPoolData SO + 롤 시스템 + 세이브 확장 |
+| 24 (장비/룬 상세 UI + 드롭 라벨 + 포탈 오프셋) | **완료** — 로비 3탭 인벤토리 + 아이템/룬 팝업 + 월드 드롭 라벨 |
 
 ---
 
@@ -160,4 +165,9 @@ git branch -d [브랜치명]   # 또는 -D (deny되어 있음, 사용자 확인)
 4. 본 문서 §2 절차에 따라 다음 작업으로 진입.
 5. 사용자에게 진행할 작업과 우선순위 확인 후 시작.
 
-### 다음 세션 예정 작업 (2026-04-13 기준)
+### 다음 세션 예정 작업 (2026-04-13 세션 9 완료 기준)
+
+- **Phase 23 (분해/강화)**: 기획 합의 대기 — 장비 분해 재화, 강화 레벨 + 성공률 + 재료 소모 등 설계 필요
+- **페이즈 전환 FSM 정지**: 세션 8부터 carry-over (EnemyPresenterBase 색상 Lerp 중 Update 정지)
+- **Stage/Create 통합 검토**: Boss HUD 외 Player HUD + Drops 도 함께 호출할지 결정
+- **워크트리 정리**: phase-20 / 21 / 22a / 22b / 24 워크트리 보존 중 — 사용자 OK 시 `git worktree remove`
