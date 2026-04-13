@@ -191,7 +191,7 @@ namespace Game.Editor
             Undo.RegisterCreatedObjectUndo(canvasGo, "Create [UI]");
             var canvas          = canvasGo.AddComponent<Canvas>();
             canvas.renderMode   = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 10;
+            canvas.sortingOrder = 30;  // BossHUD(20)보다 위
             var scaler                 = canvasGo.AddComponent<CanvasScaler>();
             scaler.uiScaleMode         = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1080, 1920);
