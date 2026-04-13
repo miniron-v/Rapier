@@ -113,57 +113,6 @@ namespace Game.Editor
             Debug.Log("[HudSetup] PlayerHudCanvas 생성 완료 (HP바 + 차지게이지 + 회피쿨타임).");
         }
 
-        // ── Enemy_Template HP 바 ──────────────────────────────────
-        [MenuItem("Rapier/Setup/Add EnemyHpBar to Template")]
-        public static void AddEnemyHpBarToTemplate()
-        {
-            var guids = AssetDatabase.FindAssets("Enemy_Template t:Prefab");
-            if (guids.Length == 0) { Debug.LogError("[HudSetup] Enemy_Template.prefab 없음."); return; }
-
-            var sq   = AssetDatabase.LoadAssetAtPath<Sprite>(SPRITE_BASE + "Square.png");
-            var path = AssetDatabase.GUIDToAssetPath(guids[0]);
-
-            using (var scope = new PrefabUtility.EditPrefabContentsScope(path))
-            {
-                var root = scope.prefabContentsRoot;
-                if (root.transform.Find("EnemyHpBarCanvas") != null)
-                {
-                    Debug.LogWarning("[HudSetup] EnemyHpBarCanvas 이미 존재.");
-                    return;
-                }
-
-                var cvGo = new GameObject("EnemyHpBarCanvas");
-                cvGo.transform.SetParent(root.transform, false);
-                var cv = cvGo.AddComponent<Canvas>();
-                cv.renderMode   = RenderMode.WorldSpace;
-                cv.sortingOrder = 5;
-                cvGo.AddComponent<CanvasScaler>();
-                cvGo.AddComponent<GraphicRaycaster>();
-                var cvRect = cvGo.GetComponent<RectTransform>();
-                cvRect.sizeDelta             = new Vector2(100f, 12f);
-                cvGo.transform.localScale    = Vector3.one * 0.012f;
-                cvGo.transform.localPosition = new Vector3(0f, 0.7f, 0f);
-
-                var bgImg = Img(cvGo.transform, "HpBg", new Color(0.1f, 0.1f, 0.1f, 0.8f), sq).GetComponent<Image>();
-                Stretch(bgImg.GetComponent<RectTransform>(), new Vector2(0.5f, 0.5f));
-
-                var fillImg = Img(cvGo.transform, "HpFill", new Color(0.9f, 0.25f, 0.25f), sq).GetComponent<Image>();
-                fillImg.type       = Image.Type.Filled;
-                fillImg.fillMethod = Image.FillMethod.Horizontal;
-                fillImg.fillAmount = 1f;
-                Stretch(fillImg.GetComponent<RectTransform>(), new Vector2(0f, 0.5f));
-
-                var hpBar = cvGo.AddComponent<Game.Enemies.EnemyHpBar>();
-                typeof(Game.Enemies.EnemyHpBar)
-                    .GetField("_fillImage",
-                        System.Reflection.BindingFlags.NonPublic |
-                        System.Reflection.BindingFlags.Instance)
-                    ?.SetValue(hpBar, fillImg);
-            }
-            AssetDatabase.SaveAssets();
-            Debug.Log($"[HudSetup] EnemyHpBar 추가 완료. ({path})");
-        }
-
         // ── 헬퍼 ──────────────────────────────────────────────────
         private static GameObject Img(Transform parent, string name, Color color, Sprite sprite)
         {

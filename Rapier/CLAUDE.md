@@ -137,6 +137,7 @@ Assets/
 - [ ] 자식 고유 상태가 Base에 노출되지 않는가 (DIP/OCP)
 - [ ] 런타임 가변값이 `[NonSerialized]` 필드 캐싱인가
 - [ ] **`UnityEngine.Input`(구) 미사용, `UnityEngine.InputSystem`만 사용했는가**
+- [ ] **단발성 에디터 메뉴(`[MenuItem]`) — 사용·테스트 완료 시 머지 직전 삭제했는가** (재사용 Create/Rebuild 페어는 유지)
 
 ## 10. 역할 분기
 
