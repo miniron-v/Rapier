@@ -31,7 +31,7 @@ namespace Game.DevTools
     {
         private const string ROOT_NAME = "LobbyHUD";
 
-        [MenuItem("Rapier/Lobby/Create Lobby HUD")]
+        [MenuItem("Rapier/Lobby/Create")]
         public static void CreateLobbyHud()
         {
             var existing = GameObject.Find(ROOT_NAME);
@@ -43,7 +43,7 @@ namespace Game.DevTools
             Build();
         }
 
-        [MenuItem("Rapier/Lobby/Rebuild Lobby HUD")]
+        [MenuItem("Rapier/Lobby/Rebuild")]
         public static void RebuildLobbyHud()
         {
             var existing = GameObject.Find(ROOT_NAME);

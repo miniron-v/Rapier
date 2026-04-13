@@ -79,10 +79,10 @@ namespace Game.Editor
         private static readonly Color BTN_SAFE      = new Color(0.20f, 0.70f, 0.35f, 1.00f);
         private static readonly Color BTN_TEXT_DARK = new Color(0.08f, 0.04f, 0.00f, 1.00f);
 
-        [MenuItem("Rapier/Stage/Create Stage Demo Scene")]
+        [MenuItem("Rapier/Stage/Create", priority = 0)]
         public static void CreateStageScene() => BuildScene(false);
 
-        [MenuItem("Rapier/Stage/Rebuild Stage Demo Scene")]
+        [MenuItem("Rapier/Stage/Rebuild", priority = 1)]
         public static void RebuildStageScene() => BuildScene(true);
 
         private static void BuildScene(bool forceRebuild)
