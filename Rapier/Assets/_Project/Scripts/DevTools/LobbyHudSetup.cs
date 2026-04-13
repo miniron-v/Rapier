@@ -227,7 +227,7 @@ namespace Game.DevTools
             leftVLayout.childAlignment        = TextAnchor.UpperCenter;
             leftVLayout.childForceExpandWidth  = true;
             leftVLayout.childForceExpandHeight = false;
-            leftVLayout.childControlHeight     = false;
+            leftVLayout.childControlHeight     = true;  // preferredHeight 적용 (false면 RectTransform 기본 100 사용)
             leftVLayout.spacing               = 8f;
             // padding.top = SLOT_SIZE / 2 (반칸 상단 여백, SLOT_SIZE=120 → 60)
             leftVLayout.padding               = new RectOffset(4, 4, 60, 4);
@@ -242,7 +242,7 @@ namespace Game.DevTools
             rightVLayout.childAlignment        = TextAnchor.UpperCenter;
             rightVLayout.childForceExpandWidth  = true;
             rightVLayout.childForceExpandHeight = false;
-            rightVLayout.childControlHeight     = false;
+            rightVLayout.childControlHeight     = true;  // preferredHeight 적용 (false면 RectTransform 기본 100 사용)
             rightVLayout.spacing               = 8f;
             // padding.top = SLOT_SIZE / 2 (반칸 상단 여백, SLOT_SIZE=120 → 60)
             rightVLayout.padding               = new RectOffset(4, 4, 60, 4);
