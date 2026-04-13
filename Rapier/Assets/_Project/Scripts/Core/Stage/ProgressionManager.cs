@@ -97,6 +97,9 @@ namespace Game.Core.Stage
             if (_stageManager != null)
                 _stageManager.OnRoomEntered -= HandleRoomEntered;
 
+            // freeze 중 씬 정리 시 모든 보스 freeze 강제 해제 (누수 방지)
+            FreezeAllSurvivors(null, frozen: false);
+
             UnsubscribeBoss();
             UnsubscribePlayer();
             CleanupPortal();
@@ -317,7 +320,10 @@ namespace Game.Core.Stage
 
                 if (_bossDeathSequencer != null)
                 {
-                    // per-boss 연출: spawnDrops=false, 콜백에서 본체 Destroy
+                    // 생존 보스 FSM freeze — 연출 중 공격 차단
+                    FreezeAllSurvivors(who, frozen: true);
+
+                    // per-boss 연출: spawnDrops=false, 콜백에서 본체 Destroy + freeze 해제
                     _bossDeathSequencer.Execute(
                         whoPos,
                         who?.transform,
@@ -329,12 +335,14 @@ namespace Game.Core.Stage
                                 _activeBossInstances.Remove(who);
                                 Destroy(who.gameObject);
                             }
+                            // 생존 보스 FSM 재개 (광폭화 상태 유지)
+                            FreezeAllSurvivors(who, frozen: false);
                         },
                         spawnDrops: false);
                 }
                 else
                 {
-                    // BossDeathSequencer 없을 때: 즉시 Destroy
+                    // BossDeathSequencer 없을 때: 즉시 Destroy (freeze 불필요)
                     _activeBossInstances.Remove(who);
                     if (who != null) Destroy(who.gameObject);
                 }
@@ -564,6 +572,20 @@ namespace Game.Core.Stage
             _currentBossPresenter = null;
             _bossAlive            = false;
             _aliveCount           = 0;
+        }
+
+        /// <summary>
+        /// 생존 보스 (dead 를 제외한 나머지) 의 FSM freeze/unfreeze.
+        /// dead 가 null 이면 전체 대상.
+        /// </summary>
+        private void FreezeAllSurvivors(EnemyPresenterBase dead, bool frozen)
+        {
+            foreach (var b in _activeBossInstances)
+            {
+                if (b == null || b == dead) continue;
+                var ep = b as EnemyPresenterBase;
+                ep?.SetFrozen(frozen);
+            }
         }
 
         // ── 공개 세터 (에디터 Setup 툴 등 외부에서 HUD 주입용) ──────

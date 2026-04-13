@@ -57,6 +57,32 @@ namespace Game.Enemies
         private int  _currentPhaseIndex;
         private bool _isInPhaseTransition; // 색상 Lerp 중 Update FSM 정지용
 
+        // ── Freeze (멀티 보스 중간 사망 연출 중 생존 보스 정지용) ──
+        private bool _isFrozen;
+
+        /// <summary>
+        /// FSM/이동/공격을 일시 정지한다.
+        /// true: Update 스킵 + 진행 중 공격 코루틴 중단 + TakeDamage 무시.
+        /// false: 재개 (기존 HP/상태 유지).
+        /// </summary>
+        public void SetFrozen(bool frozen)
+        {
+            if (_isFrozen == frozen) return;
+            _isFrozen = frozen;
+
+            if (frozen)
+            {
+                // 진행 중인 공격 코루틴 즉시 중단
+                if (_actionCoroutine != null)
+                {
+                    StopCoroutine(_actionCoroutine);
+                    _actionCoroutine = null;
+                }
+                _view.StopWindup();
+                _attackPhase = AttackPhase.Chase;
+            }
+        }
+
         /// <summary>현재 활성 페이즈 인덱스 (0-based).</summary>
         public int CurrentPhaseIndex => _currentPhaseIndex;
 
@@ -165,6 +191,7 @@ namespace Game.Enemies
         public virtual void TakeDamage(float amount, Vector2 knockbackDir)
         {
             if (!IsAlive) return;
+            if (_isFrozen) return; // freeze 중에는 피해/사망 이벤트 차단
             _model.TakeDamage(amount);
             _view.PlayHit();
             CheckPhaseTransition();
@@ -254,6 +281,7 @@ namespace Game.Enemies
         {
             if (!IsAlive || _playerTransform == null) return;
             if (_isInPhaseTransition) return;
+            if (_isFrozen) return; // freeze 중 FSM 정지
 
             switch (_attackPhase)
             {
