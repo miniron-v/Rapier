@@ -65,7 +65,7 @@ namespace Game.Characters
             new Keyframe(0.06f, 0.10f),  // 약 0.15초 이내에 0.1배속으로 급강하
             new Keyframe(1.00f, 0.10f)   // 이후 끝까지 0.1배속 유지
         );
-        [SerializeField] private float holdDuration = 2.4f;
+        [SerializeField] private float holdDuration = 1.4f;
 
         [Header("Just Dodge Slow Motion — Exit (복귀)")]
         [SerializeField] private AnimationCurve exitCurve = new AnimationCurve(
