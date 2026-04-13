@@ -51,7 +51,8 @@
       "Read(//c/Users/Kim MinCheol/AppData/LocalLow/**)",
       "Bash(find:*)",
       "Bash(find Rapier/Assets -name \"StageManager.cs.meta\" -exec cat {} \\\\;)",
-      "Bash(find Rapier/Assets -name \"ProgressionManager.cs.meta\" -exec cat {} \\\\;)"
+      "Bash(find Rapier/Assets -name \"ProgressionManager.cs.meta\" -exec cat {} \\\\;)",
+      "Bash(awk '{print $1}')"
     ]
   }
 }

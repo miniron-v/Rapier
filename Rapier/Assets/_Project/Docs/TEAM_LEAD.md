@@ -161,9 +161,3 @@ git branch -d [브랜치명]   # 또는 -D (deny되어 있음, 사용자 확인)
 5. 사용자에게 진행할 작업과 우선순위 확인 후 시작.
 
 ### 다음 세션 예정 작업 (2026-04-13 기준)
-
-1. **페이즈 전환 FSM 정지** — 보스 색상 Lerp 연출 중 Chase/Windup/Hit 상태머신 일시 정지.
-   `EnemyPresenterBase.Update()`에 `_isInPhaseTransition` 플래그 + 조기 리턴 추가.
-
-2. **셋업 통합 버튼** — StageDemo 구성에 필요한 Stage/HUD/BossHUD/Drop 셋업을 단일 메뉴로 통합.
-   개별 메뉴는 그대로 유지, `Rapier/Stage/Full Setup StageDemo` 신규 추가.
