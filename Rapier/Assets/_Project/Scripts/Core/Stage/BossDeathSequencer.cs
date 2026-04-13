@@ -82,14 +82,15 @@ namespace Game.Core.Stage
         /// <param name="bossTransform">보스 Transform (페이드아웃용, null 허용).</param>
         /// <param name="statData">보스 스탯 SO (드롭 테이블 조회용, null 허용).</param>
         /// <param name="onComplete">시퀀스 완료 후 콜백 (포탈 스폰 등).</param>
-        public void Execute(Vector2 bossPos, Transform bossTransform, BossStatData statData, Action onComplete)
+        /// <param name="spawnDrops">true = 드롭 판정 + DroppedItemView 스폰 (최종 보스). false = 연출만 수행 (멀티 보스 중간 사망).</param>
+        public void Execute(Vector2 bossPos, Transform bossTransform, BossStatData statData, Action onComplete, bool spawnDrops = true)
         {
-            StartCoroutine(SequenceRoutine(bossPos, bossTransform, statData, onComplete));
+            StartCoroutine(SequenceRoutine(bossPos, bossTransform, statData, onComplete, spawnDrops));
         }
 
         // ── 코루틴 ───────────────────────────────────────────────────
         private IEnumerator SequenceRoutine(
-            Vector2 bossPos, Transform bossTransform, BossStatData statData, Action onComplete)
+            Vector2 bossPos, Transform bossTransform, BossStatData statData, Action onComplete, bool spawnDrops = true)
         {
             _timeScaleOwned = true;
 
@@ -165,41 +166,47 @@ namespace Game.Core.Stage
                 }
             }
 
-            // ④ 드롭 판정
-            var lootManager = new LootManager();
-            var drops = lootManager.RollDrop(statData?.dropTable);
-
-            // ⑤ DroppedItemView 흩뿌림
-            if (_droppedItemPrefab == null)
+            // ④ 드롭 판정 + ⑤ DroppedItemView 흩뿌림 (최종 보스만)
+            if (spawnDrops)
             {
-                if (drops.Count > 0)
-                    Debug.LogWarning("[BossDeathSequencer] _droppedItemPrefab이 null — 드롭 스킵.");
+                var lootManager = new LootManager();
+                var drops = lootManager.RollDrop(statData?.dropTable);
+
+                if (_droppedItemPrefab == null)
+                {
+                    if (drops.Count > 0)
+                        Debug.LogWarning("[BossDeathSequencer] _droppedItemPrefab이 null — 드롭 스킵.");
+                }
+                else
+                {
+                    // 맵 범위 동적 취득 (fallback: halfH=15, halfW=10)
+                    var stageBuilderForDrop = ServiceLocator.TryGet<StageBuilder>();
+                    float dropHalfH = stageBuilderForDrop != null ? stageBuilderForDrop.stageHeight * 0.5f : 15f;
+                    const float dropHalfW   = 10f;
+                    const float dropMarginY = 1.0f;
+                    const float dropMarginX = 0.5f;
+
+                    foreach (var drop in drops)
+                    {
+                        // 보스 기준 아래쪽 반원(좌~하~우)만 사용: angle 90°→left, 180°→down, 270°→right
+                        float   angle  = UnityEngine.Random.Range(90f, 270f);
+                        float   dist   = UnityEngine.Random.Range(_minDropDist, _maxDropDist);
+                        Vector2 dir    = (Vector2)(Quaternion.Euler(0f, 0f, angle) * Vector2.up);
+                        Vector2 target = bossPos + dir * dist;
+
+                        // 맵 범위 클램프
+                        target.y = Mathf.Clamp(target.y, -dropHalfH + dropMarginY, dropHalfH - dropMarginY);
+                        target.x = Mathf.Clamp(target.x, -dropHalfW + dropMarginX, dropHalfW - dropMarginX);
+
+                        var view = Instantiate(_droppedItemPrefab, (Vector3)(Vector2)bossPos, Quaternion.identity);
+                        view.Init(drop, bossPos, target);
+                        OnItemSpawned?.Invoke(view);
+                    }
+                }
             }
             else
             {
-                // 맵 범위 동적 취득 (fallback: halfH=15, halfW=10)
-                var stageBuilderForDrop = ServiceLocator.TryGet<StageBuilder>();
-                float dropHalfH = stageBuilderForDrop != null ? stageBuilderForDrop.stageHeight * 0.5f : 15f;
-                const float dropHalfW   = 10f;
-                const float dropMarginY = 1.0f;
-                const float dropMarginX = 0.5f;
-
-                foreach (var drop in drops)
-                {
-                    // 보스 기준 아래쪽 반원(좌~하~우)만 사용: angle 90°→left, 180°→down, 270°→right
-                    float   angle  = UnityEngine.Random.Range(90f, 270f);
-                    float   dist   = UnityEngine.Random.Range(_minDropDist, _maxDropDist);
-                    Vector2 dir    = (Vector2)(Quaternion.Euler(0f, 0f, angle) * Vector2.up);
-                    Vector2 target = bossPos + dir * dist;
-
-                    // 맵 범위 클램프
-                    target.y = Mathf.Clamp(target.y, -dropHalfH + dropMarginY, dropHalfH - dropMarginY);
-                    target.x = Mathf.Clamp(target.x, -dropHalfW + dropMarginX, dropHalfW - dropMarginX);
-
-                    var view = Instantiate(_droppedItemPrefab, (Vector3)(Vector2)bossPos, Quaternion.identity);
-                    view.Init(drop, bossPos, target);
-                    OnItemSpawned?.Invoke(view);
-                }
+                Debug.Log("[BossDeathSequencer] spawnDrops=false — 드롭/포탈 스킵 (멀티 보스 중간 사망).");
             }
 
             // ⑥ 입력 복구 후 완료 콜백

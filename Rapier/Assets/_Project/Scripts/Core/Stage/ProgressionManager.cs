@@ -61,6 +61,13 @@ namespace Game.Core.Stage
         private readonly List<EnemyPresenterBase> _activeBossInstances = new List<EnemyPresenterBase>();
         private int _aliveCount;
 
+        // 클로저 식별용: 보스 인스턴스 → 구독한 핸들러 매핑
+        private readonly Dictionary<EnemyPresenterBase, System.Action> _deathHandlers
+            = new Dictionary<EnemyPresenterBase, System.Action>();
+
+        // 동시 사망 가드: 마지막 보스 풀 시퀀스가 이미 시작됐는지
+        private bool _finalSequenceStarted;
+
         // 이번 스테이지에서 수집된 드롭 인스턴스
         private readonly List<EquipmentInstance> _runDrops = new List<EquipmentInstance>();
 
@@ -129,6 +136,8 @@ namespace Game.Core.Stage
         // ── 보스 방 ─────────────────────────────────────────────────
         private IEnumerator SpawnBossRoutine(RoomNode room)
         {
+            _finalSequenceStarted = false;
+
             yield return new WaitForSeconds(0.3f);
 
             if (room.bossPrefab == null)
@@ -180,7 +189,11 @@ namespace Game.Core.Stage
                     }
                 }
 
-                boss.OnDeath += HandleBossDeath;
+                // 클로저로 보스 참조를 캡처하여 식별 가능하게 바인딩
+                var capturedBoss = boss;
+                System.Action handler = () => HandleSingleBossDeath(capturedBoss);
+                _deathHandlers[boss] = handler;
+                boss.OnDeath += handler;
                 _activeBossInstances.Add(boss);
 
                 // 첫 번째 인스턴스를 레거시 단일 참조에도 저장 (HUD 연결용)
@@ -245,40 +258,86 @@ namespace Game.Core.Stage
             _bossHud?.UpdatePhase(phaseIndex);
         }
 
-        private void HandleBossDeath()
+        /// <summary>
+        /// 개별 보스 사망 처리. 클로저에서 who 를 캡처하여 호출된다.
+        ///
+        /// [멀티 보스 (spawnCount > 1)]
+        ///   중간 사망: zoom+fade+Destroy. 드롭/포탈 없음.
+        ///   마지막 사망: 풀 시퀀스 (드롭+포탈) — 그 보스 위치 기준.
+        ///
+        /// [싱글 보스 (spawnCount = 1)]
+        ///   _aliveCount가 0이 되어 즉시 풀 시퀀스 경로 진입 → 기존 동작 유지.
+        /// </summary>
+        private void HandleSingleBossDeath(EnemyPresenterBase who)
         {
             if (!_bossAlive) return;
 
             _aliveCount--;
-            Debug.Log($"[ProgressionManager] 보스 1체 처치. 남은 생존 카운트: {_aliveCount}");
-            if (_aliveCount > 0) return; // 아직 살아있는 인스턴스 있음
+            Debug.Log($"[ProgressionManager] 보스 1체 처치 ({who.name}). 남은 생존 카운트: {_aliveCount}");
 
-            _bossAlive = false;
-            UnsubscribeBoss();
-            // _runDrops는 스테이지 전체 누적 — 보스 방마다 초기화하지 않는다.
-            // (씬 재로드 시 ProgressionManager 재생성으로 자동 초기화)
+            // 사망한 보스의 위치를 즉시 캡처 (transform은 이후 Destroy될 수 있음)
+            Vector2 whoPos = who != null ? (Vector2)who.transform.position : _bossSpawnPosition;
 
-            Vector2 bossPos = _currentBoss != null
-                ? (Vector2)_currentBoss.transform.position
-                : _bossSpawnPosition;
+            bool isLastBoss = (_aliveCount == 0);
 
-            BossStatData bossStatData = _currentBoss?.GetModel()?.StatData as BossStatData;
-
-            Debug.Log($"[ProgressionManager] 보스 처치 → BossDeathSequencer 위임");
-
-            if (_bossDeathSequencer != null)
+            if (isLastBoss)
             {
-                _bossDeathSequencer.OnItemSpawned += RegisterDroppedItem;
-                _bossDeathSequencer.Execute(
-                    bossPos,
-                    _currentBoss?.transform,
-                    bossStatData,
-                    () => OnBossDeathSequenceComplete(bossPos));
+                // 동시 사망 가드: 같은 프레임에 두 보스가 동시에 사망해도 1회만 진입
+                if (_finalSequenceStarted) return;
+                _finalSequenceStarted = true;
+
+                _bossAlive = false;
+                UnsubscribeBoss();
+
+                BossStatData bossStatData = who?.GetModel()?.StatData as BossStatData;
+                Debug.Log($"[ProgressionManager] 마지막 보스 처치 → 풀 시퀀스 @ {whoPos}");
+
+                if (_bossDeathSequencer != null)
+                {
+                    _bossDeathSequencer.OnItemSpawned += RegisterDroppedItem;
+                    _bossDeathSequencer.Execute(
+                        whoPos,
+                        who?.transform,
+                        bossStatData,
+                        () => OnBossDeathSequenceComplete(whoPos),
+                        spawnDrops: true);
+                }
+                else
+                {
+                    Debug.LogWarning("[ProgressionManager] BossDeathSequencer 미연결 — 즉시 포탈 스폰");
+                    OnBossDeathSequenceComplete(whoPos);
+                }
             }
             else
             {
-                Debug.LogWarning("[ProgressionManager] BossDeathSequencer 미연결 — 즉시 포탈 스폰");
-                OnBossDeathSequenceComplete(bossPos);
+                // 멀티 보스 중간 사망: zoom+fade+Destroy, 드롭/포탈 없음
+                Debug.Log($"[ProgressionManager] 중간 보스 사망 → per-boss 연출 (드롭 없음) @ {whoPos}");
+
+                BossStatData bossStatData = who?.GetModel()?.StatData as BossStatData;
+
+                if (_bossDeathSequencer != null)
+                {
+                    // per-boss 연출: spawnDrops=false, 콜백에서 본체 Destroy
+                    _bossDeathSequencer.Execute(
+                        whoPos,
+                        who?.transform,
+                        bossStatData,
+                        () =>
+                        {
+                            if (who != null)
+                            {
+                                _activeBossInstances.Remove(who);
+                                Destroy(who.gameObject);
+                            }
+                        },
+                        spawnDrops: false);
+                }
+                else
+                {
+                    // BossDeathSequencer 없을 때: 즉시 Destroy
+                    _activeBossInstances.Remove(who);
+                    if (who != null) Destroy(who.gameObject);
+                }
             }
         }
 
@@ -478,12 +537,14 @@ namespace Game.Core.Stage
         // ── 정리 유틸 ────────────────────────────────────────────────
         private void UnsubscribeBoss()
         {
-            // 모든 활성 인스턴스의 OnDeath 구독 해제
-            foreach (var b in _activeBossInstances)
+            // 클로저 핸들러 매핑으로 구독 해제 (_deathHandlers Dictionary 사용)
+            foreach (var kv in _deathHandlers)
             {
-                if (b != null)
-                    b.OnDeath -= HandleBossDeath;
+                if (kv.Key != null)
+                    kv.Key.OnDeath -= kv.Value;
             }
+            _deathHandlers.Clear();
+
             if (_currentBossPresenter != null)
             {
                 _currentBossPresenter.OnPhaseChanged -= HandleBossPhaseChanged;
