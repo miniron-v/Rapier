@@ -304,7 +304,7 @@ namespace Game.DevTools
             contentLayout.cellSize     = new Vector2(140f, 140f);
             contentLayout.spacing      = new Vector2(18f, 18f);
             contentLayout.padding      = new RectOffset(6, 6, 6, 6);
-            contentLayout.childAlignment = TextAnchor.UpperCenter;
+            contentLayout.childAlignment = TextAnchor.UpperLeft;
             contentLayout.constraint   = GridLayoutGroup.Constraint.FixedColumnCount;
             contentLayout.constraintCount = 6;
 
