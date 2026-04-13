@@ -42,7 +42,12 @@ namespace Game.Core.Stage
 
         [Header("사망 연출")]
         [SerializeField] private BossDeathSequencer _bossDeathSequencer;
-        [SerializeField] private float _portalOffsetFromBoss = 4.5f; // maxDropDist(2.5) + 여유
+
+        [Tooltip("포탈 스프라이트 반경 (Portal._radius 와 동일값으로 맞출 것). 포탈 오프셋 계산에 사용.")]
+        [SerializeField] private float _portalSpriteRadius   = 0.9f;  // Portal._radius 기본값
+
+        [Tooltip("드롭 최대 거리 + 포탈 반경 이상이 되도록 자동 계산. 0이면 portalSpriteRadius * 2 사용.")]
+        [SerializeField] private float _portalOffsetFromBoss = 0f;    // 0 = auto (Phase 24)
 
         // ── 런타임 ───────────────────────────────────────────────────
         private EnemyPresenterBase _currentBoss;
@@ -231,11 +236,21 @@ namespace Game.Core.Stage
             if (_bossDeathSequencer != null)
                 _bossDeathSequencer.OnItemSpawned -= RegisterDroppedItem;
 
+            // 포탈 오프셋 계산 (Phase 24):
+            //   드롭 최대 거리 + 포탈 직경(반경*2) = 최소 필요 거리
+            //   _portalOffsetFromBoss=0 이면 자동 계산, 0 초과면 Inspector 값 사용
+            float maxDrop      = _bossDeathSequencer != null ? _bossDeathSequencer.MaxDropDist : 2.5f;
+            float portalOffset = _portalOffsetFromBoss > 0f
+                ? _portalOffsetFromBoss
+                : maxDrop + _portalSpriteRadius * 2f;   // 드롭 범위 + 포탈 한 크기
+
             // 맵 범위 동적 취득 (fallback: halfH=15f)
             var stageBuilder = ServiceLocator.TryGet<StageBuilder>();
-            float halfH = stageBuilder != null ? stageBuilder.stageHeight * 0.5f : 15f;
-            float clampedY = Mathf.Clamp(bossPos.y, -halfH + 1f, halfH - 1f);
+            float halfH    = stageBuilder != null ? stageBuilder.stageHeight * 0.5f : 15f;
+            float portalY  = bossPos.y + portalOffset;
+            float clampedY = Mathf.Clamp(portalY, -halfH + 1f, halfH - 1f);
 
+            Debug.Log($"[ProgressionManager] 포탈 오프셋={portalOffset:F2} → 위치Y={clampedY:F2}");
             SpawnPortal(new Vector2(bossPos.x, clampedY));
         }
 

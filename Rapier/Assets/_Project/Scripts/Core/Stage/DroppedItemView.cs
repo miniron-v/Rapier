@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using TMPro;
 using UnityEngine;
 using Game.Core;
 using Game.Data.Equipment;
@@ -18,13 +19,21 @@ namespace Game.Core.Stage
     ///
     /// [즉시 획득 방지]
     ///   SpawnAnim 완료 후 _isPickupEnabled = true. 스폰 중 즉시 수거 방지.
+    ///
+    /// [Phase 24: 월드 라벨]
+    ///   SpawnAnim 완료(_isPickupEnabled=true) 시점에 자식 World-space Canvas 를 활성화.
+    ///   반투명 검정 배경 + 등급별 색상 글자. TMP 폰트는 SerializeField 주입 패턴.
     /// </summary>
     public class DroppedItemView : MonoBehaviour
     {
-        [SerializeField] private float _pickupRadius    = 0.6f;
-        [SerializeField] private float _shimmerPeriod   = 0.8f;
-        [SerializeField] private float _shimmerMinAlpha = 0.3f;
-        [SerializeField] private float _shimmerMaxAlpha = 0.7f;
+        [SerializeField] private float          _pickupRadius    = 0.6f;
+        [SerializeField] private float          _shimmerPeriod   = 0.8f;
+        [SerializeField] private float          _shimmerMinAlpha = 0.3f;
+        [SerializeField] private float          _shimmerMaxAlpha = 0.7f;
+
+        [Header("월드 라벨 (Phase 24)")]
+        [Tooltip("TMP 폰트 에셋. null 이면 기본 폰트 사용 시도.")]
+        [SerializeField] private TMP_FontAsset  _labelFont;
 
         // ── 내부 상태 ────────────────────────────────────────────────
         private EquipmentInstance  _item;
@@ -32,6 +41,7 @@ namespace Game.Core.Stage
         private IPlayerCharacter   _player;
         private SpriteRenderer     _innerSr;
         private SpriteRenderer     _outerSr;
+        private GameObject         _labelCanvasGo;
 
         // ── 이벤트 ──────────────────────────────────────────────────
         /// <summary>플레이어가 아이템을 획득할 때 발행. 구독자가 인벤토리 추가를 처리한다.</summary>
@@ -73,6 +83,9 @@ namespace Game.Core.Stage
 
             transform.position = from;
             transform.localScale = Vector3.zero;
+
+            // Phase 24: 월드 라벨 생성 (스폰 완료 후 활성화)
+            BuildWorldLabel(item.Data.ItemName, gradeColor);
 
             StartCoroutine(SpawnAnim(from, to));
             StartCoroutine(ShimmerRoutine());
@@ -130,6 +143,10 @@ namespace Game.Core.Stage
             transform.localScale = Vector3.one;
 
             _isPickupEnabled = true;
+
+            // Phase 24: 스폰 완료 시점에 라벨 활성화
+            if (_labelCanvasGo != null)
+                _labelCanvasGo.SetActive(true);
         }
 
         private IEnumerator ShimmerRoutine()
@@ -156,6 +173,61 @@ namespace Game.Core.Stage
         }
 
         // ── 내부 유틸 ─────────────────────────────────────────────────
+
+        /// <summary>
+        /// World-space Canvas + TextMeshPro 라벨을 자식으로 생성한다.
+        /// 스폰 애니 완료(_isPickupEnabled=true) 시점까지 비활성 상태를 유지한다.
+        /// </summary>
+        private void BuildWorldLabel(string itemName, Color gradeColor)
+        {
+            // Canvas (World Space)
+            _labelCanvasGo = new GameObject("DropLabel");
+            _labelCanvasGo.transform.SetParent(transform, false);
+            _labelCanvasGo.transform.localPosition = new Vector3(0f, 0.7f, 0f);
+
+            var canvas = _labelCanvasGo.AddComponent<Canvas>();
+            canvas.renderMode  = RenderMode.WorldSpace;
+            canvas.sortingOrder = 20;
+
+            var canvasRt = _labelCanvasGo.GetComponent<RectTransform>();
+            canvasRt.sizeDelta  = new Vector2(2.0f, 0.4f);
+            canvasRt.localScale = new Vector3(0.01f, 0.01f, 0.01f);
+
+            // 배경 Image (반투명 검정)
+            var bgGo  = new GameObject("Background");
+            bgGo.transform.SetParent(_labelCanvasGo.transform, false);
+            var bgImg = bgGo.AddComponent<UnityEngine.UI.Image>();
+            bgImg.color = new Color(0f, 0f, 0f, 0.6f);
+            var bgRt  = bgGo.GetComponent<RectTransform>();
+            bgRt.anchorMin = Vector2.zero;
+            bgRt.anchorMax = Vector2.one;
+            bgRt.offsetMin = bgRt.offsetMax = Vector2.zero;
+
+            // TextMeshProUGUI
+            var textGo  = new GameObject("NameText");
+            textGo.transform.SetParent(_labelCanvasGo.transform, false);
+            var tmp     = textGo.AddComponent<TextMeshProUGUI>();
+            tmp.text      = itemName;
+            tmp.color     = gradeColor;
+            tmp.fontSize  = 16f;
+            tmp.alignment = TMPro.TextAlignmentOptions.Center;
+            tmp.overflowMode = TMPro.TextOverflowModes.Ellipsis;
+
+            // 폰트 주입 (SerializeField 패턴 — feedback_tmp_font_unset)
+            if (_labelFont != null)
+                tmp.font = _labelFont;
+            else
+                Debug.LogWarning("[DroppedItemView] _labelFont 미설정 — 기본 폰트로 fallback. 화면에 표시되지 않을 수 있음.");
+
+            var textRt  = textGo.GetComponent<RectTransform>();
+            textRt.anchorMin  = Vector2.zero;
+            textRt.anchorMax  = Vector2.one;
+            textRt.offsetMin  = textRt.offsetMax = Vector2.zero;
+
+            // 스폰 완료까지 비활성
+            _labelCanvasGo.SetActive(false);
+        }
+
         private static Sprite CreateCircleSprite(int size)
         {
             var tex    = new Texture2D(size, size, TextureFormat.RGBA32, false);
