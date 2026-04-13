@@ -55,7 +55,8 @@ namespace Game.Enemies
         private EnemyAttackContext _ctx;
 
         // ── 페이즈 시스템 ─────────────────────────────────────────
-        private int _currentPhaseIndex;
+        private int  _currentPhaseIndex;
+        private bool _isInPhaseTransition; // 색상 Lerp 중 Update FSM 정지용
 
         /// <summary>현재 활성 페이즈 인덱스 (0-based).</summary>
         public int CurrentPhaseIndex => _currentPhaseIndex;
@@ -122,7 +123,8 @@ namespace Game.Enemies
             _approachOffset = Quaternion.Euler(0f, 0f, angle) * Vector2.up * 0.3f;
 
             // ── 페이즈 초기화 ─────────────────────────────────────
-            _currentPhaseIndex = 0;
+            _currentPhaseIndex    = 0;
+            _isInPhaseTransition  = false;
             var initialPhase = GetPhase(0);
             if (initialPhase != null)
             {
@@ -192,9 +194,10 @@ namespace Game.Enemies
         /// </summary>
         private IEnumerator PhaseTransitionRoutine(int newIndex)
         {
-            _currentPhaseIndex = newIndex;
+            _isInPhaseTransition = true;
+            _currentPhaseIndex   = newIndex;
             var entry = GetPhase(newIndex);
-            if (entry == null) yield break;
+            if (entry == null) { _isInPhaseTransition = false; yield break; }
 
             // ── 진행 중인 공격 즉시 취소 ─────────────────────────────
             // 인디케이터가 표시된 채 페이즈 전환이 일어나면 공격 없이 인디케이터만 사라지고
@@ -227,6 +230,7 @@ namespace Game.Enemies
             if (entry.sequence != null && entry.sequence.Count > 0)
                 _sequencer.SetSequence(entry.sequence);
 
+            _isInPhaseTransition = false;
             Debug.Log($"[{name}] ★ Phase {newIndex + 1} 진입!");
             OnPhaseChanged?.Invoke(newIndex);
             OnPhaseTransition(newIndex);
@@ -250,6 +254,7 @@ namespace Game.Enemies
         protected virtual void Update()
         {
             if (!IsAlive || _playerTransform == null) return;
+            if (_isInPhaseTransition) return;
 
             switch (_attackPhase)
             {
