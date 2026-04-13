@@ -4,38 +4,36 @@ using UnityEngine.UI;
 namespace Game.UI
 {
     /// <summary>
-    /// GridLayoutGroup 의 cellSize.x 를 부모 Rect 폭에 맞춰 자동 계산한다.
+    /// GridLayoutGroup 의 spacing.x 를 부모 Rect 폭에 맞춰 자동 계산한다.
+    /// cellSize 는 변경하지 않아 비율을 유지한다.
     /// ILayoutSelfController 를 구현하여 Unity 레이아웃 패스 시 호출된다.
-    /// HorizontalLayoutGroup.childControlWidth 와 동일한 역할.
     /// </summary>
     [RequireComponent(typeof(GridLayoutGroup))]
-    public class GridLayoutFiller : UIBehaviour, ILayoutSelfController
+    public class GridLayoutFiller : MonoBehaviour, ILayoutSelfController
     {
         private GridLayoutGroup _grid;
         private RectTransform _rect;
 
-        protected override void Awake()
+        private void Awake()
         {
-            base.Awake();
             _grid = GetComponent<GridLayoutGroup>();
             _rect = GetComponent<RectTransform>();
         }
 
-        /// <summary>수평 레이아웃 패스: cellSize.x 를 열 수에 맞게 계산한다.</summary>
+        /// <summary>수평 레이아웃 패스: spacing.x 를 열 수에 맞게 계산한다.</summary>
         public void SetLayoutHorizontal()
         {
             if (_grid == null || _rect == null) return;
             if (_grid.constraint != GridLayoutGroup.Constraint.FixedColumnCount) return;
 
             int cols = _grid.constraintCount;
-            if (cols <= 0) return;
+            if (cols <= 1) return;
 
-            float availableWidth = _rect.rect.width
-                                   - _grid.padding.left
-                                   - _grid.padding.right;
-            float cellWidth = (availableWidth - _grid.spacing.x * (cols - 1)) / cols;
-            if (cellWidth > 0f)
-                _grid.cellSize = new Vector2(cellWidth, _grid.cellSize.y);
+            float available = _rect.rect.width - _grid.padding.left - _grid.padding.right;
+            float totalCellWidth = _grid.cellSize.x * cols;
+            float spacingX = (available - totalCellWidth) / (cols - 1);
+            if (spacingX >= 0f)
+                _grid.spacing = new Vector2(spacingX, _grid.spacing.y);
         }
 
         /// <summary>수직 레이아웃 패스: 처리 없음.</summary>
