@@ -373,12 +373,47 @@ namespace Game.DevTools
             itemViewTemplate.InitReferences(tIconImg, gradeBgImg, nameTmp, statTmp, tBtn);
             templateGo.SetActive(false);  // 템플릿은 비활성 유지
 
+            // ── (d) 인벤토리 탭 버튼 3개 (Phase 24) ───────────────────────────
+            var tabBarGo = new GameObject("InventoryTabBar");
+            tabBarGo.transform.SetParent(equipRoot, false);
+            var tabBarRect = tabBarGo.AddComponent<RectTransform>();
+            SetAnchors(tabBarRect, new Vector2(0f, 0.0f), new Vector2(1f, 0.07f));
+            tabBarRect.offsetMin = tabBarRect.offsetMax = Vector2.zero;
+            var tabHLayout           = tabBarGo.AddComponent<HorizontalLayoutGroup>();
+            tabHLayout.spacing       = 4f;
+            tabHLayout.padding       = new RectOffset(4, 4, 2, 2);
+            tabHLayout.childAlignment           = TextAnchor.MiddleCenter;
+            tabHLayout.childForceExpandWidth    = true;
+            tabHLayout.childForceExpandHeight   = true;
+
+            (Button weaponTabBtn,    TextMeshProUGUI weaponTabTxt)    = CreateTabButtonPair(tabBarGo, "무기");
+            (Button armorTabBtn,     TextMeshProUGUI armorTabTxt)     = CreateTabButtonPair(tabBarGo, "방어구");
+            (Button accessoryTabBtn, TextMeshProUGUI accessoryTabTxt) = CreateTabButtonPair(tabBarGo, "장신구");
+
+            // ScrollRect 위치를 탭 위로 (탭 바가 생겼으므로 offset 조정)
+            // 기존 scrollGo anchor (0,0)~(1,0.52) → (0,0.07)~(1,0.52) 로 보정
+            scrollGo.anchorMin = new Vector2(0f, 0.08f);
+            scrollGo.anchorMax = new Vector2(1f, 0.52f);
+
             // ── EquipmentPanelView + Presenter 조립 ───────────────────────────
             var equipView = equipRoot.gameObject.AddComponent<EquipmentPanelView>();
             equipView.InitReferences(slotViews, contentGo.gameObject.transform, itemViewTemplate);
+            equipView.InitTabReferences(
+                weaponTabBtn, weaponTabTxt,
+                armorTabBtn,  armorTabTxt,
+                accessoryTabBtn, accessoryTabTxt);
+
+            // ── (f) 룬 인벤토리 팝업 (Phase 24) — 먼저 생성 (itemDetail 에서 참조)
+            var (runeInventoryView, runeInventoryPresenter, runeDetailPresenter) =
+                CreateRuneInventoryPopup(panel, GetFont());
+
+            // ── (e) 아이템 상세 팝업 (Phase 24) ────────────────────────────────
+            var (itemDetailView, itemDetailPresenter) = CreateItemDetailPopup(panel, GetFont());
+            // 룬 소켓 클릭 → 룬 인벤토리 팝업 연결
+            itemDetailPresenter.InitReferences(itemDetailView, runeInventoryPresenter);
 
             var equipPresenter = equipRoot.gameObject.AddComponent<EquipmentPanelPresenter>();
-            equipPresenter.InitReferences(equipView);
+            equipPresenter.InitReferences(equipView, itemDetailPresenter, runeInventoryPresenter);
 
             // 초기 상태: 패널 비활성 (CharacterTabPresenter.OnTabShown 에서 Show 호출)
             equipRoot.gameObject.SetActive(false);
@@ -842,6 +877,381 @@ namespace Game.DevTools
             toggle.isOn          = true;
 
             return (labelGo, toggle);
+        }
+
+        // ── Phase 24 헬퍼: 탭 버튼 쌍 생성 ──────────────────────────
+
+        private static (Button btn, TextMeshProUGUI txt) CreateTabButtonPair(GameObject parent, string label)
+        {
+            var btnGo = new GameObject($"TabBtn_{label}");
+            btnGo.transform.SetParent(parent.transform, false);
+            var bg    = btnGo.AddComponent<Image>();
+            bg.color  = new Color(0.2f, 0.2f, 0.25f, 0.9f);
+            var btn   = btnGo.AddComponent<Button>();
+            btnGo.AddComponent<LayoutElement>();
+
+            var labelGo = new GameObject("Label");
+            labelGo.transform.SetParent(btnGo.transform, false);
+            var tmp     = labelGo.AddComponent<TextMeshProUGUI>();
+            tmp.text      = label;
+            tmp.fontSize  = 26f;
+            tmp.alignment = TextAlignmentOptions.Center;
+            tmp.color     = new Color(0.5f, 0.5f, 0.5f);
+            var f = GetFont();
+            if (f != null) tmp.font = f;
+            var labelRect = labelGo.GetComponent<RectTransform>();
+            SetAnchors(labelRect, Vector2.zero, Vector2.one);
+            labelRect.offsetMin = labelRect.offsetMax = Vector2.zero;
+
+            return (btn, tmp);
+        }
+
+        // ── Phase 24 헬퍼: 아이템 상세 팝업 생성 ────────────────────
+
+        private static (ItemDetailPopupView view, ItemDetailPopupPresenter presenter)
+            CreateItemDetailPopup(GameObject panelParent, TMP_FontAsset font)
+        {
+            var popupGo = new GameObject("ItemDetailPopup");
+            popupGo.transform.SetParent(panelParent.transform, false);
+
+            // 반투명 배경
+            var bg   = popupGo.AddComponent<Image>();
+            bg.color = new Color(0f, 0f, 0f, 0.7f);
+            var rt   = popupGo.GetComponent<RectTransform>();
+            SetAnchors(rt, new Vector2(0.05f, 0.08f), new Vector2(0.95f, 0.95f));
+            rt.offsetMin = rt.offsetMax = Vector2.zero;
+
+            // Block input below (GraphicRaycaster already on root canvas)
+
+            // 1. 아이템 이름 (상단)
+            var nameGo  = CreateTmpLabel(popupGo, "ItemName", "아이템 이름", 36f, font);
+            SetAnchors(nameGo.GetComponent<RectTransform>(), new Vector2(0f, 0.88f), new Vector2(1f, 0.98f));
+            nameGo.GetComponent<RectTransform>().offsetMin = nameGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
+
+            // 2. 아이콘 (좌)
+            var iconGo  = new GameObject("ItemIcon");
+            iconGo.transform.SetParent(popupGo.transform, false);
+            var iconImg = iconGo.AddComponent<Image>();
+            iconImg.color = Color.white;
+            SetAnchors(iconGo.GetComponent<RectTransform>(), new Vector2(0.02f, 0.62f), new Vector2(0.28f, 0.88f));
+            iconGo.GetComponent<RectTransform>().offsetMin = iconGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
+
+            // 3. 스탯창 (우 — 고정 크기 영역)
+            var statPanel = new GameObject("StatPanel");
+            statPanel.transform.SetParent(popupGo.transform, false);
+            SetAnchors(statPanel.GetComponent<RectTransform>(), new Vector2(0.30f, 0.62f), new Vector2(0.98f, 0.88f));
+            statPanel.GetComponent<RectTransform>().offsetMin = statPanel.GetComponent<RectTransform>().offsetMax = Vector2.zero;
+
+            var mainStatGo = CreateTmpLabel(statPanel, "MainStat", "메인 스탯", 22f, font);
+            SetAnchors(mainStatGo.GetComponent<RectTransform>(), new Vector2(0f, 0.75f), new Vector2(1f, 1f));
+            mainStatGo.GetComponent<RectTransform>().offsetMin = mainStatGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
+            mainStatGo.GetComponent<TextMeshProUGUI>().color = new Color(1f, 0.9f, 0.5f);
+
+            var subStatTexts = new List<TextMeshProUGUI>();
+            for (int i = 0; i < 3; i++)
+            {
+                float yMax = 0.72f - i * 0.25f;
+                float yMin = yMax - 0.23f;
+                var subGo  = CreateTmpLabel(statPanel, $"SubStat_{i}", string.Empty, 20f, font);
+                SetAnchors(subGo.GetComponent<RectTransform>(), new Vector2(0f, yMin), new Vector2(1f, yMax));
+                subGo.GetComponent<RectTransform>().offsetMin = subGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
+                subGo.GetComponent<TextMeshProUGUI>().color = new Color(0.8f, 0.8f, 0.8f);
+                subStatTexts.Add(subGo.GetComponent<TextMeshProUGUI>());
+            }
+
+            // 4. 룬 소켓 행
+            var runeRowGo = new GameObject("RuneRow");
+            runeRowGo.transform.SetParent(popupGo.transform, false);
+            SetAnchors(runeRowGo.GetComponent<RectTransform>(), new Vector2(0.02f, 0.50f), new Vector2(0.98f, 0.61f));
+            runeRowGo.GetComponent<RectTransform>().offsetMin = runeRowGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
+            var runeHLayout           = runeRowGo.AddComponent<HorizontalLayoutGroup>();
+            runeHLayout.spacing       = 6f;
+            runeHLayout.childAlignment             = TextAnchor.MiddleLeft;
+            runeHLayout.childForceExpandHeight     = true;
+            runeHLayout.padding = new RectOffset(4, 4, 2, 2);
+
+            var runeSocketBtns  = new List<Button>();
+            var runeSocketImgs  = new List<Image>();
+            for (int i = 0; i < 3; i++)
+            {
+                var sockGo  = new GameObject($"RuneSocket_{i}");
+                sockGo.transform.SetParent(runeRowGo.transform, false);
+                var sockBg  = sockGo.AddComponent<Image>();
+                sockBg.color = new Color(0.15f, 0.15f, 0.2f, 0.9f);
+                var sockBtn = sockGo.AddComponent<Button>();
+                var sockLe  = sockGo.AddComponent<LayoutElement>();
+                sockLe.preferredWidth  = 60f;
+                sockLe.preferredHeight = 60f;
+                sockLe.flexibleWidth   = 0f;
+
+                var innerGo  = new GameObject("Icon");
+                innerGo.transform.SetParent(sockGo.transform, false);
+                var innerImg = innerGo.AddComponent<Image>();
+                innerImg.color = Color.gray;
+                var innerRect = innerGo.GetComponent<RectTransform>();
+                SetAnchors(innerRect, new Vector2(0.1f, 0.1f), new Vector2(0.9f, 0.9f));
+                innerRect.offsetMin = innerRect.offsetMax = Vector2.zero;
+                sockGo.SetActive(false);  // 등급에 따라 Presenter 가 활성화
+
+                runeSocketBtns.Add(sockBtn);
+                runeSocketImgs.Add(innerImg);
+            }
+
+            // 5. 설명
+            var descGo = CreateTmpLabel(popupGo, "Description", "설명 텍스트", 22f, font);
+            var descTmp = descGo.GetComponent<TextMeshProUGUI>();
+            descTmp.color = new Color(0.7f, 0.7f, 0.7f);
+            descTmp.textWrappingMode = TMPro.TextWrappingModes.Normal;
+            SetAnchors(descGo.GetComponent<RectTransform>(), new Vector2(0.02f, 0.24f), new Vector2(0.98f, 0.49f));
+            descGo.GetComponent<RectTransform>().offsetMin = descGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
+
+            // 6. 장착/닫기 버튼 행
+            var equipBtn = CreateSimpleButton(popupGo, "EquipButton", "장착",
+                new Vector2(0.05f, 0.02f), new Vector2(0.55f, 0.14f), new Color(0.2f, 0.7f, 0.3f), font);
+            var closeBtn = CreateSimpleButton(popupGo, "CloseButton", "닫기",
+                new Vector2(0.60f, 0.02f), new Vector2(0.95f, 0.14f), new Color(0.5f, 0.2f, 0.2f), font);
+
+            var view = popupGo.AddComponent<ItemDetailPopupView>();
+            view.InitReferences(
+                nameGo.GetComponent<TextMeshProUGUI>(),
+                iconImg,
+                mainStatGo.GetComponent<TextMeshProUGUI>(),
+                subStatTexts,
+                runeSocketBtns,
+                runeSocketImgs,
+                descTmp,
+                equipBtn.GetComponent<Button>(),
+                equipBtn.GetComponentInChildren<TextMeshProUGUI>(),
+                closeBtn.GetComponent<Button>());
+
+            var presenter = popupGo.AddComponent<ItemDetailPopupPresenter>();
+            presenter.InitReferences(view);
+
+            popupGo.SetActive(false);
+            return (view, presenter);
+        }
+
+        // ── Phase 24 헬퍼: 룬 인벤토리 팝업 생성 ───────────────────
+
+        private static (RuneInventoryPopupView view, RuneInventoryPopupPresenter presenter,
+                         RuneDetailPopupPresenter runeDetailPresenter)
+            CreateRuneInventoryPopup(GameObject panelParent, TMP_FontAsset font)
+        {
+            // 룬 인벤토리 팝업
+            var popupGo = new GameObject("RuneInventoryPopup");
+            popupGo.transform.SetParent(panelParent.transform, false);
+            var popBg   = popupGo.AddComponent<Image>();
+            popBg.color = new Color(0f, 0f, 0f, 0.75f);
+            var popRt   = popupGo.GetComponent<RectTransform>();
+            SetAnchors(popRt, new Vector2(0.03f, 0.05f), new Vector2(0.97f, 0.97f));
+            popRt.offsetMin = popRt.offsetMax = Vector2.zero;
+
+            // 탭 버튼 행
+            var tabRowGo = new GameObject("TabRow");
+            tabRowGo.transform.SetParent(popupGo.transform, false);
+            SetAnchors(tabRowGo.GetComponent<RectTransform>(), new Vector2(0f, 0.88f), new Vector2(1f, 0.98f));
+            tabRowGo.GetComponent<RectTransform>().offsetMin = tabRowGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
+            var tabHLay           = tabRowGo.AddComponent<HorizontalLayoutGroup>();
+            tabHLay.spacing       = 4f;
+            tabHLay.childForceExpandWidth  = true;
+            tabHLay.childForceExpandHeight = true;
+            tabHLay.padding = new RectOffset(4, 4, 2, 2);
+
+            (Button rapierTab,   TextMeshProUGUI rapierTabTxt)   = CreateTabButtonPair(tabRowGo, "Rapier");
+            (Button assassinTab, TextMeshProUGUI assassinTabTxt) = CreateTabButtonPair(tabRowGo, "Assassin");
+
+            // 룬 목록 ScrollRect
+            var scrollGo = new GameObject("RuneScroll");
+            scrollGo.transform.SetParent(popupGo.transform, false);
+            SetAnchors(scrollGo.GetComponent<RectTransform>(), new Vector2(0f, 0.15f), new Vector2(1f, 0.87f));
+            scrollGo.GetComponent<RectTransform>().offsetMin = scrollGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
+            scrollGo.AddComponent<Image>().color = new Color(0.12f, 0.12f, 0.15f, 0.8f);
+
+            var viewportGo = new GameObject("Viewport");
+            viewportGo.transform.SetParent(scrollGo.transform, false);
+            SetAnchors(viewportGo.GetComponent<RectTransform>(), Vector2.zero, Vector2.one);
+            viewportGo.GetComponent<RectTransform>().offsetMin = viewportGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
+            viewportGo.AddComponent<RectMask2D>();
+
+            var contentGo = new GameObject("Content");
+            contentGo.transform.SetParent(viewportGo.transform, false);
+            var contentRt = contentGo.AddComponent<RectTransform>();
+            contentRt.anchorMin = new Vector2(0f, 1f);
+            contentRt.anchorMax = new Vector2(1f, 1f);
+            contentRt.pivot     = new Vector2(0.5f, 1f);
+            contentRt.offsetMin = contentRt.offsetMax = Vector2.zero;
+            contentGo.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            var vLayout = contentGo.AddComponent<VerticalLayoutGroup>();
+            vLayout.spacing   = 4f;
+            vLayout.padding   = new RectOffset(4, 4, 4, 4);
+            vLayout.childForceExpandWidth  = true;
+            vLayout.childForceExpandHeight = false;
+
+            var scrollRect        = scrollGo.AddComponent<ScrollRect>();
+            scrollRect.content    = contentRt;
+            scrollRect.viewport   = viewportGo.GetComponent<RectTransform>();
+            scrollRect.horizontal = false;
+            scrollRect.vertical   = true;
+
+            // 룬 행 템플릿
+            var rowTemplate = CreateRuneRowTemplate(contentGo, font);
+            rowTemplate.gameObject.SetActive(false);
+
+            // 해제/닫기 버튼
+            var unequipBtn = CreateSimpleButton(popupGo, "UnequipButton", "해제",
+                new Vector2(0.05f, 0.01f), new Vector2(0.50f, 0.12f), new Color(0.7f, 0.3f, 0.3f), font);
+            var closeBtn   = CreateSimpleButton(popupGo, "CloseButton", "닫기",
+                new Vector2(0.55f, 0.01f), new Vector2(0.95f, 0.12f), new Color(0.3f, 0.3f, 0.5f), font);
+
+            var view = popupGo.AddComponent<RuneInventoryPopupView>();
+            view.InitReferences(
+                rapierTab, rapierTabTxt,
+                assassinTab, assassinTabTxt,
+                contentRt,
+                rowTemplate,
+                unequipBtn.GetComponent<Button>(),
+                closeBtn.GetComponent<Button>());
+
+            // 룬 상세 팝업
+            var (runeDetailView, runeDetailPresenter) = CreateRuneDetailPopup(panelParent, font);
+
+            var presenter = popupGo.AddComponent<RuneInventoryPopupPresenter>();
+            presenter.InitReferences(view, runeDetailPresenter);
+
+            popupGo.SetActive(false);
+            return (view, presenter, runeDetailPresenter);
+        }
+
+        private static RuneItemRowView CreateRuneRowTemplate(GameObject parent, TMP_FontAsset font)
+        {
+            var rowGo  = new GameObject("RuneRowTemplate");
+            rowGo.transform.SetParent(parent.transform, false);
+            var rowBg  = rowGo.AddComponent<Image>();
+            rowBg.color = new Color(0.18f, 0.18f, 0.22f, 0.9f);
+            var rowLe  = rowGo.AddComponent<LayoutElement>();
+            rowLe.preferredHeight = 70f;
+            rowLe.flexibleWidth   = 1f;
+            rowGo.AddComponent<Button>();
+
+            var iconGo  = new GameObject("RuneIcon");
+            iconGo.transform.SetParent(rowGo.transform, false);
+            var iconImg = iconGo.AddComponent<Image>();
+            iconImg.color = Color.cyan;
+            SetAnchors(iconGo.GetComponent<RectTransform>(), new Vector2(0.01f, 0.1f), new Vector2(0.15f, 0.9f));
+            iconGo.GetComponent<RectTransform>().offsetMin = iconGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
+
+            var nameGo  = CreateTmpLabel(rowGo, "RuneName", "룬 이름", 24f, font);
+            SetAnchors(nameGo.GetComponent<RectTransform>(), new Vector2(0.17f, 0.5f), new Vector2(1f, 0.95f));
+            nameGo.GetComponent<RectTransform>().offsetMin = nameGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
+
+            var effectGo = CreateTmpLabel(rowGo, "EffectText", "효과", 18f, font);
+            effectGo.GetComponent<TextMeshProUGUI>().color = new Color(0.7f, 0.7f, 0.7f);
+            SetAnchors(effectGo.GetComponent<RectTransform>(), new Vector2(0.17f, 0.05f), new Vector2(1f, 0.5f));
+            effectGo.GetComponent<RectTransform>().offsetMin = effectGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
+
+            var row = rowGo.AddComponent<RuneItemRowView>();
+            row.InitReferences(iconImg, nameGo.GetComponent<TextMeshProUGUI>(), effectGo.GetComponent<TextMeshProUGUI>(), rowGo.GetComponent<Button>());
+            return row;
+        }
+
+        // ── Phase 24 헬퍼: 룬 상세 팝업 생성 ───────────────────────
+
+        private static (RuneDetailPopupView view, RuneDetailPopupPresenter presenter)
+            CreateRuneDetailPopup(GameObject panelParent, TMP_FontAsset font)
+        {
+            var popupGo = new GameObject("RuneDetailPopup");
+            popupGo.transform.SetParent(panelParent.transform, false);
+            popupGo.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0.8f);
+            var rt = popupGo.GetComponent<RectTransform>();
+            SetAnchors(rt, new Vector2(0.08f, 0.15f), new Vector2(0.92f, 0.88f));
+            rt.offsetMin = rt.offsetMax = Vector2.zero;
+
+            // 룬 이름
+            var nameGo = CreateTmpLabel(popupGo, "RuneName", "룬 이름", 34f, font);
+            SetAnchors(nameGo.GetComponent<RectTransform>(), new Vector2(0f, 0.84f), new Vector2(1f, 0.98f));
+            nameGo.GetComponent<RectTransform>().offsetMin = nameGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
+
+            // 룬 아이콘
+            var iconGo  = new GameObject("RuneIcon");
+            iconGo.transform.SetParent(popupGo.transform, false);
+            iconGo.AddComponent<Image>().color = Color.cyan;
+            SetAnchors(iconGo.GetComponent<RectTransform>(), new Vector2(0.30f, 0.55f), new Vector2(0.70f, 0.84f));
+            iconGo.GetComponent<RectTransform>().offsetMin = iconGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
+
+            // 효과 설명
+            var effectGo  = CreateTmpLabel(popupGo, "EffectText", "효과 설명", 22f, font);
+            var effectTmp = effectGo.GetComponent<TextMeshProUGUI>();
+            effectTmp.color = new Color(0.8f, 0.8f, 0.8f);
+            effectTmp.textWrappingMode = TMPro.TextWrappingModes.Normal;
+            SetAnchors(effectGo.GetComponent<RectTransform>(), new Vector2(0.02f, 0.22f), new Vector2(0.98f, 0.54f));
+            effectGo.GetComponent<RectTransform>().offsetMin = effectGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
+
+            // 버튼
+            var equipBtn = CreateSimpleButton(popupGo, "EquipButton", "장착",
+                new Vector2(0.05f, 0.03f), new Vector2(0.55f, 0.17f), new Color(0.2f, 0.7f, 0.3f), font);
+            var closeBtn = CreateSimpleButton(popupGo, "CloseButton", "닫기",
+                new Vector2(0.60f, 0.03f), new Vector2(0.95f, 0.17f), new Color(0.5f, 0.2f, 0.2f), font);
+
+            var view = popupGo.AddComponent<RuneDetailPopupView>();
+            view.InitReferences(
+                nameGo.GetComponent<TextMeshProUGUI>(),
+                iconGo.GetComponent<Image>(),
+                effectTmp,
+                equipBtn.GetComponent<Button>(),
+                equipBtn.GetComponentInChildren<TextMeshProUGUI>(),
+                closeBtn.GetComponent<Button>());
+
+            var presenter = popupGo.AddComponent<RuneDetailPopupPresenter>();
+            presenter.InitReferences(view);
+
+            popupGo.SetActive(false);
+            return (view, presenter);
+        }
+
+        // ── Phase 24 공통 UI 헬퍼 ──────────────────────────────────
+
+        private static GameObject CreateTmpLabel(
+            GameObject parent, string name, string text, float fontSize, TMP_FontAsset font)
+        {
+            var go  = new GameObject(name);
+            go.transform.SetParent(parent.transform, false);
+            var tmp = go.AddComponent<TextMeshProUGUI>();
+            tmp.text      = text;
+            tmp.fontSize  = fontSize;
+            tmp.alignment = TextAlignmentOptions.Center;
+            tmp.color     = Color.white;
+            if (font != null) tmp.font = font;
+            else Debug.LogWarning($"[LobbyHudSetup] TMP '{name}' — font null (feedback_tmp_font_unset)");
+            go.AddComponent<RectTransform>(); // 이미 있으면 noop
+            return go;
+        }
+
+        private static GameObject CreateSimpleButton(
+            GameObject parent, string name, string label,
+            Vector2 anchorMin, Vector2 anchorMax,
+            Color bgColor, TMP_FontAsset font)
+        {
+            var btnGo = new GameObject(name);
+            btnGo.transform.SetParent(parent.transform, false);
+            btnGo.AddComponent<Image>().color = bgColor;
+            btnGo.AddComponent<Button>();
+            var rt = btnGo.GetComponent<RectTransform>();
+            SetAnchors(rt, anchorMin, anchorMax);
+            rt.offsetMin = rt.offsetMax = Vector2.zero;
+
+            var lGo  = new GameObject("Label");
+            lGo.transform.SetParent(btnGo.transform, false);
+            var tmp  = lGo.AddComponent<TextMeshProUGUI>();
+            tmp.text      = label;
+            tmp.fontSize  = 28f;
+            tmp.alignment = TextAlignmentOptions.Center;
+            tmp.color     = Color.white;
+            if (font != null) tmp.font = font;
+            var lr = lGo.GetComponent<RectTransform>();
+            SetAnchors(lr, Vector2.zero, Vector2.one);
+            lr.offsetMin = lr.offsetMax = Vector2.zero;
+
+            return btnGo;
         }
 
         // ── EventSystem 생성 ──────────────────────────────────────
