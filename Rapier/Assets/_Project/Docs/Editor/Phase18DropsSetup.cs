@@ -215,7 +215,8 @@ namespace Game.Editor
             scrollRect.viewport = vpRt;
 
             // ── Content (슬롯 컨테이너) ────────────────────────────
-            var contentGo = new GameObject("Content");
+            // RectTransform을 명시 지정: VerticalLayoutGroup/ContentSizeFitter는 자동 추가 안 함
+            var contentGo = new GameObject("Content", typeof(RectTransform));
             contentGo.transform.SetParent(vpGo.transform, false);
             var contentRt = contentGo.GetComponent<RectTransform>();
             contentRt.anchorMin = new Vector2(0f, 1f);
