@@ -4,6 +4,7 @@ using UnityEngine;
 using Game.Core;
 using Game.Data.Equipment;
 using Game.Enemies;
+using Game.Input;
 
 namespace Game.Core.Stage
 {
@@ -66,6 +67,10 @@ namespace Game.Core.Stage
                 Time.timeScale = 1f;
                 _timeScaleOwned = false;
             }
+            // 연출 중 비활성화 시 입력 복구
+            var gesture = ServiceLocator.TryGet<GestureRecognizer>();
+            if (gesture != null && !gesture.enabled)
+                gesture.enabled = true;
         }
 
         // ── 공개 API ─────────────────────────────────────────────────
@@ -87,6 +92,10 @@ namespace Game.Core.Stage
             Vector2 bossPos, Transform bossTransform, BossStatData statData, Action onComplete)
         {
             _timeScaleOwned = true;
+
+            // ⓪ 입력 차단 — 연출 전 구간 플레이어 조작 방지
+            var gesture = ServiceLocator.TryGet<GestureRecognizer>();
+            if (gesture != null) gesture.enabled = false;
 
             // ① 슬로우모션 Hold 단계 + 카메라 줌인
             var camera = ServiceLocator.TryGet<CameraFollow>();
@@ -181,7 +190,9 @@ namespace Game.Core.Stage
                 }
             }
 
-            // ⑥ 완료 콜백
+            // ⑥ 입력 복구 후 완료 콜백
+            var gestureRestore = ServiceLocator.TryGet<GestureRecognizer>();
+            if (gestureRestore != null) gestureRestore.enabled = true;
             onComplete?.Invoke();
         }
     }
