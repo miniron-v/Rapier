@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using Game.Characters;
 using Game.Enemies;
@@ -7,6 +8,7 @@ using Game.UI;
 using Game.UI.Intermission;
 using Game.Core;
 using Game.Data.Stage;
+using Game.Data.Equipment;
 
 namespace Game.Core.Stage
 {
@@ -38,6 +40,10 @@ namespace Game.Core.Stage
         [SerializeField] private Vector2 _playerSpawnPosition = new Vector2(0f, -3f);
         [SerializeField] private Vector2 _portalSpawnPosition  = new Vector2(0f,  3f);
 
+        [Header("사망 연출")]
+        [SerializeField] private BossDeathSequencer _bossDeathSequencer;
+        [SerializeField] private float _portalOffsetFromBoss = 4.5f; // maxDropDist(2.5) + 여유
+
         // ── 런타임 ───────────────────────────────────────────────────
         private EnemyPresenterBase _currentBoss;
         private BossPresenterBase  _currentBossPresenter; // BossPresenterBase 캐스팅 캐시
@@ -45,6 +51,23 @@ namespace Game.Core.Stage
         private bool               _playerDeathHandled;
         private Portal             _activePortal;
         private int                _currentBossRoomIndex; // 보스 방 진입 순번 (1-based)
+
+        // 이번 스테이지에서 수집된 드롭 인스턴스
+        private readonly List<EquipmentInstance> _runDrops = new List<EquipmentInstance>();
+
+        /// <summary>이번 스테이지에서 획득한 장비 목록 (읽기 전용).</summary>
+        public IReadOnlyList<EquipmentInstance> RunDrops => _runDrops;
+
+        // ── Unity Lifecycle ───────────────────────────────────────────
+        private void Awake()
+        {
+            ServiceLocator.Register(this);
+        }
+
+        private void OnDestroy()
+        {
+            ServiceLocator.Unregister<ProgressionManager>();
+        }
 
         // ── 이벤트 구독/해제 ─────────────────────────────────────────
         private void OnEnable()
@@ -175,16 +198,60 @@ namespace Game.Core.Stage
             if (!_bossAlive) return;
             _bossAlive = false;
             UnsubscribeBoss();
+            _runDrops.Clear();  // 이 보스 방 드롭 초기화
 
-            // 마지막 보스 방 처치 여부 판정
-            bool isFinalBoss = _stageManager != null
-                && _currentBossRoomIndex >= _stageManager.TotalBossRooms;
+            Vector2 bossPos = _currentBoss != null
+                ? (Vector2)_currentBoss.transform.position
+                : _bossSpawnPosition;
 
-            Debug.Log($"[ProgressionManager] 보스 처치. 마지막: {isFinalBoss}. → 포탈 스폰");
-            SpawnPortal(_portalSpawnPosition);
+            BossStatData bossStatData = _currentBoss?.GetModel()?.StatData as BossStatData;
 
-            // 마지막 보스여도 포탈 진입으로 스테이지 클리어를 처리한다.
-            // (IntermissionManager.HandleStageCleared → StageClearView + RecordStageClear)
+            Debug.Log($"[ProgressionManager] 보스 처치 → BossDeathSequencer 위임");
+
+            if (_bossDeathSequencer != null)
+            {
+                _bossDeathSequencer.OnItemSpawned += RegisterDroppedItem;
+                _bossDeathSequencer.Execute(
+                    bossPos,
+                    _currentBoss?.transform,
+                    bossStatData,
+                    () => OnBossDeathSequenceComplete(bossPos));
+            }
+            else
+            {
+                Debug.LogWarning("[ProgressionManager] BossDeathSequencer 미연결 — 즉시 포탈 스폰");
+                OnBossDeathSequenceComplete(bossPos);
+            }
+        }
+
+        private void OnBossDeathSequenceComplete(Vector2 bossPos)
+        {
+            // 이벤트 구독 해제
+            if (_bossDeathSequencer != null)
+                _bossDeathSequencer.OnItemSpawned -= RegisterDroppedItem;
+
+            float offset = _bossDeathSequencer != null
+                ? _bossDeathSequencer.MaxDropDist + 2.0f
+                : _portalOffsetFromBoss;
+
+            SpawnPortal(bossPos + Vector2.up * offset);
+        }
+
+        /// <summary>BossDeathSequencer가 DroppedItemView를 생성할 때 호출되어 이벤트를 연결한다.</summary>
+        public void RegisterDroppedItem(DroppedItemView view)
+        {
+            if (view != null)
+                view.OnCollected += HandleItemCollected;
+        }
+
+        private void HandleItemCollected(EquipmentInstance instance)
+        {
+            if (instance == null) return;
+            _runDrops.Add(instance);
+
+            var em = ServiceLocator.TryGet<EquipmentManager>();
+            em?.AddEquipmentToInventory(instance);
+            // SaveManager는 EquipmentManager.AddEquipmentToInventory 내부에서 OnInventoryChanged를 통해 자동 처리
         }
 
         // ── 인터미션 방 ──────────────────────────────────────────────
@@ -287,7 +354,13 @@ namespace Game.Core.Stage
 
         private void HandlePortalEntered()
         {
-            Debug.Log("[ProgressionManager] 포탈 진입 → StageManager 알림");
+            Debug.Log("[ProgressionManager] 포탈 진입 → 미수거 아이템 자동 수거");
+
+            // 씬에 남은 DroppedItemView 자동 수거 (포탈 진입 시)
+            var remaining = FindObjectsOfType<DroppedItemView>();
+            foreach (var item in remaining)
+                item.Collect();  // OnCollected 이벤트 → HandleItemCollected
+
             CleanupPortal();
             _stageManager?.NotifyPortalEntered();
         }

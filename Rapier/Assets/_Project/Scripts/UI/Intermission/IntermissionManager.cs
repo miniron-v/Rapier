@@ -3,6 +3,7 @@ using Game.Core.Stage;
 using Game.Data.RunStats;
 using Game.Data.Save;
 using Game.Core;
+using Game.UI.Stage;
 
 namespace Game.UI.Intermission
 {
@@ -23,10 +24,11 @@ namespace Game.UI.Intermission
     public class IntermissionManager : MonoBehaviour
     {
         [Header("참조")]
-        [SerializeField] private IntermissionView _intermissionView;
-        [SerializeField] private DeathPopupView   _deathPopupView;
-        [SerializeField] private StageClearView   _stageClearView;
-        [SerializeField] private StageManager     _stageManagerRef;
+        [SerializeField] private IntermissionView  _intermissionView;
+        [SerializeField] private DeathPopupView    _deathPopupView;
+        [SerializeField] private StageClearView    _stageClearView;
+        [SerializeField] private StageManager      _stageManagerRef;
+        [SerializeField] private RunDropListView   _runDropListView;
 
         // ── 내부 상태 ────────────────────────────────────────────────
         private RunStatContainer _runStat;
@@ -153,6 +155,10 @@ namespace Game.UI.Intermission
             Debug.Log("[IntermissionManager] 스테이지 클리어 → 결과 화면 표시.");
             _stageClearView?.Show();
 
+            // 드롭 아이템 목록 표시
+            var pm = ServiceLocator.TryGet<ProgressionManager>();
+            _runDropListView?.Show(pm?.RunDrops);
+
             // SaveManager에 클리어 기록
             int clearedIndex = _stageManager != null ? _stageManager.CurrentStageIndex : 0;
             if (clearedIndex > 0)
@@ -166,6 +172,7 @@ namespace Game.UI.Intermission
         {
             Debug.Log("[IntermissionManager] 클리어 후 로비 복귀.");
             _stageClearView?.Hide();
+            _runDropListView?.Hide();
             Game.Core.SceneController.LoadLobby();
         }
 
@@ -173,6 +180,7 @@ namespace Game.UI.Intermission
         {
             Debug.Log("[IntermissionManager] 다음 스테이지 진입.");
             _stageClearView?.Hide();
+            _runDropListView?.Hide();
 
             // 현재 스테이지 인덱스 + 1. StageManager가 없으면 1로 폴백.
             int currentIndex = _stageManager != null ? _stageManager.CurrentStageIndex : 0;

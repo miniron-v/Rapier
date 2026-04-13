@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using Game.Data.Equipment;
 
 namespace Game.Enemies
 {
@@ -28,6 +29,10 @@ namespace Game.Enemies
         [Tooltip("각 인스턴스의 스폰 오프셋 배열. spawnCount와 길이를 맞출 것.\n" +
                  "단일 스폰 보스는 (0,0) 1개면 충분.")]
         [SerializeField] private Vector2[] _spawnOffsets = new Vector2[] { Vector2.zero };
+
+        [Header("드롭")]
+        [Tooltip("이 보스의 드롭 테이블. null이면 드롭 없이 포탈만 스폰된다.")]
+        public DropTableData dropTable;
 
         /// <summary>스폰할 보스 개체 수. 최소 1 보장.</summary>
         public int SpawnCount => Mathf.Max(1, _spawnCount);

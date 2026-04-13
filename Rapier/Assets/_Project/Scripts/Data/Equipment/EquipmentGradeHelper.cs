@@ -43,5 +43,13 @@ namespace Game.Data.Equipment
                 _                    => "#FFFFFF"
             };
         }
+
+        /// <summary>등급에 대응하는 UnityEngine.Color를 반환한다.</summary>
+        public static UnityEngine.Color GetGradeColor(EquipmentGrade grade)
+        {
+            return UnityEngine.ColorUtility.TryParseHtmlString(GetGradeColorHex(grade), out var c)
+                ? c
+                : UnityEngine.Color.white;
+        }
     }
 }
