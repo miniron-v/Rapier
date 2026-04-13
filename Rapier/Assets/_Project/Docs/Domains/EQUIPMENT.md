@@ -200,6 +200,43 @@ public DropTableData dropTable; // null = 드롭 없음
 
 7종 보스 × 1 DropTable SO. DropTable이 null인 보스는 드롭 없이 포탈만 스폰.
 
+### 보스별 테마 드롭 세트 (Phase 20)
+
+각 보스는 고유 슬롯을 "전담"하며 4등급 변주를 갖는다. 공용 장비는 모든 보스의 드롭 풀에 해당 등급으로 포함된다.
+
+| 보스 | 전담 슬롯 | Normal | Rare | Epic | Unique |
+|---|---|---|---|---|---|
+| Titan | Top | 거신의 갑주 | 거신의 판금 갑주 | 거신의 강철 갑주 | 거신의 불멸 갑주 |
+| Specter | Shoes | 망령의 신발 | 망령의 발걸음 | 유령의 발걸음 | 황천의 발걸음 |
+| Pyromancer | Gloves | 마법사의 장갑 | 불꽃술사의 장갑 | 화염술사의 장갑 | 화염군주의 장갑 |
+| Berserker | Weapon | 전사의 검 | 광전사의 검 | 광전사의 대검 | 광전사의 분노 |
+| Stormcaller | Hat | 마법사의 관 | 전격술사의 관 | 뇌전술사의 관 | 폭풍군주의 관 |
+| Gravekeeper | Necklace | 망자의 목걸이 | 묘지기의 목걸이 | 영혼 수확자의 목걸이 | 평안한 안식 |
+| TwinPhantoms | Ring | 영혼의 반지 | 쌍둥이 반지 | 쌍둥이 서약 | 영원한 우정 |
+
+**메인스탯 커브** (Normal/Rare/Epic/Unique):
+- ATK flat: 30 / 55 / 90 / 140 (Weapon)
+- HP flat: 100 / 180 / 300 / 470 (Top, Bottom)
+- MoveSpeed %: 5 / 8 / 12 / 18 (Shoes)
+- CritDamage %: 8 / 14 / 22 / 34 (Gloves, Ring)
+- ChargeTimeReduction %: 5 / 9 / 14 / 20 (Hat)
+- SkillDamage %: 8 / 14 / 22 / 34 (Necklace)
+
+**서브스탯 개수**: Normal 1 / Rare 2 / Epic 3 / Unique 4 (§2). 풀 랜덤은 추후 작업 — 현재는 SO 작성 시 고정 롤.
+
+**에셋명 규칙**: `{Slot}_{Grade}_{Name}.asset` (PascalCase).
+
+**드롭 테이블 구성**: 보스별 테이블의 각 등급 엔트리 pool 에 (1) 해당 보스 전담 아이템 + (2) 그 등급의 공용 장비를 모두 포함. 드롭률은 기존 0.8 / 0.4 / 0.15 / 0.05 유지.
+
+| 등급 | 공용 장비 |
+|---|---|
+| Normal | Weapon_Normal_Rapier, Hat_Normal_Cap, Bottom_Normal_Trouser, Shoes_Normal_Boots, Ring_Normal_Band |
+| Rare | Top_Rare_IronArmor |
+| Epic | Gloves_Epic_CritGauntlet |
+| Unique | Necklace_Unique_VoidChain |
+
+**아이콘**: 모든 장비 SO (신규 28 + 기존 8) 의 `_icon` 필드에 공용 Circle 스프라이트 연결. 런타임 안전 경로 (`Assets/_Project/Art/UI/Circle.png` 등) 에 단일 에셋으로 배치. 등급 색은 UI 측에서 tint 적용.
+
 ### 스테이지 클리어 UI (RunDropListView)
 
 **표시 시점**: 마지막 보스 포탈 진입 → StageManager가 클리어 판정 → IntermissionManager.HandleStageCleared()
