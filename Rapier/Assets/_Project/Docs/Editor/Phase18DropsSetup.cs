@@ -170,7 +170,7 @@ namespace Game.Editor
             vlg.childForceExpandWidth  = true;
             vlg.childForceExpandHeight = false;
             vlg.childControlWidth     = true;
-            vlg.childControlHeight    = false;
+            vlg.childControlHeight    = true;
 
             // ── 기존 TitleText 레이아웃 설정 ──────────────────────
             var titleProp = scvSo.FindProperty("_titleText");

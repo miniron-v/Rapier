@@ -21,8 +21,27 @@ namespace Game.Enemies
         // ── 사망 override ────────────────────────────────────────
         protected override void HandleModelDeath()
         {
+            CleanupProjectiles();
             CleanupHazards();
             base.HandleModelDeath();
+        }
+
+        // ── 투사체 일괄 제거 ──────────────────────────────────────
+        private void CleanupProjectiles()
+        {
+            if (_statData?.phases == null) return;
+            foreach (var phase in _statData.phases)
+            {
+                if (phase.sequence == null) continue;
+                foreach (var action in phase.sequence)
+                {
+                    if (action is ProjectileAttackAction proj && proj.ActiveProjectile != null)
+                    {
+                        Destroy(proj.ActiveProjectile);
+                        proj.ActiveProjectile = null;
+                    }
+                }
+            }
         }
 
         protected override void OnPhaseTransition(int phaseIndex)

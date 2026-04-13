@@ -16,6 +16,8 @@ namespace Game.Enemies
     [Serializable]
     public class ProjectileAttackAction : EnemyAttackAction
     {
+        public GameObject ActiveProjectile { get; private set; }
+
         [Tooltip("투사체 이동 속도")]
         public float projectileSpeed    = 8f;
         [Tooltip("투사체 최대 사거리")]
@@ -38,6 +40,8 @@ namespace Game.Enemies
             // ── 투사체 생성 (빈 GameObject 로 시뮬레이션) ──────────
             var proj    = new GameObject("Projectile_Pyro");
             var projSr  = proj.AddComponent<SpriteRenderer>();
+            ActiveProjectile = proj;
+            projSr.sprite = CreateCircleSprite(12);
             projSr.color = new Color(1f, 0.5f, 0.1f);
 
             // 크기: 시각 표현용 작은 원
@@ -80,10 +84,29 @@ namespace Game.Enemies
             if (hit && ctx.PlayerDamageable != null)
                 ctx.PlayerDamageable.TakeDamage(ctx.GetAttackPower() * (damagePercent / 100f), dir);
 
+            ActiveProjectile = null;
             if (proj != null)
                 UnityEngine.Object.Destroy(proj);
 
             onComplete?.Invoke();
+        }
+
+        private static Sprite CreateCircleSprite(int size)
+        {
+            var tex    = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            var pixels = new Color32[size * size];
+            float cx = size * 0.5f - 0.5f, cy = size * 0.5f - 0.5f;
+            float rSq = (size * 0.5f) * (size * 0.5f);
+            for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+            {
+                float dx = x - cx, dy = y - cy;
+                pixels[y * size + x] = (dx*dx + dy*dy) <= rSq
+                    ? new Color32(255,255,255,255) : new Color32(0,0,0,0);
+            }
+            tex.SetPixels32(pixels);
+            tex.Apply();
+            return Sprite.Create(tex, new Rect(0,0,size,size), new Vector2(0.5f,0.5f), size);
         }
     }
 }
