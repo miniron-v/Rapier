@@ -6,6 +6,10 @@ namespace Game.Enemies
     /// </summary>
     public class BossView : EnemyView
     {
-        public override void PlayDeath() { /* BossDeathSequencer가 처리 */ }
+        public override void PlayDeath()
+        {
+            StopWindup();  // 인디케이터 즉시 제거
+            // SR 페이드 및 GO 비활성화는 BossDeathSequencer가 담당
+        }
     }
 }

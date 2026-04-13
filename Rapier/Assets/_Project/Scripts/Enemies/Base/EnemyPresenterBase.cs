@@ -26,7 +26,6 @@ namespace Game.Enemies
     ///   OnPhaseTransition(int phaseIndex) : 페이즈 전환 시 자식 훅
     ///   GetMoveSpeed / GetAttackPower / GetAttackRange
     /// </summary>
-    [RequireComponent(typeof(EnemyView))]
     public abstract class EnemyPresenterBase : MonoBehaviour, IDamageable
     {
         public event Action OnDeath;
