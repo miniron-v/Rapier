@@ -1,7 +1,10 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using Game.Data.Equipment;
+using Game.UI.Stage;
 
 namespace Game.UI.Intermission
 {
@@ -31,6 +34,9 @@ namespace Game.UI.Intermission
         [Header("텍스트")]
         [SerializeField] private TextMeshProUGUI _titleText;
 
+        [Header("드롭 목록")]
+        [SerializeField] private RunDropListView  _runDropListView;
+
         // ── 이벤트 ───────────────────────────────────────────────────
         /// <summary>로비 복귀 버튼 클릭 시 발행.</summary>
         public event Action OnReturnToLobbyClicked;
@@ -53,16 +59,18 @@ namespace Game.UI.Intermission
 
         // ── 공개 API ─────────────────────────────────────────────────
         /// <summary>클리어 화면을 표시하고 게임 시간을 정지한다.</summary>
-        public void Show()
+        public void Show(IReadOnlyList<EquipmentInstance> drops = null)
         {
             if (_titleText != null) _titleText.text = "STAGE CLEAR!";
             if (_panel     != null) _panel.SetActive(true);
+            _runDropListView?.Show(drops);
             Time.timeScale = 0f;
         }
 
         /// <summary>클리어 화면을 닫고 게임 시간을 복구한다.</summary>
         public void Hide()
         {
+            _runDropListView?.Hide();
             if (_panel != null) _panel.SetActive(false);
             Time.timeScale = 1f;
         }

@@ -20,9 +20,10 @@ namespace Game.UI.Stage
     /// </summary>
     public class RunDropListView : MonoBehaviour
     {
-        [SerializeField] private GameObject _panel;
-        [SerializeField] private Transform  _listParent;  // ScrollView Content
-        [SerializeField] private GameObject _emptyText;   // "획득한 장비 없음" 텍스트 오브젝트
+        [SerializeField] private GameObject    _panel;
+        [SerializeField] private Transform    _listParent;  // ScrollView Content
+        [SerializeField] private GameObject   _emptyText;   // "획득한 장비 없음" 텍스트 오브젝트
+        [SerializeField] private TMP_FontAsset _font;        // Phase18DropsSetup에서 자동 연결
 
         // ── 공개 API ─────────────────────────────────────────────────
 
@@ -68,10 +69,10 @@ namespace Game.UI.Stage
             Color gradeColor = EquipmentGradeHelper.GetGradeColor(drop.Grade);
 
             // 슬롯 루트
-            var slot = new GameObject("DropSlot");
+            var slot = new GameObject("DropSlot", typeof(RectTransform));
             slot.transform.SetParent(_listParent, false);
 
-            var slotRect = slot.AddComponent<RectTransform>();
+            var slotRect = slot.GetComponent<RectTransform>();
             slotRect.sizeDelta = new Vector2(0f, 50f);
 
             // HorizontalLayoutGroup으로 아이콘+이름+등급 배치
@@ -85,35 +86,37 @@ namespace Game.UI.Stage
             layout.childControlHeight = false;
 
             // 아이콘
-            var iconGo   = new GameObject("Icon");
+            var iconGo   = new GameObject("Icon", typeof(RectTransform));
             iconGo.transform.SetParent(slot.transform, false);
-            var iconRect = iconGo.AddComponent<RectTransform>();
+            var iconRect = iconGo.GetComponent<RectTransform>();
             iconRect.sizeDelta = new Vector2(40f, 40f);
             var img         = iconGo.AddComponent<Image>();
             img.sprite      = CreateCircleSprite(32);
             img.color       = gradeColor;
 
             // 아이템명
-            var nameGo   = new GameObject("Name");
+            var nameGo   = new GameObject("Name", typeof(RectTransform));
             nameGo.transform.SetParent(slot.transform, false);
-            var nameRect = nameGo.AddComponent<RectTransform>();
+            var nameRect = nameGo.GetComponent<RectTransform>();
             nameRect.sizeDelta = new Vector2(200f, 40f);
             var nameText     = nameGo.AddComponent<TextMeshProUGUI>();
             nameText.text    = drop.Data?.ItemName ?? "Unknown";
             nameText.fontSize = 18f;
             nameText.color   = Color.white;
             nameText.alignment = TextAlignmentOptions.MidlineLeft;
+            if (_font != null) nameText.font = _font;
 
             // 등급 텍스트
-            var gradeGo   = new GameObject("Grade");
+            var gradeGo   = new GameObject("Grade", typeof(RectTransform));
             gradeGo.transform.SetParent(slot.transform, false);
-            var gradeRect = gradeGo.AddComponent<RectTransform>();
+            var gradeRect = gradeGo.GetComponent<RectTransform>();
             gradeRect.sizeDelta = new Vector2(100f, 40f);
             var gradeText     = gradeGo.AddComponent<TextMeshProUGUI>();
             gradeText.text    = drop.Grade.ToString();
             gradeText.fontSize = 16f;
             gradeText.color   = gradeColor;
             gradeText.alignment = TextAlignmentOptions.MidlineLeft;
+            if (_font != null) gradeText.font = _font;
         }
 
         private static Sprite CreateCircleSprite(int size)
