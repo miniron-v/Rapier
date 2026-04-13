@@ -198,7 +198,8 @@ namespace Game.Core.Stage
             if (!_bossAlive) return;
             _bossAlive = false;
             UnsubscribeBoss();
-            _runDrops.Clear();  // 이 보스 방 드롭 초기화
+            // _runDrops는 스테이지 전체 누적 — 보스 방마다 초기화하지 않는다.
+            // (씬 재로드 시 ProgressionManager 재생성으로 자동 초기화)
 
             Vector2 bossPos = _currentBoss != null
                 ? (Vector2)_currentBoss.transform.position
