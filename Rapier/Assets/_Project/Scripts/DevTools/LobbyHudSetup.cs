@@ -202,7 +202,9 @@ namespace Game.DevTools
             var infoBg   = infoPanel.AddComponent<Image>();
             infoBg.color = new Color(0.10f, 0.10f, 0.13f, 1.0f);
             var infoRect = infoPanel.GetComponent<RectTransform>();
-            SetAnchors(infoRect, new Vector2(0f, 0.60f), new Vector2(1f, 1f));
+            // 비율 재조정: CharInfo 47% / EquipPanel 33% / LevelUp 20%
+            // (3행 × 120px + spacing + tabbar 딱 맞게 역산 → equipPanel 33% 필요)
+            SetAnchors(infoRect, new Vector2(0f, 0.53f), new Vector2(1f, 1f));
             infoRect.offsetMin = infoRect.offsetMax = Vector2.zero;
 
             // 일러스트 (Raycast Target off)
@@ -227,8 +229,8 @@ namespace Game.DevTools
             leftVLayout.childForceExpandHeight = false;
             leftVLayout.childControlHeight     = false;
             leftVLayout.spacing               = 8f;
-            // padding.top = SLOT_SIZE / 2 (반칸 상단 여백)
-            leftVLayout.padding               = new RectOffset(4, 4, 70, 4);
+            // padding.top = SLOT_SIZE / 2 (반칸 상단 여백, SLOT_SIZE=120 → 60)
+            leftVLayout.padding               = new RectOffset(4, 4, 60, 4);
 
             // 우측 슬롯 컨테이너 (Hat / Top / Bottom / Gloves / Shoes — 세로 5칸)
             var rightColumnGo = new GameObject("RightSlotColumn", typeof(RectTransform));
@@ -242,11 +244,11 @@ namespace Game.DevTools
             rightVLayout.childForceExpandHeight = false;
             rightVLayout.childControlHeight     = false;
             rightVLayout.spacing               = 8f;
-            // padding.top = SLOT_SIZE / 2 (반칸 상단 여백)
-            rightVLayout.padding               = new RectOffset(4, 4, 70, 4);
+            // padding.top = SLOT_SIZE / 2 (반칸 상단 여백, SLOT_SIZE=120 → 60)
+            rightVLayout.padding               = new RectOffset(4, 4, 60, 4);
 
-            // 슬롯 크기 (인벤토리 cellSize 140 과 동일)
-            const float SLOT_SIZE = 140f;
+            // 슬롯 크기 (장착 슬롯 + 인벤토리 동일 120)
+            const float SLOT_SIZE = 120f;
 
             // 좌측 3슬롯: Weapon, Necklace, Ring
             var leftSlotViews = new EquipmentSlotView[3];
@@ -306,7 +308,7 @@ namespace Game.DevTools
 
             // B2: EquipmentPanelRoot — 장비 슬롯 8개 + 인벤토리 ScrollRect 실장
             var equipRoot = CreateRectChild(safeInset, "EquipmentPanelRoot");
-            SetAnchors(equipRoot, new Vector2(0f, 0.20f), new Vector2(1f, 0.60f));
+            SetAnchors(equipRoot, new Vector2(0f, 0.20f), new Vector2(1f, 0.53f));
             equipRoot.offsetMin = equipRoot.offsetMax = Vector2.zero;
 
             // ── (a) 8슬롯 그리드 컨테이너 ─────────────────────────────────────
@@ -408,12 +410,13 @@ namespace Game.DevTools
             var contentFitter = contentGo.gameObject.AddComponent<ContentSizeFitter>();
             contentFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
             var contentLayout          = contentGo.gameObject.AddComponent<GridLayoutGroup>();
-            contentLayout.cellSize     = new Vector2(140f, 140f);
+            // 장착 슬롯과 동일 크기(120), 7열 → 3행이 scroll viewport에 딱 맞게
+            contentLayout.cellSize     = new Vector2(120f, 120f);
             contentLayout.spacing      = new Vector2(18f, 18f);
             contentLayout.padding      = new RectOffset(6, 6, 6, 6);
             contentLayout.childAlignment = TextAnchor.UpperLeft;
             contentLayout.constraint   = GridLayoutGroup.Constraint.FixedColumnCount;
-            contentLayout.constraintCount = 6;
+            contentLayout.constraintCount = 7;
             contentGo.gameObject.AddComponent<GridLayoutFiller>();
 
             // ScrollRect 설정
