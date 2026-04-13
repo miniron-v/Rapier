@@ -214,15 +214,20 @@ public DropTableData dropTable; // null = 드롭 없음
 | Gravekeeper | Necklace | 망자의 목걸이 | 묘지기의 목걸이 | 영혼 수확자의 목걸이 | 평안한 안식 |
 | TwinPhantoms | Ring | 영혼의 반지 | 쌍둥이 반지 | 쌍둥이 서약 | 영원한 우정 |
 
-**메인스탯 커브** (Normal/Rare/Epic/Unique):
-- ATK flat: 30 / 55 / 90 / 140 (Weapon)
-- HP flat: 100 / 180 / 300 / 470 (Top, Bottom)
-- MoveSpeed %: 5 / 8 / 12 / 18 (Shoes)
-- CritDamage %: 8 / 14 / 22 / 34 (Gloves, Ring)
-- ChargeTimeReduction %: 5 / 9 / 14 / 20 (Hat)
-- SkillDamage %: 8 / 14 / 22 / 34 (Necklace)
+**메인스탯 커브** (Normal/Rare/Epic/Unique) — Phase 22-B 재조정:
+- ATK flat: 60 / 120 / 200 / 300 (Weapon)
+- HP flat (Top, Bottom): 120 / 220 / 360 / 500
+- HP flat (Hat, Shoes 보조 HP 풀 사용 시 70%): 85 / 155 / 250 / 350
+- ATK %: 3 / 6 / 10 / 15 (Gloves 등 %형 메인)
+- MoveSpeed %: 2 / 4 / 7 / 10 (Shoes)
+- DodgeCDR %: 3 / 6 / 10 / 15
+- ChargeTimeReduction %: 3 / 6 / 10 / 15 (Hat)
+- InvincibilityBonus %: 3 / 6 / 10 / 15
+- CritChance %: 2 / 4 / 7 / 10
+- CritDamage %: 5 / 12 / 22 / 35 (Ring)
+- SkillDamage %: 3 / 7 / 13 / 20 (Necklace)
 
-**서브스탯 개수**: Normal 0 / Rare 1 / Epic 2 / Unique 3 (§2). 풀 랜덤은 추후 작업 — 현재는 SO 작성 시 고정 롤.
+**서브스탯 개수**: Normal 0 / Rare 1 / Epic 2 / Unique 3 (§2). 드롭 순간 풀에서 1회 랜덤 롤 (Phase 22-B §8).
 
 **에셋명 규칙**: `{Slot}_{Grade}_{Name}.asset` (PascalCase).
 
@@ -274,6 +279,112 @@ IntermissionManager.HandleStageCleared():
 
 - 디버그 메뉴: `Rapier/Dev/Add Debug Equipment`, `Rapier/Dev/Add Debug Runes`.
 - `Add Debug Equipment` 는 **8 슬롯 전체 자동 장착 + Save** 한 번으로 완결. 디버그 전용.
+
+## 5-B. 서브스탯 / 장신구 메인 풀 시스템 (Phase 22-B)
+
+장비 서브스탯과 장신구 메인스탯을 SO 고정값에서 **풀 기반 랜덤 롤**로 전환한다. 드롭 순간 1회 롤, 인스턴스에 고정 저장. 재롤은 추후 강화에서 도입.
+
+### 5-B-1. 신규 SO
+
+```csharp
+// 단일 스탯 롤 엔트리: 등급별 범위 + 가중치
+[Serializable] public struct StatRollRange { public float min; public float max; }
+[Serializable] public class StatRollEntry {
+  public StatType statType;
+  public float weight;                 // 풀 내 상대 가중치 (합산 후 정규화)
+  public StatRollRange normal, rare, epic, unique;   // 등급별 [min,max] 범위
+}
+
+// 슬롯별 서브스탯 풀
+[CreateAssetMenu(menuName="Game/Data/Equipment/SubStatPoolData")]
+public class SubStatPoolData : ScriptableObject {
+  [SerializeField] private EquipmentSlotType _slot;
+  [SerializeField] private List<StatRollEntry> _entries;
+  public EquipmentSlotType Slot => _slot;
+  public IReadOnlyList<StatRollEntry> Entries => _entries;
+}
+
+// 장신구 메인스탯 풀 (목걸이/반지 공용)
+[CreateAssetMenu(menuName="Game/Data/Equipment/MainStatPoolData")]
+public class MainStatPoolData : ScriptableObject {
+  [SerializeField] private List<StatRollEntry> _entries;
+  public IReadOnlyList<StatRollEntry> Entries => _entries;
+}
+```
+
+### 5-B-2. EquipmentItemData 변경
+
+- **deprecate** `_subStats` (List<StatEntry>) — 필드 제거, SO 전부에서 값 삭제.
+- **add** `_subStatPool : SubStatPoolData` — 슬롯별 풀 참조. 필수.
+- 장신구(Necklace/Ring) 전용:
+  - **deprecate** `_mainStat` — 장신구 SO 에서 제거 (무기/방어구는 유지).
+  - **add** `_mainStatPool : MainStatPoolData` — 장신구 SO 에서 필수.
+
+슬롯별 풀은 `_subStatPool` 이 슬롯과 불일치하면 Import 경고.
+
+### 5-B-3. 롤 로직
+
+```
+LootManager.RollDrop → new EquipmentInstance(data):
+  1) 서브 개수 N = (int)grade  // Normal 0 / Rare 1 / Epic 2 / Unique 3
+  2) 풀에서 중복 없이 StatType 기준 N개 추첨 (가중치 기반, 뽑힌 타입은 이후 제외)
+  3) 각 추첨마다 등급 구간 [min,max] 에서 Random.Range → SubStats 에 추가
+  4) 장신구면 _mainStatPool 에서 1회 추첨 → 등급 구간 롤 → RolledMainStat 에 저장
+```
+
+### 5-B-4. EquipmentInstance 확장
+
+```csharp
+public List<StatEntry> SubStats { get; }          // 기존 의미 변경: 런타임 롤 결과 저장
+public StatEntry? RolledMainStat { get; }          // 장신구만 non-null, 그 외 null → SO _mainStat 사용
+```
+
+- 무기/방어구 메인은 SO 고정 (등급별 커브는 §5 유지).
+- Provider 는 `RolledMainStat ?? data._mainStat` 패턴으로 읽는다.
+
+### 5-B-5. 저장 스키마 확장 (EquipmentSaveEntry)
+
+```
+subStats      : List<StatEntry>   // 롤 결과
+rolledMain    : StatEntry?         // nullable — JsonUtility 호환 위해 hasRolledMain:bool + rolledMain:StatEntry 쌍
+```
+
+Deserialize 시 `SubStats`/`RolledMainStat` 를 저장값으로 복원. 풀 SO 가 바뀌어도 기존 인스턴스는 저장된 롤 값 유지.
+
+### 5-B-6. 서브 롤 범위 테이블
+
+| 스탯 | Normal | Rare | Epic | Unique |
+|---|---|---|---|---|
+| ATK flat | 10~25 | 25~50 | 50~90 | 90~150 |
+| HP flat (Top/Bottom 풀) | 20~50 | 50~100 | 100~190 | 190~300 |
+| HP flat (기타 슬롯 70%) | 15~35 | 35~70 | 70~135 | 135~210 |
+| ATK % | 1~2 | 2~3 | 3~5 | 5~7 |
+| MoveSpeed % | 1~2 | 2~3 | 3~5 | 5~7 |
+| DodgeCDR % | 1~2 | 2~3 | 3~5 | 5~7 |
+| ChargeTimeReduction % | 1~2 | 2~3 | 3~5 | 5~7 |
+| InvincibilityBonus % | 1~2 | 2~3 | 3~5 | 5~7 |
+| CritChance % | 1~1 | 1~2 | 2~3 | 3~5 |
+| CritDamage % | 2~3 | 4~7 | 8~12 | 13~18 |
+| SkillDamage % | 1~2 | 3~5 | 5~8 | 8~12 |
+
+### 5-B-7. 장신구 메인 풀
+
+- 구성: **HP/ATK 를 제외한 모든 스탯** — MoveSpeed%, DodgeCDR%, ChargeTimeReduction%, InvincibilityBonus%, CritChance%, CritDamage%, SkillDamage%.
+- 등급 범위는 §5 메인 커브 %형 수치와 동일 (Unique 기준: CritDmg 35, CritChance 10, SkillDmg 20 등).
+- 가중치 초기값 전부 1.0 (균등).
+
+### 5-B-8. 풀 SO 생성 목록
+
+- SubStatPool: 8개 (슬롯별) — `SubStatPool_Weapon`, `_Hat`, `_Top`, `_Bottom`, `_Shoes`, `_Gloves`, `_Necklace`, `_Ring`.
+- MainStatPool: 1개 — `MainStatPool_Accessory` (목걸이/반지 공용).
+- 위치: `Assets/_Project/ScriptableObjects/Equipment/Pools/`.
+
+### 5-B-9. 마이그레이션 체크
+
+1. 기존 36 장비 SO 모두 `_subStats` 비움 + `_subStatPool` 참조 할당.
+2. 장신구 SO (공용 1 Necklace + 공용 1 Ring + 보스 Gravekeeper 4 + TwinPhantoms 4 = 10개) `_mainStat` 제거 + `_mainStatPool` 참조 할당.
+3. 무기/방어구 SO `_mainStat` 수치를 §5 재조정 커브로 갱신.
+4. `EquipmentDatabase` 재검증 (신규 풀 SO 는 미등록 — 직접 참조만).
 
 ## 6. UI
 
