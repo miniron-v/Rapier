@@ -33,7 +33,7 @@ namespace Game.UI
             float totalCellWidth = _grid.cellSize.x * cols;
             float spacingX = (available - totalCellWidth) / (cols - 1);
             if (spacingX >= 0f)
-                _grid.spacing = new Vector2(spacingX, _grid.spacing.y);
+                _grid.spacing = new Vector2(spacingX, spacingX);
         }
 
         /// <summary>수직 레이아웃 패스: 처리 없음.</summary>
