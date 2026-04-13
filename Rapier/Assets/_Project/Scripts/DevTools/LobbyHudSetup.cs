@@ -301,12 +301,13 @@ namespace Game.DevTools
             var contentFitter = contentGo.gameObject.AddComponent<ContentSizeFitter>();
             contentFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
             var contentLayout          = contentGo.gameObject.AddComponent<GridLayoutGroup>();
-            contentLayout.cellSize     = new Vector2(163f, 140f);
+            contentLayout.cellSize     = new Vector2(140f, 140f);
             contentLayout.spacing      = new Vector2(18f, 18f);
             contentLayout.padding      = new RectOffset(6, 6, 6, 6);
             contentLayout.childAlignment = TextAnchor.UpperLeft;
             contentLayout.constraint   = GridLayoutGroup.Constraint.FixedColumnCount;
             contentLayout.constraintCount = 6;
+            contentGo.gameObject.AddComponent<GridLayoutFiller>();
 
             // ScrollRect 설정
             var scrollRect        = scrollGo.gameObject.AddComponent<ScrollRect>();
