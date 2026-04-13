@@ -146,10 +146,10 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2577755151748046626}
-  - component: {fileID: 5284528749676424254}
   - component: {fileID: 2462808868474697206}
   - component: {fileID: 8207510333172007351}
   - component: {fileID: 7227875100968237414}
+  - component: {fileID: 625251242375783052}
   m_Layer: 8
   m_Name: Berserker_Boss
   m_TagString: Untagged
@@ -173,18 +173,6 @@ Transform:
   - {fileID: 8736363898426301413}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &5284528749676424254
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4784043667512040478}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c6db61371b6509643a37106639c1ba56, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Game.Enemies.EnemyView
 --- !u!212 &2462808868474697206
 SpriteRenderer:
   serializedVersion: 2
@@ -302,6 +290,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3304c03f10abc83478ad3758b34d9cde, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Game.Enemies.BerserkerBossPresenter
+--- !u!114 &625251242375783052
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4784043667512040478}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 72def0b4758a491fa9d58d1a90646fa3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Game.Enemies.BossView
 --- !u!1 &4839465020005951903
 GameObject:
   m_ObjectHideFlags: 0

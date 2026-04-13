@@ -84,10 +84,10 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4161624208471343378}
-  - component: {fileID: 2767829021312762128}
   - component: {fileID: 4563483050357389326}
   - component: {fileID: 538900704472533867}
   - component: {fileID: 8752808694418894603}
+  - component: {fileID: 7982994358624913724}
   m_Layer: 8
   m_Name: Gravekeeper_Boss
   m_TagString: Untagged
@@ -111,18 +111,6 @@ Transform:
   - {fileID: 5275974686350444701}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2767829021312762128
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3121825593972784285}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c6db61371b6509643a37106639c1ba56, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Game.Enemies.EnemyView
 --- !u!212 &4563483050357389326
 SpriteRenderer:
   serializedVersion: 2
@@ -242,6 +230,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Game.Enemies.GravekeeperBossPresenter
   _minionPrefab: {fileID: 6120333069583485520, guid: b5344eff9523f4c48bc1407e0c2d8db5, type: 3}
   _minionData: {fileID: 11400000, guid: ca4f9015dce0e174bb8e8bc4df76b9b0, type: 2}
+--- !u!114 &7982994358624913724
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3121825593972784285}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 72def0b4758a491fa9d58d1a90646fa3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Game.Enemies.BossView
 --- !u!1 &3435659265497099014
 GameObject:
   m_ObjectHideFlags: 0

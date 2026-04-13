@@ -84,10 +84,10 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4123746203612506538}
-  - component: {fileID: 4356030057187761465}
   - component: {fileID: 1703485688492046674}
   - component: {fileID: 8036571769496460205}
   - component: {fileID: 6095284922051244990}
+  - component: {fileID: 562072365882821049}
   m_Layer: 8
   m_Name: TwinPhantoms_Boss
   m_TagString: Untagged
@@ -111,18 +111,6 @@ Transform:
   - {fileID: 7897955235623880511}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &4356030057187761465
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4452773329936753597}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c6db61371b6509643a37106639c1ba56, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Game.Enemies.EnemyView
 --- !u!212 &1703485688492046674
 SpriteRenderer:
   serializedVersion: 2
@@ -243,6 +231,18 @@ MonoBehaviour:
   partner: {fileID: 0}
   survivorSpeedMultiplier: 1.6
   survivorAttackMultiplier: 1.5
+--- !u!114 &562072365882821049
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4452773329936753597}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 72def0b4758a491fa9d58d1a90646fa3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Game.Enemies.BossView
 --- !u!1 &7115566993148336213
 GameObject:
   m_ObjectHideFlags: 0

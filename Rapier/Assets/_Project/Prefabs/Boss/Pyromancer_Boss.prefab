@@ -341,10 +341,10 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8783575115533039686}
-  - component: {fileID: 3476182813973905819}
   - component: {fileID: 6643902382418820428}
   - component: {fileID: 5556876694981155464}
   - component: {fileID: 6602110277034538483}
+  - component: {fileID: 1080289782327561150}
   m_Layer: 8
   m_Name: Pyromancer_Boss
   m_TagString: Untagged
@@ -368,18 +368,6 @@ Transform:
   - {fileID: 2340739404512900359}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &3476182813973905819
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8795018537962025359}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c6db61371b6509643a37106639c1ba56, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Game.Enemies.EnemyView
 --- !u!212 &6643902382418820428
 SpriteRenderer:
   serializedVersion: 2
@@ -497,6 +485,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9b0ae182832e8f64db6ab94287b29bb8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Game.Enemies.PyromancerBossPresenter
+--- !u!114 &1080289782327561150
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8795018537962025359}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 72def0b4758a491fa9d58d1a90646fa3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Game.Enemies.BossView
 --- !u!1 &8880964735618326055
 GameObject:
   m_ObjectHideFlags: 0

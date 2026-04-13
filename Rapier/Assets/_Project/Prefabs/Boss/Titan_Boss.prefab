@@ -341,10 +341,10 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7839307484060452658}
-  - component: {fileID: 1096745076576197238}
   - component: {fileID: 6687993022170144766}
   - component: {fileID: 4977146812950422105}
   - component: {fileID: 6425801851455532364}
+  - component: {fileID: 4590000884122403118}
   m_Layer: 8
   m_Name: Titan_Boss
   m_TagString: Untagged
@@ -368,18 +368,6 @@ Transform:
   - {fileID: 662320209469776729}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1096745076576197238
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5040457167931817585}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c6db61371b6509643a37106639c1ba56, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Game.Enemies.EnemyView
 --- !u!212 &6687993022170144766
 SpriteRenderer:
   serializedVersion: 2
@@ -497,6 +485,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c23d21a8bdcb74f4f95a008dcfa14725, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Game.Enemies.TitanBossPresenter
+--- !u!114 &4590000884122403118
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5040457167931817585}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 72def0b4758a491fa9d58d1a90646fa3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Game.Enemies.BossView
 --- !u!1 &6655585184315075707
 GameObject:
   m_ObjectHideFlags: 0

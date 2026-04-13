@@ -204,10 +204,10 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8090722214050368896}
-  - component: {fileID: 8838381440477867689}
   - component: {fileID: 1533811107949713335}
   - component: {fileID: 4224308390994399237}
   - component: {fileID: 8570682018156369188}
+  - component: {fileID: 473378580154662098}
   m_Layer: 8
   m_Name: Stormcaller_Boss
   m_TagString: Untagged
@@ -231,18 +231,6 @@ Transform:
   - {fileID: 2596294812197889329}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &8838381440477867689
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2250586595298725142}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c6db61371b6509643a37106639c1ba56, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Game.Enemies.EnemyView
 --- !u!212 &1533811107949713335
 SpriteRenderer:
   serializedVersion: 2
@@ -360,11 +348,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1e227592817f73e408f7b997f56183d1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Game.Enemies.StormcallerBossPresenter
-  phase3Sequence: []
-  phase3Color: {r: 0.4, g: 0.8, b: 1, a: 1}
-  references:
-    version: 2
-    RefIds: []
+--- !u!114 &473378580154662098
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2250586595298725142}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 72def0b4758a491fa9d58d1a90646fa3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Game.Enemies.BossView
 --- !u!1 &2750267795040509352
 GameObject:
   m_ObjectHideFlags: 0
