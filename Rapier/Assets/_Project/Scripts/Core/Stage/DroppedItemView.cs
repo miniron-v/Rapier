@@ -196,7 +196,7 @@ namespace Game.Core.Stage
             var bgGo  = new GameObject("Background");
             bgGo.transform.SetParent(_labelCanvasGo.transform, false);
             var bgImg = bgGo.AddComponent<UnityEngine.UI.Image>();
-            bgImg.color = new Color(gradeColor.r * 0.25f, gradeColor.g * 0.25f, gradeColor.b * 0.25f, 0.7f);
+            bgImg.color = new Color(gradeColor.r * 0.5f, gradeColor.g * 0.5f, gradeColor.b * 0.5f, 0.7f);
             var bgRt  = bgGo.GetComponent<RectTransform>();
             bgRt.anchorMin = Vector2.zero;
             bgRt.anchorMax = Vector2.one;

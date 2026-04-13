@@ -165,11 +165,7 @@ namespace Game.UI
             if (_bossPhaseText == null) return;
 
             int display = phaseIndex + 1;
-            _bossPhaseText.text = display >= 3
-                ? $"PHASE {display} !!"
-                : display == 2
-                    ? "PHASE 2 !"
-                    : "PHASE 1";
+            _bossPhaseText.text = $"PHASE {display}";
 
             _bossPhaseText.color = display >= 3
                 ? new Color(0.4f, 0.8f, 1f)
