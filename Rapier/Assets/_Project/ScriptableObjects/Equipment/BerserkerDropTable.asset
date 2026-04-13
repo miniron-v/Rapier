@@ -16,6 +16,7 @@ MonoBehaviour:
   - Grade: 0
     DropRate: 0.8
     Pool:
+    - {fileID: 11400000, guid: 32c59e07c77443cba8932feaa1182098, type: 2}
     - {fileID: 11400000, guid: dc65b69001084d1b965b3b5ec932947d, type: 2}
     - {fileID: 11400000, guid: 756c1b9f3ca74aa1837afd6d38d38849, type: 2}
     - {fileID: 11400000, guid: f36293c0fc734f66a9247e9deed31ad9, type: 2}
@@ -24,12 +25,15 @@ MonoBehaviour:
   - Grade: 1
     DropRate: 0.4
     Pool:
+    - {fileID: 11400000, guid: 5dea94c798f14bc3884743230d783674, type: 2}
     - {fileID: 11400000, guid: 9d0a642d80c74ce190bf1fff86986fcf, type: 2}
   - Grade: 2
     DropRate: 0.15
     Pool:
+    - {fileID: 11400000, guid: 93ea5ddf3c304600b4c82ab52daa25c3, type: 2}
     - {fileID: 11400000, guid: b4ade499e36c4bb1a40d10cf055aceb1, type: 2}
   - Grade: 3
     DropRate: 0.05
     Pool:
+    - {fileID: 11400000, guid: 8ee7b393e0614d81a8450dd35fac281a, type: 2}
     - {fileID: 11400000, guid: 35dbc2c283e543bb9ca4aa11ef280657, type: 2}

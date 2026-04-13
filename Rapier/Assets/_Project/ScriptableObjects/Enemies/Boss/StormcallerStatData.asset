@@ -44,6 +44,7 @@ MonoBehaviour:
   approachAngleVariance: 30
   bossScale: 2.5
   phaseTransitionDuration: 1
+  dropTable: {fileID: 11400000, guid: 37d2c8af0a634e879d8f1fc0196c21ed, type: 2}
   _spawnCount: 1
   _spawnOffsets:
   - {x: 0, y: 0}

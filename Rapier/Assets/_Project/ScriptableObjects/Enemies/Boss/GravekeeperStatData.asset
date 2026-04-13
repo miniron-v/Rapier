@@ -39,6 +39,7 @@ MonoBehaviour:
   approachAngleVariance: 30
   bossScale: 2.5
   phaseTransitionDuration: 1
+  dropTable: {fileID: 11400000, guid: 12b23d0c9aae47faad6bcf993bac130d, type: 2}
   references:
     version: 2
     RefIds:

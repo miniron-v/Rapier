@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e3225823786145acaeb7dc5a967915bd, type: 3}
+  m_Name: SpecterDropTable
+  m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Equipment.DropTableData
+  _entries:
+  - Grade: 0
+    DropRate: 0.8
+    Pool:
+    - {fileID: 11400000, guid: 45f11c72d3b44e85aab63ad8067d05ee, type: 2}
+    - {fileID: 11400000, guid: dc65b69001084d1b965b3b5ec932947d, type: 2}
+    - {fileID: 11400000, guid: 756c1b9f3ca74aa1837afd6d38d38849, type: 2}
+    - {fileID: 11400000, guid: f36293c0fc734f66a9247e9deed31ad9, type: 2}
+    - {fileID: 11400000, guid: ba8ea37021084d7b9df43b7d517155d5, type: 2}
+    - {fileID: 11400000, guid: e887374e354d41d0ba213241f75d77c5, type: 2}
+  - Grade: 1
+    DropRate: 0.4
+    Pool:
+    - {fileID: 11400000, guid: a8ad74aa86af48bdb07a24cbbffbd9f0, type: 2}
+    - {fileID: 11400000, guid: 9d0a642d80c74ce190bf1fff86986fcf, type: 2}
+  - Grade: 2
+    DropRate: 0.15
+    Pool:
+    - {fileID: 11400000, guid: cd3ef3dd01164d4a91c39a7947291025, type: 2}
+    - {fileID: 11400000, guid: b4ade499e36c4bb1a40d10cf055aceb1, type: 2}
+  - Grade: 3
+    DropRate: 0.05
+    Pool:
+    - {fileID: 11400000, guid: 0107114fcc024024823a9fc283b6e096, type: 2}
+    - {fileID: 11400000, guid: 35dbc2c283e543bb9ca4aa11ef280657, type: 2}
