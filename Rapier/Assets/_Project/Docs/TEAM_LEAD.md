@@ -136,18 +136,17 @@ git branch -d [브랜치명]   # 또는 -D (deny되어 있음, 사용자 확인)
 | 1~11 | 완료 |
 | 12-A (입력 차단 버그) | 완료 |
 | 12-B (로비/장비/메타 시스템) | 위임 대기 |
-| 12-C (신규 보스 6종) | **완료** — 보스 7종 전원 구현 (Titan, Specter, Pyromancer, Berserker, Stormcaller, Gravekeeper, TwinPhantoms) |
+| 12-C (신규 보스 6종) | **완료** — 보스 7종 전원 구현 |
 | 12-D (스테이지/런 스탯) | 완료 (Phase 14에서 흡수) |
-| 12-E (통합) | 위임 대기 (Phase 17에서 흡수 예정) |
+| 12-E (통합) | 위임 대기 (Phase 17에서 흡수) |
 | 13-A (BossHudView 통합 + SafeAreaFitter) | 완료 |
 | 13-B (Save 파이프라인 + 장비 스탯 주입) | 완료 |
 | 14 (장비 세이브 훅업) | 완료 |
 | 15-A (장비 세이브 훅업 보완) | 완료 |
-| 16 (페이즈 시스템 통합 리디자인) | **완료** — Enemy/Boss 공통 N페이즈, 데미지 공식 통일 (develop @ ee9b479) |
-| 17 (StageData SO 분리 + 10 스테이지) | **완료** — StageData SO 10개 + 스테이지 선택 UI + 해금/스케일링 (develop @ 001d60c) |
-| 18 (보스 드롭 시스템) | **다음 세션** — Phase 17 의존 충족, 착수 준비 완료 |
-| 19 (Assassin 캐릭터) | **완료** — 잔상 3개 + 360도 차지 + CharacterSpawner 동적 스폰 (develop @ 001d60c) |
-| - (버그픽스) | **완료** — 로비 캐릭터명/순서, 페이즈 전환 공격 취소, 보스/스테이지 HUD 분리 (develop @ 31b4eb9) |
+| 16 (페이즈 시스템 통합 리디자인) | **완료** — Enemy/Boss 공통 N페이즈, 데미지 공식 통일 |
+| 17 (StageData SO 분리 + 10 스테이지) | **완료** — StageData SO 10개 + 스테이지 선택 UI + 해금/스케일링 |
+| 18 (보스 드롭 시스템) | **완료** — DropTable/LootManager/DroppedItemView/BossDeathSequencer/RunDropListView (develop @ 12cd2e4) |
+| 19 (Assassin 캐릭터) | **완료** — 잔상 3개 + 360도 차지 + CharacterSpawner 동적 스폰 |
 
 ---
 
@@ -164,8 +163,7 @@ git branch -d [브랜치명]   # 또는 -D (deny되어 있음, 사용자 확인)
 ### 다음 세션 예정 작업 (2026-04-13 기준)
 
 1. **페이즈 전환 FSM 정지** — 보스 색상 Lerp 연출 중 Chase/Windup/Hit 상태머신 일시 정지.
-   현재 PhaseTransitionRoutine이 진행 중인 공격만 취소하고 새 공격 시작은 막지 않음.
-   `EnemyPresenterBase.Update()` 진입 조건에 `_isInPhaseTransition` 플래그 추가 예정.
+   `EnemyPresenterBase.Update()`에 `_isInPhaseTransition` 플래그 + 조기 리턴 추가.
 
-2. **Phase 18 (보스 드롭 시스템)** — Phase 17 완료로 의존 충족.
-   `Domains/EQUIPMENT.md` §5 DropTable 설계 참조.
+2. **셋업 통합 버튼** — StageDemo 구성에 필요한 Stage/HUD/BossHUD/Drop 셋업을 단일 메뉴로 통합.
+   개별 메뉴는 그대로 유지, `Rapier/Stage/Full Setup StageDemo` 신규 추가.
