@@ -225,8 +225,9 @@ namespace Game.DevTools
             leftRect.offsetMin = leftRect.offsetMax = Vector2.zero;
             var leftVLayout           = leftColumnGo.AddComponent<VerticalLayoutGroup>();
             leftVLayout.childAlignment        = TextAnchor.UpperCenter;
-            leftVLayout.childForceExpandWidth  = true;
+            leftVLayout.childForceExpandWidth  = false;
             leftVLayout.childForceExpandHeight = false;
+            leftVLayout.childControlWidth      = true;  // preferredHeight 적용 (false면 RectTransform 기본 100 사용)
             leftVLayout.childControlHeight     = true;  // preferredHeight 적용 (false면 RectTransform 기본 100 사용)
             leftVLayout.spacing               = 8f;
             // padding.top = SLOT_SIZE / 2 (반칸 상단 여백, SLOT_SIZE=120 → 60)
@@ -240,8 +241,9 @@ namespace Game.DevTools
             rightRect.offsetMin = rightRect.offsetMax = Vector2.zero;
             var rightVLayout           = rightColumnGo.AddComponent<VerticalLayoutGroup>();
             rightVLayout.childAlignment        = TextAnchor.UpperCenter;
-            rightVLayout.childForceExpandWidth  = true;
+            rightVLayout.childForceExpandWidth  = false;
             rightVLayout.childForceExpandHeight = false;
+            rightVLayout.childControlWidth      = true;  // preferredHeight 적용 (false면 RectTransform 기본 100 사용)
             rightVLayout.childControlHeight     = true;  // preferredHeight 적용 (false면 RectTransform 기본 100 사용)
             rightVLayout.spacing               = 8f;
             // padding.top = SLOT_SIZE / 2 (반칸 상단 여백, SLOT_SIZE=120 → 60)
@@ -859,7 +861,7 @@ namespace Game.DevTools
             var le            = slotGo.AddComponent<LayoutElement>();
             le.preferredWidth  = size;
             le.preferredHeight = size;
-            le.flexibleWidth   = 1f;
+            le.flexibleWidth   = 0f;
             le.flexibleHeight  = 0f;
 
             // 슬롯 배경 Image
