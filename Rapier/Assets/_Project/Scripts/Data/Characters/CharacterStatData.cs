@@ -18,6 +18,10 @@ namespace Game.Characters
 
         public string characterName = "Unknown";
 
+        [TextArea(2, 4)]
+        [Tooltip("캐릭터 설명 텍스트. 캐릭터 변경 모달 하단에 표시된다.")]
+        public string description = "";
+
         [Header("전투 스탯")]
         [Min(1)] public float maxHp       = 500f;
         [Min(0)] public float attackPower = 50f;

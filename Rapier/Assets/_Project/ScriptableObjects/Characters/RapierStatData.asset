@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Game.Characters.RapierStatData
   sprite: {fileID: -2413806693520163455, guid: a86470a33a6bf42c4b3595704624658b, type: 3}
   characterName: Rapier
+  description: "\uB808\uC774\uD53C\uC5B4\uB97C \uB2E4\uB8E8\uB294 \uBBFC\uCCA9\uD55C \uC804\uC0AC. \uBE60\uB978 \uC5F0\uC18D \uCC4C\uACBC\uACFC \uD45C\uC2DD \uC2DC\uC2A4\uD15C\uC73C\uB85C \uC801\uC744 \uBD10\uBA39\uB294\uB2E4."
   maxHp: 500
   attackPower: 50
   moveSpeed: 6
