@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.InputSystem.UI;
 using TMPro;
+using Game.Characters;
 using Game.UI;
 using Game.UI.Lobby;
 using Game.UI.Lobby.Equipment;
@@ -130,7 +131,11 @@ namespace Game.DevTools
             var homePresenter = tabViewGo.AddComponent<HomeTabPresenter>();
 
             var charPresenter = tabViewGo.AddComponent<CharacterTabPresenter>();
-            charPresenter.InitEquipmentPanel(equipPresenter);   // B2: 장비 패널 Presenter 연결
+            // Phase 23c: CharacterInfoPanelPresenter 는 SetupCharacterPanel 내부에서 panel 에 붙어 있으므로
+            // GetComponentInChildren 으로 회수해 주입한다.
+            var infoPanelPresenter = charPanel.GetComponentInChildren<CharacterInfoPanelPresenter>(true);
+            charPresenter.InitInfoPanel(infoPanelPresenter);
+            charPresenter.InitEquipmentPanel(equipPresenter);   // B2: 하위 호환 유지
             var settPresenter = tabViewGo.AddComponent<SettingsTabPresenter>();
 
             var lobbyPresenterGo = new GameObject("LobbyPresenter");
@@ -159,8 +164,9 @@ namespace Game.DevTools
             EditorUtility.SetDirty(lobbyPresenter);
             EditorUtility.SetDirty(tabView);
             EditorUtility.SetDirty(homePresenter);
-            EditorUtility.SetDirty(charPresenter);    // _equipmentPanel [SerializeField] 직렬화 보장
-            EditorUtility.SetDirty(equipPresenter);   // _view [SerializeField] 직렬화 보장
+            EditorUtility.SetDirty(charPresenter);          // [SerializeField] 직렬화 보장
+            EditorUtility.SetDirty(equipPresenter);         // _view [SerializeField] 직렬화 보장
+            if (infoPanelPresenter != null) EditorUtility.SetDirty(infoPanelPresenter);
             UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(
                 UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene());
 
@@ -181,25 +187,116 @@ namespace Game.DevTools
         {
             var view = panel.AddComponent<CharacterTabView>();
 
-            // 캐릭터 슬롯 4칸
-            var slotContainer = CreateRectChild(panel, "CharacterSlots");
-            SetAnchors(slotContainer, new Vector2(0f, 0.6f), new Vector2(1f, 1f));
-            slotContainer.offsetMin = slotContainer.offsetMax = Vector2.zero;
-            var hLayout = slotContainer.gameObject.AddComponent<HorizontalLayoutGroup>();
-            hLayout.spacing = 20;
-            hLayout.childAlignment = TextAnchor.MiddleCenter;
-            hLayout.childForceExpandWidth  = true;
-            hLayout.childForceExpandHeight = true;
-            hLayout.padding = new RectOffset(20, 20, 20, 20);
+            // ── 캐릭터 정보 패널 (Phase 23c) ───────────────────────────────────
+            // 패널 레이아웃: 상단 35% = 캐릭터 정보 패널, 중간 30% = 인벤토리, 하단 = B3
+            var infoPanel = new GameObject("CharacterInfoPanel", typeof(RectTransform));
+            infoPanel.transform.SetParent(panel.transform, false);
+            var infoBg   = infoPanel.AddComponent<Image>();
+            infoBg.color = new Color(0.10f, 0.10f, 0.13f, 0.8f);
+            var infoRect = infoPanel.GetComponent<RectTransform>();
+            SetAnchors(infoRect, new Vector2(0f, 0.62f), new Vector2(1f, 1f));
+            infoRect.offsetMin = infoRect.offsetMax = Vector2.zero;
 
-            var rapierSlot = CreateCharacterSlot(slotContainer.gameObject, "RapierSlot",    "기사",      true);
-            var slot2      = CreateCharacterSlot(slotContainer.gameObject, "AssassinSlot",  "암살자",    true);
-            var slot3      = CreateCharacterSlot(slotContainer.gameObject, "CharSlot3",     "전사",      false);
-            var slot4      = CreateCharacterSlot(slotContainer.gameObject, "CharSlot4",     "사냥꾼",    false);
+            // 일러스트 (Raycast Target off)
+            var illustGo   = new GameObject("CharacterIllustration", typeof(RectTransform));
+            illustGo.transform.SetParent(infoPanel.transform, false);
+            var illustImg  = illustGo.AddComponent<Image>();
+            illustImg.color         = new Color(0f, 0f, 0f, 0f); // sprite 없으므로 투명
+            illustImg.raycastTarget = false;
+            var illustRect = illustGo.GetComponent<RectTransform>();
+            SetAnchors(illustRect, Vector2.zero, Vector2.one);
+            illustRect.offsetMin = illustRect.offsetMax = Vector2.zero;
+
+            // 좌측 슬롯 컨테이너 (Weapon / Necklace / Ring — 세로 3칸)
+            var leftColumnGo = new GameObject("LeftSlotColumn", typeof(RectTransform));
+            leftColumnGo.transform.SetParent(infoPanel.transform, false);
+            var leftRect = leftColumnGo.GetComponent<RectTransform>();
+            SetAnchors(leftRect, new Vector2(0.00f, 0.15f), new Vector2(0.18f, 0.92f));
+            leftRect.offsetMin = leftRect.offsetMax = Vector2.zero;
+            var leftVLayout           = leftColumnGo.AddComponent<VerticalLayoutGroup>();
+            leftVLayout.childAlignment        = TextAnchor.UpperCenter;
+            leftVLayout.childForceExpandWidth  = true;
+            leftVLayout.childForceExpandHeight = false;
+            leftVLayout.childControlHeight     = false;
+            leftVLayout.spacing               = 8f;
+            leftVLayout.padding               = new RectOffset(4, 4, 4, 4);
+
+            // 우측 슬롯 컨테이너 (Hat / Top / Bottom / Gloves / Shoes — 세로 5칸)
+            var rightColumnGo = new GameObject("RightSlotColumn", typeof(RectTransform));
+            rightColumnGo.transform.SetParent(infoPanel.transform, false);
+            var rightRect = rightColumnGo.GetComponent<RectTransform>();
+            SetAnchors(rightRect, new Vector2(0.82f, 0.15f), new Vector2(1.00f, 0.92f));
+            rightRect.offsetMin = rightRect.offsetMax = Vector2.zero;
+            var rightVLayout           = rightColumnGo.AddComponent<VerticalLayoutGroup>();
+            rightVLayout.childAlignment        = TextAnchor.UpperCenter;
+            rightVLayout.childForceExpandWidth  = true;
+            rightVLayout.childForceExpandHeight = false;
+            rightVLayout.childControlHeight     = false;
+            rightVLayout.spacing               = 8f;
+            rightVLayout.padding               = new RectOffset(4, 4, 4, 4);
+
+            // 슬롯 크기 (고정)
+            const float SLOT_SIZE = 100f;
+
+            // 좌측 3슬롯: Weapon, Necklace, Ring
+            var leftSlotViews = new EquipmentSlotView[3];
+            string[] leftSlotNames  = { "Weapon", "Necklace", "Ring" };
+            for (int i = 0; i < 3; i++)
+                leftSlotViews[i] = CreateEquipmentSlotGo(leftColumnGo, leftSlotNames[i], SLOT_SIZE);
+
+            // 우측 5슬롯: Hat, Top, Bottom, Gloves, Shoes
+            var rightSlotViews = new EquipmentSlotView[5];
+            string[] rightSlotNames = { "Hat", "Top", "Bottom", "Gloves", "Shoes" };
+            for (int i = 0; i < 5; i++)
+                rightSlotViews[i] = CreateEquipmentSlotGo(rightColumnGo, rightSlotNames[i], SLOT_SIZE);
+
+            // 캐릭터 변경 버튼 (중하단, 일러스트를 약간 가림)
+            var changeBtnGo = new GameObject("ChangeCharacterButton", typeof(RectTransform));
+            changeBtnGo.transform.SetParent(infoPanel.transform, false);
+            var changeBtnImg  = changeBtnGo.AddComponent<Image>();
+            changeBtnImg.color = new Color(0.15f, 0.45f, 0.80f, 0.9f);
+            var changeBtnBtn  = changeBtnGo.AddComponent<Button>();
+            var changeBtnRect = changeBtnGo.GetComponent<RectTransform>();
+            SetAnchors(changeBtnRect, new Vector2(0.25f, 0.02f), new Vector2(0.75f, 0.15f));
+            changeBtnRect.offsetMin = changeBtnRect.offsetMax = Vector2.zero;
+            var changeLabelGo = CreateTmpLabel(changeBtnGo, "Label_캐릭터변경", "캐릭터 변경", 36f, GetFont());
+            var changeLabelRect = changeLabelGo.GetComponent<RectTransform>();
+            SetAnchors(changeLabelRect, Vector2.zero, Vector2.one);
+            changeLabelRect.offsetMin = changeLabelRect.offsetMax = Vector2.zero;
+
+            // CharacterInfoPanelView 컴포넌트 부착 및 참조 주입
+            var infoPanelView = infoPanel.AddComponent<CharacterInfoPanelView>();
+            infoPanelView.InitReferences(
+                illustImg, changeBtnBtn,
+                leftSlotViews[0],  // Weapon
+                leftSlotViews[1],  // Necklace
+                leftSlotViews[2],  // Ring
+                rightSlotViews[0], // Hat
+                rightSlotViews[1], // Top
+                rightSlotViews[2], // Bottom
+                rightSlotViews[3], // Gloves
+                rightSlotViews[4]  // Shoes
+            );
+
+            // ── 캐릭터 변경 모달 ───────────────────────────────────────────────
+            var modal = BuildCharacterSelectModal(panel);
+
+            // CharacterSelectModalPresenter
+            var modalPresenter = panel.AddComponent<CharacterSelectModalPresenter>();
+
+            // CharacterStatData 로드
+            const string RAPIER_DATA_PATH   = "Assets/_Project/ScriptableObjects/Characters/RapierStatData.asset";
+            const string ASSASSIN_DATA_PATH = "Assets/_Project/ScriptableObjects/Characters/AssassinStatData.asset";
+            var rapierData   = AssetDatabase.LoadAssetAtPath<CharacterStatData>(RAPIER_DATA_PATH);
+            var assassinData = AssetDatabase.LoadAssetAtPath<CharacterStatData>(ASSASSIN_DATA_PATH);
+            if (rapierData   == null) Debug.LogWarning($"[LobbyHudSetup] RapierStatData 로드 실패: {RAPIER_DATA_PATH}");
+            if (assassinData == null) Debug.LogWarning($"[LobbyHudSetup] AssassinStatData 로드 실패: {ASSASSIN_DATA_PATH}");
+
+            modalPresenter.InitReferences(modal, rapierData, assassinData);
 
             // B2: EquipmentPanelRoot — 장비 슬롯 8개 + 인벤토리 ScrollRect 실장
             var equipRoot = CreateRectChild(panel, "EquipmentPanelRoot");
-            SetAnchors(equipRoot, new Vector2(0f, 0.3f), new Vector2(1f, 0.6f));
+            SetAnchors(equipRoot, new Vector2(0f, 0.30f), new Vector2(1f, 0.62f));
             equipRoot.offsetMin = equipRoot.offsetMax = Vector2.zero;
 
             // ── (a) 8슬롯 그리드 컨테이너 ─────────────────────────────────────
@@ -371,8 +468,23 @@ namespace Game.DevTools
             scrollGo.anchorMax = new Vector2(1f, 1.0f);
 
             // ── EquipmentPanelView + Presenter 조립 ───────────────────────────
+            // Phase 23c: 기존 8칸 그리드(slotGrid)는 숨기고, 좌3/우5 슬롯을 사용한다.
+            // leftSlotViews(Weapon/Necklace/Ring) + rightSlotViews(Hat/Top/Bottom/Gloves/Shoes)
+            // → EquipmentSlotType enum 순서: Weapon, Hat, Top, Bottom, Shoes, Gloves, Necklace, Ring
+            slotGrid.gameObject.SetActive(false); // 구식 그리드 폐기 (비활성)
+            var charInfoSlotViews = new List<EquipmentSlotView>
+            {
+                leftSlotViews[0],  // Weapon
+                rightSlotViews[0], // Hat
+                rightSlotViews[1], // Top
+                rightSlotViews[2], // Bottom
+                rightSlotViews[4], // Shoes
+                rightSlotViews[3], // Gloves
+                leftSlotViews[1],  // Necklace
+                leftSlotViews[2],  // Ring
+            };
             var equipView = equipRoot.gameObject.AddComponent<EquipmentPanelView>();
-            equipView.InitReferences(slotViews, contentGo.gameObject.transform, itemViewTemplate);
+            equipView.InitReferences(charInfoSlotViews, contentGo.gameObject.transform, itemViewTemplate);
             equipView.InitTabReferences(
                 weaponTabBtn, weaponTabTxt,
                 armorTabBtn,  armorTabTxt,
@@ -390,17 +502,27 @@ namespace Game.DevTools
             var equipPresenter = equipRoot.gameObject.AddComponent<EquipmentPanelPresenter>();
             equipPresenter.InitReferences(equipView, itemDetailPresenter, runeInventoryPresenter);
 
-            // 초기 상태: 패널 비활성 (CharacterTabPresenter.OnTabShown 에서 Show 호출)
+            // 초기 상태: 패널 비활성 (CharacterInfoPanelPresenter.Show 에서 Show 호출)
             equipRoot.gameObject.SetActive(false);
 
             // B3 hook: LevelUpPanelRoot
             var levelRoot = CreateRectChild(panel, "LevelUpPanelRoot");
-            SetAnchors(levelRoot, new Vector2(0f, 0f), new Vector2(1f, 0.3f));
+            SetAnchors(levelRoot, new Vector2(0f, 0f), new Vector2(1f, 0.30f));
             levelRoot.offsetMin = levelRoot.offsetMax = Vector2.zero;
             CreateLabel(levelRoot.gameObject, "[B3] 레벨업 패널 영역", 32, TextAlignmentOptions.Center,
                         new Color(0.5f, 0.6f, 0.9f, 0.6f));
 
-            view.Init(rapierSlot, slot2, slot3, slot4, equipRoot.gameObject, levelRoot.gameObject);
+            // CharacterInfoPanelPresenter 조립
+            var infoPanelPresenter = panel.AddComponent<CharacterInfoPanelPresenter>();
+            infoPanelPresenter.InitReferences(infoPanelView, modalPresenter, equipPresenter, rapierData, assassinData);
+            EditorUtility.SetDirty(infoPanelPresenter);
+            EditorUtility.SetDirty(modalPresenter);
+
+            // EquipmentPanelView の 8슬롯을 CharacterInfoPanelView 슬롯으로 재초기화
+            // (좌3/우5 슬롯이 EquipmentPanelView 와는 별개로 직접 EquipmentSlotView 를 가짐)
+            // EquipmentPanelView 의 _slotViews 는 기존 8슬롯 그리드 전용으로 유지.
+
+            view.Init(equipRoot.gameObject, levelRoot.gameObject);
             return (view, equipPresenter);
         }
 
@@ -710,6 +832,189 @@ namespace Game.DevTools
 
             slotGo.AddComponent<LayoutElement>();
             return slotGo;
+        }
+
+        // ── Phase 23c 헬퍼: EquipmentSlotGo (VerticalLayout 자식용) ────────
+
+        /// <summary>VerticalLayoutGroup 자식으로 넣을 단일 장비 슬롯 GO + EquipmentSlotView 를 생성한다.</summary>
+        private static EquipmentSlotView CreateEquipmentSlotGo(GameObject parent, string slotName, float size)
+        {
+            var slotGo  = new GameObject($"Slot_{slotName}", typeof(RectTransform));
+            slotGo.transform.SetParent(parent.transform, false);
+
+            // LayoutElement — preferredWidth/Height 고정 (VerticalLayout expand 차단)
+            var le            = slotGo.AddComponent<LayoutElement>();
+            le.preferredWidth  = size;
+            le.preferredHeight = size;
+            le.flexibleWidth   = 1f;
+            le.flexibleHeight  = 0f;
+
+            // 슬롯 배경 Image
+            var slotBg  = slotGo.AddComponent<Image>();
+            slotBg.color = new Color(0.2f, 0.2f, 0.25f, 0.9f);
+
+            // GradeBorder
+            var borderGo  = new GameObject("GradeBorder", typeof(RectTransform));
+            borderGo.transform.SetParent(slotGo.transform, false);
+            var borderImg = borderGo.AddComponent<Image>();
+            borderImg.color = new Color(0.5f, 0.5f, 0.5f, 0.8f);
+            var borderRect = borderGo.GetComponent<RectTransform>();
+            SetAnchors(borderRect, Vector2.zero, Vector2.one);
+            borderRect.offsetMin = borderRect.offsetMax = Vector2.zero;
+
+            // EmptyIcon
+            var emptyGo  = new GameObject("EmptyIcon", typeof(RectTransform));
+            emptyGo.transform.SetParent(slotGo.transform, false);
+            var emptyImg = emptyGo.AddComponent<Image>();
+            emptyImg.color = new Color(0.4f, 0.4f, 0.45f, 0.6f);
+            var emptyRect = emptyGo.GetComponent<RectTransform>();
+            SetAnchors(emptyRect, new Vector2(0.2f, 0.2f), new Vector2(0.8f, 0.8f));
+            emptyRect.offsetMin = emptyRect.offsetMax = Vector2.zero;
+
+            // ItemIcon
+            var iconGo  = new GameObject("ItemIcon", typeof(RectTransform));
+            iconGo.transform.SetParent(slotGo.transform, false);
+            var iconImg = iconGo.AddComponent<Image>();
+            iconImg.color = Color.white;
+            var iconRect = iconGo.GetComponent<RectTransform>();
+            SetAnchors(iconRect, new Vector2(0.1f, 0.1f), new Vector2(0.9f, 0.9f));
+            iconRect.offsetMin = iconRect.offsetMax = Vector2.zero;
+            iconGo.SetActive(false);
+
+            // RuneSocket 아이콘 3개
+            var runeIcons = new System.Collections.Generic.List<Image>();
+            for (int r = 0; r < 3; r++)
+            {
+                var runeGo   = new GameObject($"RuneSocket_{r}", typeof(RectTransform));
+                runeGo.transform.SetParent(slotGo.transform, false);
+                var runeImg  = runeGo.AddComponent<Image>();
+                runeImg.color = Color.gray;
+                var runeRect = runeGo.GetComponent<RectTransform>();
+                float xMin = 0.05f + r * 0.32f;
+                SetAnchors(runeRect, new Vector2(xMin, 0.02f), new Vector2(xMin + 0.28f, 0.2f));
+                runeRect.offsetMin = runeRect.offsetMax = Vector2.zero;
+                runeGo.SetActive(false);
+                runeIcons.Add(runeImg);
+            }
+
+            // SlotButton
+            var slotBtn = slotGo.AddComponent<Button>();
+
+            // EquipmentSlotView
+            var slotView = slotGo.AddComponent<EquipmentSlotView>();
+            slotView.InitReferences(iconImg, borderImg, emptyImg, runeIcons, slotBtn);
+            return slotView;
+        }
+
+        // ── Phase 23c 헬퍼: 캐릭터 변경 모달 생성 ──────────────────────────
+
+        /// <summary>CharacterPanel 하위에 캐릭터 변경 모달 오버레이를 생성한다.</summary>
+        private static CharacterSelectModalView BuildCharacterSelectModal(GameObject panelParent)
+        {
+            var font = GetFont();
+
+            // 모달 오버레이 루트 (ContentArea 전체를 가림)
+            var modalGo = new GameObject("CharacterSelectModal", typeof(RectTransform));
+            modalGo.transform.SetParent(panelParent.transform, false);
+            var modalBg   = modalGo.AddComponent<Image>();
+            modalBg.color = new Color(0.0f, 0.0f, 0.0f, 0.88f);
+            // raycastTarget=true (기본값) 이므로 모달 뒤 클릭은 Image 가 차단한다.
+            var modalRect = modalGo.GetComponent<RectTransform>();
+            SetAnchors(modalRect, Vector2.zero, Vector2.one);
+            modalRect.offsetMin = modalRect.offsetMax = Vector2.zero;
+
+            // 일러스트 영역 (모달 전체를 채움)
+            var illustGo   = new GameObject("ModalIllustration", typeof(RectTransform));
+            illustGo.transform.SetParent(modalGo.transform, false);
+            var illustImg  = illustGo.AddComponent<Image>();
+            illustImg.color         = new Color(0.15f, 0.15f, 0.20f, 0.5f); // placeholder
+            illustImg.raycastTarget = false;
+            var illustRect = illustGo.GetComponent<RectTransform>();
+            SetAnchors(illustRect, Vector2.zero, Vector2.one);
+            illustRect.offsetMin = illustRect.offsetMax = Vector2.zero;
+
+            // 좌 화살표
+            var leftArrowGo = new GameObject("LeftArrowButton", typeof(RectTransform));
+            leftArrowGo.transform.SetParent(modalGo.transform, false);
+            leftArrowGo.AddComponent<Image>().color = new Color(0.3f, 0.3f, 0.4f, 0.8f);
+            var leftArrowBtn  = leftArrowGo.AddComponent<Button>();
+            var leftArrowRect = leftArrowGo.GetComponent<RectTransform>();
+            SetAnchors(leftArrowRect, new Vector2(0.01f, 0.35f), new Vector2(0.12f, 0.65f));
+            leftArrowRect.offsetMin = leftArrowRect.offsetMax = Vector2.zero;
+            var leftLabel = CreateTmpLabel(leftArrowGo, "Label_◀", "◀", 52f, font);
+            SetAnchors(leftLabel.GetComponent<RectTransform>(), Vector2.zero, Vector2.one);
+            leftLabel.GetComponent<RectTransform>().offsetMin = leftLabel.GetComponent<RectTransform>().offsetMax = Vector2.zero;
+
+            // 우 화살표
+            var rightArrowGo = new GameObject("RightArrowButton", typeof(RectTransform));
+            rightArrowGo.transform.SetParent(modalGo.transform, false);
+            rightArrowGo.AddComponent<Image>().color = new Color(0.3f, 0.3f, 0.4f, 0.8f);
+            var rightArrowBtn  = rightArrowGo.AddComponent<Button>();
+            var rightArrowRect = rightArrowGo.GetComponent<RectTransform>();
+            SetAnchors(rightArrowRect, new Vector2(0.88f, 0.35f), new Vector2(0.99f, 0.65f));
+            rightArrowRect.offsetMin = rightArrowRect.offsetMax = Vector2.zero;
+            var rightLabel = CreateTmpLabel(rightArrowGo, "Label_▶", "▶", 52f, font);
+            SetAnchors(rightLabel.GetComponent<RectTransform>(), Vector2.zero, Vector2.one);
+            rightLabel.GetComponent<RectTransform>().offsetMin = rightLabel.GetComponent<RectTransform>().offsetMax = Vector2.zero;
+
+            // 하단 설명 패널 (반투명 검정 배경)
+            var descPanelGo = new GameObject("DescriptionPanel", typeof(RectTransform));
+            descPanelGo.transform.SetParent(modalGo.transform, false);
+            descPanelGo.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0.7f);
+            var descPanelRect = descPanelGo.GetComponent<RectTransform>();
+            SetAnchors(descPanelRect, new Vector2(0f, 0.0f), new Vector2(1f, 0.35f));
+            descPanelRect.offsetMin = descPanelRect.offsetMax = Vector2.zero;
+
+            // 캐릭터 이름 텍스트
+            var charNameGo  = CreateTmpLabel(descPanelGo, "CharacterName", "캐릭터 이름", 44f, font);
+            charNameGo.GetComponent<TextMeshProUGUI>().fontStyle = FontStyles.Bold;
+            var charNameRect = charNameGo.GetComponent<RectTransform>();
+            SetAnchors(charNameRect, new Vector2(0.05f, 0.70f), new Vector2(0.95f, 0.95f));
+            charNameRect.offsetMin = charNameRect.offsetMax = Vector2.zero;
+
+            // 설명 텍스트
+            var descGo  = CreateTmpLabel(descPanelGo, "DescriptionText", "설명 텍스트", 32f, font);
+            var descTmp = descGo.GetComponent<TextMeshProUGUI>();
+            descTmp.color           = new Color(0.85f, 0.85f, 0.85f);
+            descTmp.alignment       = TextAlignmentOptions.TopLeft;
+            descTmp.textWrappingMode = TMPro.TextWrappingModes.Normal;
+            var descRect = descGo.GetComponent<RectTransform>();
+            SetAnchors(descRect, new Vector2(0.05f, 0.35f), new Vector2(0.95f, 0.70f));
+            descRect.offsetMin = descRect.offsetMax = Vector2.zero;
+
+            // 선택하기 버튼
+            var selectBtnGo = CreateSimpleButton(descPanelGo, "SelectButton", "선택하기",
+                new Vector2(0.10f, 0.04f), new Vector2(0.90f, 0.32f),
+                new Color(0.2f, 0.65f, 0.3f), font);
+
+            // 잠금 오버레이 (미구현 캐릭터)
+            var lockOverlayGo = new GameObject("LockOverlay", typeof(RectTransform));
+            lockOverlayGo.transform.SetParent(modalGo.transform, false);
+            lockOverlayGo.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0.55f);
+            var lockOverlayRect = lockOverlayGo.GetComponent<RectTransform>();
+            SetAnchors(lockOverlayRect, Vector2.zero, Vector2.one);
+            lockOverlayRect.offsetMin = lockOverlayRect.offsetMax = Vector2.zero;
+            var lockLabelGo = CreateTmpLabel(lockOverlayGo, "LockText", "Coming Soon", 56f, font);
+            lockLabelGo.GetComponent<TextMeshProUGUI>().color = new Color(1f, 0.8f, 0.3f);
+            var lockLabelRect = lockLabelGo.GetComponent<RectTransform>();
+            SetAnchors(lockLabelRect, new Vector2(0.15f, 0.42f), new Vector2(0.85f, 0.58f));
+            lockLabelRect.offsetMin = lockLabelRect.offsetMax = Vector2.zero;
+            lockOverlayGo.SetActive(false);
+
+            // CharacterSelectModalView 조립
+            var modalView = modalGo.AddComponent<CharacterSelectModalView>();
+            modalView.InitReferences(
+                illustImg,
+                charNameGo.GetComponent<TextMeshProUGUI>(),
+                descTmp,
+                selectBtnGo.GetComponent<Button>(),
+                leftArrowBtn,
+                rightArrowBtn,
+                lockOverlayGo,
+                lockLabelGo.GetComponent<TextMeshProUGUI>());
+
+            modalGo.SetActive(false); // 기본 닫힘
+            return modalView;
         }
 
         private static (GameObject label, Slider slider) CreateLabeledSlider(
