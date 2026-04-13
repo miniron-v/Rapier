@@ -145,26 +145,38 @@ foreach (DropEntry entry in dropTable.entries)  // 등급별 독립 판정 (높�
 기본 확률 (SO에서 조정): 노말 80% / 레어 30% / 에픽 10% / 유니크 2%.
 스테이지 스케일링은 드롭 확률에 영향 없음.
 
-### DroppedItemView 비주얼
+### DroppedItemView 비주얼 및 감지
 
 - **Inner**: SpriteRenderer (Circle 스프라이트, `EquipmentGradeHelper.GetGradeColor(grade)`)
 - **Outer shimmer**: SpriteRenderer (같은 Circle, 동일 색 + alpha 펄스 코루틴 — "일렁이는 기운")
   - scale 1.2~1.5 고정, alpha 0.3↔0.7 sin 루프 (0.8초 주기)
-- **충돌**: CircleCollider2D (isTrigger) — 플레이어 레이어 감지 → Collect()
-- 아이콘: 현재 Circle만 사용. SO에 Sprite가 추가되면 추후 Inner에 덮어씀.
+- **충돌 없음**: 플레이어에 Collider2D/Rigidbody2D가 없으므로 OnTriggerEnter2D 미사용.
+  Portal과 동일하게 **Update + sqrMagnitude 거리 폴링** 방식 채택.
+  아이콘: 현재 Circle만 사용. SO에 Sprite가 추가되면 추후 Inner에 덮어씀.
 
 ```
 DroppedItemView.Init(EquipmentInstance item, Vector2 from, Vector2 to):
   spawnAnim: 0.4초, from→to 이동 + scale 0→1
+  완료 시 _isPickupEnabled = true  // 스폰 중 즉시 획득 방지
+
+DroppedItemView.Update():
+  if (!_isPickupEnabled || _player == null) return;
+  if (sqrDist <= _pickupRadius²) → Collect()
 
 DroppedItemView.Collect():
   OnCollected?.Invoke(item)
   Destroy(gameObject)
 ```
 
+| 항목 | Portal | DroppedItemView |
+|------|--------|-----------------|
+| 감지 방식 | Update sqrMagnitude | 동일 |
+| 플레이어 참조 | ServiceLocator | 동일 |
+| 즉시발동 방지 | `_hasSeparated` | `_isPickupEnabled` (스폰 완료 후 true) |
+
 ### 아이템 획득 / 자동 수거
 
-**플레이어 접촉**: `OnTriggerEnter2D` → `Collect()`
+**플레이어 접근**: Update 거리 폴링 → `Collect()`
 
 **포탈 진입 시 자동 수거** (`ProgressionManager.HandlePortalEntered()` 에 추가):
 ```
