@@ -177,12 +177,24 @@ namespace Game.Core.Stage
             }
             else
             {
+                // 맵 범위 동적 취득 (fallback: halfH=15, halfW=10)
+                var stageBuilderForDrop = ServiceLocator.TryGet<StageBuilder>();
+                float dropHalfH = stageBuilderForDrop != null ? stageBuilderForDrop.stageHeight * 0.5f : 15f;
+                const float dropHalfW   = 10f;
+                const float dropMarginY = 1.0f;
+                const float dropMarginX = 0.5f;
+
                 foreach (var drop in drops)
                 {
-                    float   angle  = UnityEngine.Random.Range(0f, 360f);
+                    // 보스 기준 아래쪽 반원(좌~하~우)만 사용: angle 90°→left, 180°→down, 270°→right
+                    float   angle  = UnityEngine.Random.Range(90f, 270f);
                     float   dist   = UnityEngine.Random.Range(_minDropDist, _maxDropDist);
                     Vector2 dir    = (Vector2)(Quaternion.Euler(0f, 0f, angle) * Vector2.up);
                     Vector2 target = bossPos + dir * dist;
+
+                    // 맵 범위 클램프
+                    target.y = Mathf.Clamp(target.y, -dropHalfH + dropMarginY, dropHalfH - dropMarginY);
+                    target.x = Mathf.Clamp(target.x, -dropHalfW + dropMarginX, dropHalfW - dropMarginX);
 
                     var view = Instantiate(_droppedItemPrefab, (Vector3)(Vector2)bossPos, Quaternion.identity);
                     view.Init(drop, bossPos, target);

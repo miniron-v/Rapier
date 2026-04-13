@@ -231,11 +231,12 @@ namespace Game.Core.Stage
             if (_bossDeathSequencer != null)
                 _bossDeathSequencer.OnItemSpawned -= RegisterDroppedItem;
 
-            float offset = _bossDeathSequencer != null
-                ? _bossDeathSequencer.MaxDropDist + 2.0f
-                : _portalOffsetFromBoss;
+            // 맵 범위 동적 취득 (fallback: halfH=15f)
+            var stageBuilder = ServiceLocator.TryGet<StageBuilder>();
+            float halfH = stageBuilder != null ? stageBuilder.stageHeight * 0.5f : 15f;
+            float clampedY = Mathf.Clamp(bossPos.y, -halfH + 1f, halfH - 1f);
 
-            SpawnPortal(bossPos + Vector2.up * offset);
+            SpawnPortal(new Vector2(bossPos.x, clampedY));
         }
 
         /// <summary>BossDeathSequencer가 DroppedItemView를 생성할 때 호출되어 이벤트를 연결한다.</summary>
