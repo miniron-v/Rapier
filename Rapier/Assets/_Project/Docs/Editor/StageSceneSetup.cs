@@ -366,6 +366,10 @@ namespace Game.Editor
             // 씬이 이미 StageDemo.unity 경로로 저장됐으므로 여기서 저장해도 동일 파일.
             BossHudSetup.CreateHud();
 
+            // ── Pause UI 생성 (Phase 23-B) ────────────────────────
+            // skipSceneNameCheck=true: 이 시점에 씬 이름이 "Untitled" 일 수 있어 이름 검사 생략.
+            StagePauseSetup.BuildPauseUI(forceRebuild, skipSceneNameCheck: true);
+
             Selection.activeGameObject = coreGo;
 
             Debug.Log("[StageSceneSetup] StageDemo.unity 생성 완료!\n" +
