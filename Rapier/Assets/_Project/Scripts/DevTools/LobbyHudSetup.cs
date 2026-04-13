@@ -937,7 +937,7 @@ namespace Game.DevTools
             iconGo.GetComponent<RectTransform>().offsetMin = iconGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
 
             // 3. 스탯창 (우 — 고정 크기 영역)
-            var statPanel = new GameObject("StatPanel");
+            var statPanel = new GameObject("StatPanel", typeof(RectTransform));
             statPanel.transform.SetParent(popupGo.transform, false);
             SetAnchors(statPanel.GetComponent<RectTransform>(), new Vector2(0.30f, 0.62f), new Vector2(0.98f, 0.88f));
             statPanel.GetComponent<RectTransform>().offsetMin = statPanel.GetComponent<RectTransform>().offsetMax = Vector2.zero;
@@ -960,7 +960,7 @@ namespace Game.DevTools
             }
 
             // 4. 룬 소켓 행
-            var runeRowGo = new GameObject("RuneRow");
+            var runeRowGo = new GameObject("RuneRow", typeof(RectTransform));
             runeRowGo.transform.SetParent(popupGo.transform, false);
             SetAnchors(runeRowGo.GetComponent<RectTransform>(), new Vector2(0.02f, 0.50f), new Vector2(0.98f, 0.61f));
             runeRowGo.GetComponent<RectTransform>().offsetMin = runeRowGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
@@ -1047,7 +1047,7 @@ namespace Game.DevTools
             popRt.offsetMin = popRt.offsetMax = Vector2.zero;
 
             // 탭 버튼 행
-            var tabRowGo = new GameObject("TabRow");
+            var tabRowGo = new GameObject("TabRow", typeof(RectTransform));
             tabRowGo.transform.SetParent(popupGo.transform, false);
             SetAnchors(tabRowGo.GetComponent<RectTransform>(), new Vector2(0f, 0.88f), new Vector2(1f, 0.98f));
             tabRowGo.GetComponent<RectTransform>().offsetMin = tabRowGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
@@ -1067,7 +1067,7 @@ namespace Game.DevTools
             scrollGo.GetComponent<RectTransform>().offsetMin = scrollGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
             scrollGo.AddComponent<Image>().color = new Color(0.12f, 0.12f, 0.15f, 0.8f);
 
-            var viewportGo = new GameObject("Viewport");
+            var viewportGo = new GameObject("Viewport", typeof(RectTransform));
             viewportGo.transform.SetParent(scrollGo.transform, false);
             SetAnchors(viewportGo.GetComponent<RectTransform>(), Vector2.zero, Vector2.one);
             viewportGo.GetComponent<RectTransform>().offsetMin = viewportGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
@@ -1124,7 +1124,7 @@ namespace Game.DevTools
 
         private static RuneItemRowView CreateRuneRowTemplate(GameObject parent, TMP_FontAsset font)
         {
-            var rowGo  = new GameObject("RuneRowTemplate");
+            var rowGo  = new GameObject("RuneRowTemplate", typeof(RectTransform));
             rowGo.transform.SetParent(parent.transform, false);
             var rowBg  = rowGo.AddComponent<Image>();
             rowBg.color = new Color(0.18f, 0.18f, 0.22f, 0.9f);
