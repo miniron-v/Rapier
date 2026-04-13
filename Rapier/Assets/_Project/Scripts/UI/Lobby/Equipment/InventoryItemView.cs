@@ -2,7 +2,6 @@ using System;
 using Game.Data.Equipment;
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro;
 
 namespace Game.UI.Lobby.Equipment
 {
@@ -17,8 +16,6 @@ namespace Game.UI.Lobby.Equipment
 
         [SerializeField] private Image _itemIcon;
         [SerializeField] private Image _gradeBackground;
-        [SerializeField] private TextMeshProUGUI _itemNameText;
-        [SerializeField] private TextMeshProUGUI _mainStatText;
         [SerializeField] private Button _itemButton;
 
         // ── Private Fields ───────────────────────────────────────────────────
@@ -49,17 +46,11 @@ namespace Game.UI.Lobby.Equipment
         /// </summary>
         /// <param name="itemIcon">아이템 아이콘 Image.</param>
         /// <param name="gradeBackground">등급 배경 Image.</param>
-        /// <param name="itemNameText">아이템 이름 TMP 텍스트.</param>
-        /// <param name="mainStatText">메인 스탯 TMP 텍스트.</param>
         /// <param name="itemButton">아이템 클릭 Button.</param>
-        public void InitReferences(Image itemIcon, Image gradeBackground,
-                                   TextMeshProUGUI itemNameText, TextMeshProUGUI mainStatText,
-                                   Button itemButton)
+        public void InitReferences(Image itemIcon, Image gradeBackground, Button itemButton)
         {
             _itemIcon        = itemIcon;
             _gradeBackground = gradeBackground;
-            _itemNameText    = itemNameText;
-            _mainStatText    = mainStatText;
             _itemButton      = itemButton;
         }
 
@@ -76,27 +67,12 @@ namespace Game.UI.Lobby.Equipment
 
             gameObject.SetActive(true);
 
-            _itemIcon.sprite  = instance.Data.Icon;
-            _itemNameText.text = instance.Data.ItemName;
+            _itemIcon.sprite = instance.Data.Icon;
 
-            // 등급 배경 색상
             if (ColorUtility.TryParseHtmlString(
                     EquipmentGradeHelper.GetGradeColorHex(instance.Data.Grade),
                     out var gradeColor))
                 _gradeBackground.color = gradeColor;
-
-            // 메인 스탯 텍스트 간단 표시 (Phase 22-B: 장신구는 RolledMainStat 우선)
-            bool isAccessory = instance.Data.SlotType == Game.Data.Equipment.EquipmentSlotType.Necklace
-                            || instance.Data.SlotType == Game.Data.Equipment.EquipmentSlotType.Ring;
-            Game.Data.Equipment.StatEntry ms;
-            if (isAccessory && instance.RolledMainStat.HasValue)
-                ms = instance.RolledMainStat.Value;
-            else
-                ms = instance.Data.MainStat;
-
-            _mainStatText.text = ms.flatValue > 0
-                ? $"{ms.statType} +{ms.flatValue:F0}"
-                : $"{ms.statType} +{ms.percentValue:F1}%";
         }
 
         // ── Event Handlers ───────────────────────────────────────────────────

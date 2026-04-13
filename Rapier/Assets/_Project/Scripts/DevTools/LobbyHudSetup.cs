@@ -302,10 +302,11 @@ namespace Game.DevTools
             contentFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
             var contentLayout          = contentGo.gameObject.AddComponent<GridLayoutGroup>();
             contentLayout.cellSize     = new Vector2(140f, 140f);
-            contentLayout.spacing      = new Vector2(6f, 6f);
+            contentLayout.spacing      = new Vector2(18f, 18f);
             contentLayout.padding      = new RectOffset(6, 6, 6, 6);
+            contentLayout.childAlignment = TextAnchor.UpperCenter;
             contentLayout.constraint   = GridLayoutGroup.Constraint.FixedColumnCount;
-            contentLayout.constraintCount = 4;
+            contentLayout.constraintCount = 6;
 
             // ScrollRect 설정
             var scrollRect        = scrollGo.gameObject.AddComponent<ScrollRect>();
@@ -328,61 +329,35 @@ namespace Game.DevTools
             SetAnchors(gradeBgRect, Vector2.zero, Vector2.one);
             gradeBgRect.offsetMin = gradeBgRect.offsetMax = Vector2.zero;
 
-            // ItemIcon
+            // ItemIcon (슬롯 전체를 채움)
             var tIconGo  = new GameObject("ItemIcon");
             tIconGo.transform.SetParent(templateGo.transform, false);
             var tIconImg = tIconGo.AddComponent<Image>();
             tIconImg.color = Color.white;
             var tIconRect = tIconGo.GetComponent<RectTransform>();
-            SetAnchors(tIconRect, new Vector2(0.05f, 0.35f), new Vector2(0.95f, 0.95f));
+            SetAnchors(tIconRect, new Vector2(0.05f, 0.05f), new Vector2(0.95f, 0.95f));
             tIconRect.offsetMin = tIconRect.offsetMax = Vector2.zero;
-
-            // ItemNameText
-            var nameGo  = new GameObject("ItemNameText");
-            nameGo.transform.SetParent(templateGo.transform, false);
-            var nameTmp = nameGo.AddComponent<TextMeshProUGUI>();
-            nameTmp.text      = "Item";
-            nameTmp.fontSize  = 32f;
-            nameTmp.alignment = TextAlignmentOptions.Center;
-            nameTmp.color     = Color.white;
-            var nameFont = GetFont();
-            if (nameFont != null) nameTmp.font = nameFont;
-            var nameRect = nameGo.GetComponent<RectTransform>();
-            SetAnchors(nameRect, new Vector2(0f, 0.18f), new Vector2(1f, 0.38f));
-            nameRect.offsetMin = nameRect.offsetMax = Vector2.zero;
-
-            // MainStatText
-            var statGo  = new GameObject("MainStatText");
-            statGo.transform.SetParent(templateGo.transform, false);
-            var statTmp = statGo.AddComponent<TextMeshProUGUI>();
-            statTmp.text      = "Stat";
-            statTmp.fontSize  = 32f;
-            statTmp.alignment = TextAlignmentOptions.Center;
-            statTmp.color     = new Color(0.8f, 0.8f, 0.5f);
-            var statFont = GetFont();
-            if (statFont != null) statTmp.font = statFont;
-            var statRect = statGo.GetComponent<RectTransform>();
-            SetAnchors(statRect, new Vector2(0f, 0.02f), new Vector2(1f, 0.2f));
-            statRect.offsetMin = statRect.offsetMax = Vector2.zero;
 
             // ItemButton
             var tBtn = templateGo.AddComponent<Button>();
 
             // InventoryItemView 컴포넌트 추가 및 참조 주입
             var itemViewTemplate = templateGo.AddComponent<InventoryItemView>();
-            itemViewTemplate.InitReferences(tIconImg, gradeBgImg, nameTmp, statTmp, tBtn);
+            itemViewTemplate.InitReferences(tIconImg, gradeBgImg, tBtn);
             templateGo.SetActive(false);  // 템플릿은 비활성 유지
 
             // ── (d) 인벤토리 탭 버튼 3개 (Phase 24) ───────────────────────────
             var tabBarGo = new GameObject("InventoryTabBar");
             tabBarGo.transform.SetParent(equipRoot, false);
             var tabBarRect = tabBarGo.AddComponent<RectTransform>();
-            SetAnchors(tabBarRect, new Vector2(0f, 0.0f), new Vector2(1f, 0.07f));
+            SetAnchors(tabBarRect, new Vector2(0f, 0.0f), new Vector2(1f, 0.2f));
             tabBarRect.offsetMin = tabBarRect.offsetMax = Vector2.zero;
             var tabHLayout           = tabBarGo.AddComponent<HorizontalLayoutGroup>();
-            tabHLayout.spacing       = 4f;
-            tabHLayout.padding       = new RectOffset(4, 4, 2, 2);
+            tabHLayout.spacing       = 0f;
+            tabHLayout.padding       = new RectOffset(0, 0, 0, 0);
             tabHLayout.childAlignment           = TextAnchor.MiddleCenter;
+            tabHLayout.childControlWidth        = true;
+            tabHLayout.childControlHeight       = true;
             tabHLayout.childForceExpandWidth    = true;
             tabHLayout.childForceExpandHeight   = true;
 
@@ -390,10 +365,9 @@ namespace Game.DevTools
             (Button armorTabBtn,     TextMeshProUGUI armorTabTxt)     = CreateTabButtonPair(tabBarGo, "방어구");
             (Button accessoryTabBtn, TextMeshProUGUI accessoryTabTxt) = CreateTabButtonPair(tabBarGo, "장신구");
 
-            // ScrollRect 위치를 탭 위로 (탭 바가 생겼으므로 offset 조정)
-            // 기존 scrollGo anchor (0,0)~(1,0.52) → (0,0.07)~(1,0.52) 로 보정
-            scrollGo.anchorMin = new Vector2(0f, 0.08f);
-            scrollGo.anchorMax = new Vector2(1f, 0.52f);
+            // ScrollRect 위치를 탭 바 위로 (탭 바가 하단 0~0.2 차지)
+            scrollGo.anchorMin = new Vector2(0f, 0.22f);
+            scrollGo.anchorMax = new Vector2(1f, 1.0f);
 
             // ── EquipmentPanelView + Presenter 조립 ───────────────────────────
             var equipView = equipRoot.gameObject.AddComponent<EquipmentPanelView>();
@@ -547,8 +521,11 @@ namespace Game.DevTools
             barRect.offsetMax = new Vector2(0f, 180f);
 
             var hLayout = barGo.AddComponent<HorizontalLayoutGroup>();
+            hLayout.childControlWidth      = true;
+            hLayout.childControlHeight     = true;
             hLayout.childForceExpandWidth  = true;
             hLayout.childForceExpandHeight = true;
+            hLayout.padding = new RectOffset(0, 0, 0, 0);
             hLayout.spacing = 0;
 
             string[] labels = { "상점", "캐릭터", "홈", "미션", "설정" };
