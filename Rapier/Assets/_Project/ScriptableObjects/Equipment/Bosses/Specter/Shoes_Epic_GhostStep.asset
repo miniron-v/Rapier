@@ -28,6 +28,3 @@ MonoBehaviour:
   - statType: 5
     flatValue: 0
     percentValue: 0.05
-  - statType: 7
-    flatValue: 0
-    percentValue: 0.08

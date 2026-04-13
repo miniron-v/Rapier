@@ -21,7 +21,4 @@ MonoBehaviour:
     statType: 9
     flatValue: 0
     percentValue: 0.08
-  _subStats:
-  - statType: 4
-    flatValue: 0
-    percentValue: 0.03
+  _subStats: []

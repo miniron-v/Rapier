@@ -31,6 +31,3 @@ MonoBehaviour:
   - statType: 7
     flatValue: 0
     percentValue: 0.2
-  - statType: 1
-    flatValue: 20
-    percentValue: 0
