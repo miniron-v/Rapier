@@ -1041,7 +1041,7 @@ namespace Game.DevTools
             var popupGo = new GameObject("RuneInventoryPopup", typeof(RectTransform));
             popupGo.transform.SetParent(panelParent.transform, false);
             var popBg   = popupGo.AddComponent<Image>();
-            popBg.color = new Color(0f, 0f, 0f, 0.75f);
+            popBg.color = new Color(0.08f, 0.08f, 0.10f, 1f);
             var popRt   = popupGo.GetComponent<RectTransform>();
             SetAnchors(popRt, new Vector2(0.03f, 0.05f), new Vector2(0.97f, 0.97f));
             popRt.offsetMin = popRt.offsetMax = Vector2.zero;

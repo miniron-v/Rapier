@@ -186,13 +186,15 @@ namespace Game.UI.Lobby.Equipment
             // 설명
             _descriptionText.text = data.Description;
 
-            // 장착/해제 버튼 라벨
-            if (isEquipped)
-                _equipButtonText.text = "해제";
-            else if (equippedByOther)
-                _equipButtonText.text = "장착";
-            else
-                _equipButtonText.text = "장착";
+            // 장착/해제 버튼 라벨 + 색상
+            // 해제: 빨강 (닫기 버튼과 동일) / 장착: 녹색
+            _equipButtonText.text = isEquipped ? "해제" : "장착";
+            if (_equipButton != null && _equipButton.image != null)
+            {
+                _equipButton.image.color = isEquipped
+                    ? new Color(0.5f, 0.2f, 0.2f)   // 해제 = 닫기와 동일 빨강
+                    : new Color(0.2f, 0.7f, 0.3f);  // 장착 = 녹색
+            }
         }
 
         // ── Private 유틸 ─────────────────────────────────────────────────────

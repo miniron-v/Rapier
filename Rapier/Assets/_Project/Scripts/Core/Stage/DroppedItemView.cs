@@ -190,28 +190,28 @@ namespace Game.Core.Stage
             canvas.sortingOrder = 20;
 
             var canvasRt = _labelCanvasGo.GetComponent<RectTransform>();
-            canvasRt.sizeDelta  = new Vector2(2.0f, 0.4f);
-            canvasRt.localScale = new Vector3(0.01f, 0.01f, 0.01f);
+            canvasRt.localScale = Vector3.one;
 
-            // 배경 Image (반투명 검정)
+            // 배경 Image (등급 색을 어둡고 반투명하게)
             var bgGo  = new GameObject("Background");
             bgGo.transform.SetParent(_labelCanvasGo.transform, false);
             var bgImg = bgGo.AddComponent<UnityEngine.UI.Image>();
-            bgImg.color = new Color(0f, 0f, 0f, 0.6f);
+            bgImg.color = new Color(gradeColor.r * 0.25f, gradeColor.g * 0.25f, gradeColor.b * 0.25f, 0.7f);
             var bgRt  = bgGo.GetComponent<RectTransform>();
             bgRt.anchorMin = Vector2.zero;
             bgRt.anchorMax = Vector2.one;
             bgRt.offsetMin = bgRt.offsetMax = Vector2.zero;
 
-            // TextMeshProUGUI
+            // TextMeshProUGUI (글자 색은 흰색 고정)
             var textGo  = new GameObject("NameText");
             textGo.transform.SetParent(_labelCanvasGo.transform, false);
             var tmp     = textGo.AddComponent<TextMeshProUGUI>();
             tmp.text      = itemName;
-            tmp.color     = gradeColor;
-            tmp.fontSize  = 32f;
+            tmp.color     = Color.white;
+            tmp.fontSize  = 0.4f;
             tmp.alignment = TMPro.TextAlignmentOptions.Center;
-            tmp.overflowMode = TMPro.TextOverflowModes.Ellipsis;
+            tmp.enableWordWrapping = false;
+            tmp.overflowMode = TMPro.TextOverflowModes.Overflow;
 
             // 폰트 주입 (SerializeField 패턴 — feedback_tmp_font_unset)
             if (_labelFont != null)
@@ -223,6 +223,13 @@ namespace Game.Core.Stage
             textRt.anchorMin  = Vector2.zero;
             textRt.anchorMax  = Vector2.one;
             textRt.offsetMin  = textRt.offsetMax = Vector2.zero;
+
+            // 글자 수에 맞춰 라벨 너비 동적 산정 (좌우 패딩 0.25 씩)
+            tmp.ForceMeshUpdate();
+            const float SIDE_PADDING = 0.25f;
+            float textWidth  = tmp.preferredWidth;
+            float textHeight = tmp.preferredHeight;
+            canvasRt.sizeDelta = new Vector2(textWidth + SIDE_PADDING * 2f, Mathf.Max(textHeight + 0.1f, 0.5f));
 
             // 스폰 완료까지 비활성
             _labelCanvasGo.SetActive(false);

@@ -104,18 +104,19 @@ namespace Game.UI.Lobby.Equipment
                 // 해제
                 _manager.Unequip(_characterId, _currentSlot);
                 Debug.Log($"[ItemDetailPresenter] 해제: {_currentInstance.Data.ItemName} 슬롯={_currentSlot}");
+                // 해제 후 버튼 상태만 갱신 (창 유지)
+                bool nowEquipped = IsEquippedByCurrentChar(_currentInstance);
+                bool nowOther    = !nowEquipped && IsEquippedByAnyChar(_currentInstance);
+                _view.SetData(_currentInstance, nowEquipped, nowOther);
             }
             else
             {
                 // 장착 (다른 캐릭터에 장착 중이면 EquipmentManager 내부에서 자동 해제됨)
                 _manager.Equip(_characterId, _currentInstance);
                 Debug.Log($"[ItemDetailPresenter] 장착: {_currentInstance.Data.ItemName} → {_characterId}");
+                // 장착 즉시 창 닫기
+                Hide();
             }
-
-            // 버튼 상태 갱신
-            bool nowEquipped = IsEquippedByCurrentChar(_currentInstance);
-            bool nowOther    = !nowEquipped && IsEquippedByAnyChar(_currentInstance);
-            _view.SetData(_currentInstance, nowEquipped, nowOther);
         }
 
         private void HandleCloseClicked()
