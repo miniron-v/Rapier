@@ -192,7 +192,7 @@ namespace Game.DevTools
             var infoPanel = new GameObject("CharacterInfoPanel", typeof(RectTransform));
             infoPanel.transform.SetParent(panel.transform, false);
             var infoBg   = infoPanel.AddComponent<Image>();
-            infoBg.color = new Color(0.10f, 0.10f, 0.13f, 0.8f);
+            infoBg.color = new Color(0.10f, 0.10f, 0.13f, 1.0f);
             var infoRect = infoPanel.GetComponent<RectTransform>();
             SetAnchors(infoRect, new Vector2(0f, 0.62f), new Vector2(1f, 1f));
             infoRect.offsetMin = infoRect.offsetMax = Vector2.zero;
@@ -988,11 +988,13 @@ namespace Game.DevTools
                 new Color(0.2f, 0.65f, 0.3f), font);
 
             // 잠금 오버레이 (미구현 캐릭터)
+            // [Fix] 좌우 화살표(각 12% 폭)를 제외한 중앙 영역만 덮는다.
+            // 화살표: left 0~0.12, right 0.88~1.0 → LockOverlay xMin=0.12, xMax=0.88
             var lockOverlayGo = new GameObject("LockOverlay", typeof(RectTransform));
             lockOverlayGo.transform.SetParent(modalGo.transform, false);
             lockOverlayGo.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0.55f);
             var lockOverlayRect = lockOverlayGo.GetComponent<RectTransform>();
-            SetAnchors(lockOverlayRect, Vector2.zero, Vector2.one);
+            SetAnchors(lockOverlayRect, new Vector2(0.12f, 0f), new Vector2(0.88f, 1f));
             lockOverlayRect.offsetMin = lockOverlayRect.offsetMax = Vector2.zero;
             var lockLabelGo = CreateTmpLabel(lockOverlayGo, "LockText", "Coming Soon", 56f, font);
             lockLabelGo.GetComponent<TextMeshProUGUI>().color = new Color(1f, 0.8f, 0.3f);

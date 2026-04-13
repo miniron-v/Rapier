@@ -85,6 +85,7 @@ namespace Game.UI.Lobby
             _view.OnNextClicked   += HandleNextClicked;
 
             RefreshView();
+            _view.transform.SetAsLastSibling(); // 인벤토리 등이 위를 덮지 않도록 최상위 sibling으로 올린다
             _view.Show();
         }
 
