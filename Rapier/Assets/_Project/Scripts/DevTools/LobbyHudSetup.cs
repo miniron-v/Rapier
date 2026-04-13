@@ -93,10 +93,16 @@ namespace Game.DevTools
             scaler.matchWidthOrHeight  = 0.5f;
 
             root.AddComponent<GraphicRaycaster>();
-            root.AddComponent<SafeAreaFitter>();
+
+            // SafeAreaRoot — Canvas 바로 아래 자식에 SafeAreaFitter 적용.
+            // (Canvas 자체의 RectTransform 은 screen-driven 이라 anchor 조정이 무효)
+            var safeRoot = CreateRectChild(root, "SafeAreaRoot");
+            SetAnchors(safeRoot, Vector2.zero, Vector2.one);
+            safeRoot.offsetMin = safeRoot.offsetMax = Vector2.zero;
+            safeRoot.gameObject.AddComponent<SafeAreaFitter>();
 
             // 2. 탭 패널 영역 (탭 바 위쪽, 전체 화면에서 하단 바 높이 제외)
-            var contentArea = CreateRectChild(root, "ContentArea");
+            var contentArea = CreateRectChild(safeRoot.gameObject, "ContentArea");
             SetAnchors(contentArea, Vector2.zero, Vector2.one);
             contentArea.offsetMin = new Vector2(0, 180); // 하단 탭 바 높이
             contentArea.offsetMax = Vector2.zero;
@@ -115,8 +121,8 @@ namespace Game.DevTools
             var missionView  = SetupMissionPanel(missionPanel);
             var settingsView = SetupSettingsPanel(settingsPanel);
 
-            // 5. 하단 탭 바
-            var tabBar = CreateTabBar(root);
+            // 5. 하단 탭 바 (SafeAreaRoot 하위로 — Safe Area 적용)
+            var tabBar = CreateTabBar(safeRoot.gameObject);
 
             // 6. LobbyTabView 컴포넌트 연결
             var tabViewGo    = new GameObject("LobbyTabView");
@@ -188,13 +194,13 @@ namespace Game.DevTools
             var view = panel.AddComponent<CharacterTabView>();
 
             // ── 캐릭터 정보 패널 (Phase 23c) ───────────────────────────────────
-            // 패널 레이아웃: 상단 35% = 캐릭터 정보 패널, 중간 30% = 인벤토리, 하단 = B3
+            // 패널 레이아웃 (2:2:1): 상단 40% = 캐릭터 정보, 중간 40% = 인벤토리+탭바, 하단 20% = B3
             var infoPanel = new GameObject("CharacterInfoPanel", typeof(RectTransform));
             infoPanel.transform.SetParent(panel.transform, false);
             var infoBg   = infoPanel.AddComponent<Image>();
             infoBg.color = new Color(0.10f, 0.10f, 0.13f, 1.0f);
             var infoRect = infoPanel.GetComponent<RectTransform>();
-            SetAnchors(infoRect, new Vector2(0f, 0.62f), new Vector2(1f, 1f));
+            SetAnchors(infoRect, new Vector2(0f, 0.60f), new Vector2(1f, 1f));
             infoRect.offsetMin = infoRect.offsetMax = Vector2.zero;
 
             // 일러스트 (Raycast Target off)
@@ -211,7 +217,7 @@ namespace Game.DevTools
             var leftColumnGo = new GameObject("LeftSlotColumn", typeof(RectTransform));
             leftColumnGo.transform.SetParent(infoPanel.transform, false);
             var leftRect = leftColumnGo.GetComponent<RectTransform>();
-            SetAnchors(leftRect, new Vector2(0.00f, 0.15f), new Vector2(0.18f, 0.92f));
+            SetAnchors(leftRect, new Vector2(0.00f, 0.00f), new Vector2(0.18f, 1.00f));
             leftRect.offsetMin = leftRect.offsetMax = Vector2.zero;
             var leftVLayout           = leftColumnGo.AddComponent<VerticalLayoutGroup>();
             leftVLayout.childAlignment        = TextAnchor.UpperCenter;
@@ -219,13 +225,14 @@ namespace Game.DevTools
             leftVLayout.childForceExpandHeight = false;
             leftVLayout.childControlHeight     = false;
             leftVLayout.spacing               = 8f;
-            leftVLayout.padding               = new RectOffset(4, 4, 4, 4);
+            // padding.top = SLOT_SIZE / 2 (반칸 상단 여백)
+            leftVLayout.padding               = new RectOffset(4, 4, 70, 4);
 
             // 우측 슬롯 컨테이너 (Hat / Top / Bottom / Gloves / Shoes — 세로 5칸)
             var rightColumnGo = new GameObject("RightSlotColumn", typeof(RectTransform));
             rightColumnGo.transform.SetParent(infoPanel.transform, false);
             var rightRect = rightColumnGo.GetComponent<RectTransform>();
-            SetAnchors(rightRect, new Vector2(0.82f, 0.15f), new Vector2(1.00f, 0.92f));
+            SetAnchors(rightRect, new Vector2(0.82f, 0.00f), new Vector2(1.00f, 1.00f));
             rightRect.offsetMin = rightRect.offsetMax = Vector2.zero;
             var rightVLayout           = rightColumnGo.AddComponent<VerticalLayoutGroup>();
             rightVLayout.childAlignment        = TextAnchor.UpperCenter;
@@ -233,10 +240,11 @@ namespace Game.DevTools
             rightVLayout.childForceExpandHeight = false;
             rightVLayout.childControlHeight     = false;
             rightVLayout.spacing               = 8f;
-            rightVLayout.padding               = new RectOffset(4, 4, 4, 4);
+            // padding.top = SLOT_SIZE / 2 (반칸 상단 여백)
+            rightVLayout.padding               = new RectOffset(4, 4, 70, 4);
 
-            // 슬롯 크기 (고정)
-            const float SLOT_SIZE = 100f;
+            // 슬롯 크기 (인벤토리 cellSize 140 과 동일)
+            const float SLOT_SIZE = 140f;
 
             // 좌측 3슬롯: Weapon, Necklace, Ring
             var leftSlotViews = new EquipmentSlotView[3];
@@ -296,7 +304,7 @@ namespace Game.DevTools
 
             // B2: EquipmentPanelRoot — 장비 슬롯 8개 + 인벤토리 ScrollRect 실장
             var equipRoot = CreateRectChild(panel, "EquipmentPanelRoot");
-            SetAnchors(equipRoot, new Vector2(0f, 0.30f), new Vector2(1f, 0.62f));
+            SetAnchors(equipRoot, new Vector2(0f, 0.20f), new Vector2(1f, 0.60f));
             equipRoot.offsetMin = equipRoot.offsetMax = Vector2.zero;
 
             // ── (a) 8슬롯 그리드 컨테이너 ─────────────────────────────────────
@@ -505,9 +513,9 @@ namespace Game.DevTools
             // 초기 상태: 패널 비활성 (CharacterInfoPanelPresenter.Show 에서 Show 호출)
             equipRoot.gameObject.SetActive(false);
 
-            // B3 hook: LevelUpPanelRoot
+            // B3 hook: LevelUpPanelRoot (2:2:1 하단 20%)
             var levelRoot = CreateRectChild(panel, "LevelUpPanelRoot");
-            SetAnchors(levelRoot, new Vector2(0f, 0f), new Vector2(1f, 0.30f));
+            SetAnchors(levelRoot, new Vector2(0f, 0f), new Vector2(1f, 0.20f));
             levelRoot.offsetMin = levelRoot.offsetMax = Vector2.zero;
             CreateLabel(levelRoot.gameObject, "[B3] 레벨업 패널 영역", 32, TextAlignmentOptions.Center,
                         new Color(0.5f, 0.6f, 0.9f, 0.6f));
