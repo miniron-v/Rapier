@@ -160,12 +160,24 @@ namespace Game.Editor
                 return null;
             }
 
+            // panel에 Canvas override 추가 (BossHUD보다 위에 렌더링)
+            var panelCanvas = panel.GetComponent<Canvas>();
+            if (panelCanvas == null)
+                panelCanvas = Undo.AddComponent<Canvas>(panel);
+            panelCanvas.overrideSorting = true;
+            panelCanvas.sortingOrder    = 100;
+            EditorUtility.SetDirty(panel);
+
+            // 버튼 클릭을 위한 GraphicRaycaster
+            if (panel.GetComponent<UnityEngine.UI.GraphicRaycaster>() == null)
+                Undo.AddComponent<UnityEngine.UI.GraphicRaycaster>(panel);
+
             // panel에 VerticalLayoutGroup 추가 (없는 경우)
             var vlg = panel.GetComponent<VerticalLayoutGroup>();
             if (vlg == null)
                 vlg = Undo.AddComponent<VerticalLayoutGroup>(panel);
             vlg.spacing               = 12f;
-            vlg.padding               = new RectOffset(20, 20, 20, 20);
+            vlg.padding               = new RectOffset(20, 20, 20, 80);  // 하단 여백 = 버튼 높이
             vlg.childAlignment        = TextAnchor.UpperCenter;
             vlg.childForceExpandWidth  = true;
             vlg.childForceExpandHeight = false;
@@ -183,6 +195,13 @@ namespace Game.Editor
                 le.preferredHeight = 80f;
                 le.flexibleHeight  = 0f;
             }
+
+            // ── TopSpacer (TitleText 위 여백) ─────────────────────────
+            var topSpacer = new GameObject("TopSpacer", typeof(RectTransform));
+            Undo.RegisterCreatedObjectUndo(topSpacer, "Create TopSpacer");
+            topSpacer.transform.SetParent(panel.transform, false);
+            var spacerLe = topSpacer.AddComponent<LayoutElement>();
+            spacerLe.flexibleHeight = 0.6f;
 
             // ── ScrollView (드롭 목록) ─────────────────────────────
             var scrollGo = new GameObject("DropListScrollView");
@@ -287,9 +306,10 @@ namespace Game.Editor
             if (nextBtn  != null) nextBtn.transform.SetParent(btnRowGo.transform, false);
             if (lobbyBtn != null) lobbyBtn.transform.SetParent(btnRowGo.transform, false);
 
-            // hierarchy 순서: TitleText(0) → ScrollView(1) → ButtonRow(2)
-            if (titleText != null) titleText.transform.SetAsFirstSibling();
-            scrollGo.transform.SetSiblingIndex(1);
+            // hierarchy 순서: TopSpacer(0) → TitleText(1) → ScrollView(2) → ButtonRow(3)
+            topSpacer.transform.SetAsFirstSibling();
+            if (titleText != null) titleText.transform.SetSiblingIndex(1);
+            scrollGo.transform.SetSiblingIndex(2);
             btnRowGo.transform.SetAsLastSibling();
 
             return view;
