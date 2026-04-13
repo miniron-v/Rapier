@@ -92,13 +92,11 @@ namespace Game.Input
                     _gestureCommitted = true;
                     CurrentState      = InputState.Drag;
                     IsMoving          = true;
-                    Debug.Log("[Input] MOVE 시작");
                 }
                 else if (dist < TAP_MAX_DISTANCE && _touchDuration >= HOLD_MIN_DURATION)
                 {
                     _gestureCommitted = true;
                     CurrentState      = InputState.Hold;
-                    Debug.Log("[Input] HOLD 시작");
                 }
             }
 
@@ -157,23 +155,17 @@ private void HandleFingerDown(Finger finger)
                 if (_attackWindowCount > 0)
                 {
                     CurrentState = InputState.JustDodge;
-                    Debug.Log("[Input] JUST DODGE 판정");
                     OnJustDodge?.Invoke(dir);
                 }
                 else
                 {
                     CurrentState = InputState.Swipe;
-                    string dirLabel = Mathf.Abs(dir.x) > Mathf.Abs(dir.y)
-                        ? (dir.x > 0 ? "→" : "←")
-                        : (dir.y > 0 ? "↑" : "↓");
-                    Debug.Log($"[Input] SWIPE {dirLabel}");
                     OnSwipe?.Invoke(dir);
                 }
             }
             else if (dist < TAP_MAX_DISTANCE && _touchDuration < TAP_MAX_DURATION)
             {
                 CurrentState = InputState.Tap;
-                Debug.Log("[Input] TAP");
                 OnTap?.Invoke(_startPos);
             }
 
