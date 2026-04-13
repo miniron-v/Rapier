@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e3225823786145acaeb7dc5a967915bd, type: 3}
   m_Name: TitanDropTable
   m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Equipment.DropTableData
+  _maxDrops: 5
   _entries:
   - Grade: 0
     DropRate: 0.8

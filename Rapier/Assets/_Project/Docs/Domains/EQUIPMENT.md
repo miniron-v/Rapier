@@ -139,7 +139,7 @@ ProgressionManager.onComplete():
 foreach (DropEntry entry in dropTable.entries)  // 등급별 독립 판정 (높은 등급 먼저)
     if (Random.value <= entry.dropRate)
         pool에서 랜덤 1개 선택 → new EquipmentInstance(data)
-최대 2개 제한 (상위 등급 우선, 초과분 버림)
+최대 N개 제한 (DropTableData.MaxDrops, 기본 5) — 상위 등급 우선, 초과분 버림
 ```
 
 기본 확률 (SO에서 조정): 노말 80% / 레어 30% / 에픽 10% / 유니크 2%.

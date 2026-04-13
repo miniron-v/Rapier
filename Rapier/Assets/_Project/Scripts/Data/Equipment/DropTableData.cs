@@ -12,7 +12,16 @@ namespace Game.Data.Equipment
     {
         [SerializeField] private List<DropEntry> _entries = new List<DropEntry>();
 
+        /// <summary>
+        /// 한 번의 드롭 판정에서 반환할 수 있는 최대 아이템 개수.
+        /// 기본값 5. Inspector에서 보스별로 조정 가능.
+        /// </summary>
+        [SerializeField] private int _maxDrops = 5;
+
         /// <summary>드롭 항목 목록 (읽기 전용).</summary>
         public IReadOnlyList<DropEntry> Entries => _entries;
+
+        /// <summary>한 번의 드롭 판정에서 반환 가능한 최대 아이템 개수 (읽기 전용).</summary>
+        public int MaxDrops => _maxDrops;
     }
 }
