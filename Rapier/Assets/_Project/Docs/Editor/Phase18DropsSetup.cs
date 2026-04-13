@@ -221,7 +221,7 @@ namespace Game.Editor
             var vpGo  = new GameObject("Viewport");
             vpGo.transform.SetParent(scrollGo.transform, false);
             var vpImg = vpGo.AddComponent<Image>();
-            vpImg.color = Color.clear;
+            vpImg.color = Color.white;   // alpha=1 필수 — alpha=0이면 Mask 스텐실 미기록 → 자식 전부 클리핑됨
             var mask  = vpGo.AddComponent<Mask>();
             mask.showMaskGraphic = false;
             var vpRt  = vpGo.GetComponent<RectTransform>();
