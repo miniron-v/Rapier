@@ -152,7 +152,7 @@ git branch -d [브랜치명]   # 또는 -D (deny되어 있음, 사용자 확인)
 | 22-A (서브스탯 슬롯 Grade-1) | **완료** — 36 SO 일괄 재조정 |
 | 22-B (서브스탯/장신구 메인 랜덤 풀) | **완료** — SubStatPoolData/MainStatPoolData SO + 롤 시스템 + 세이브 확장 |
 | 24 (장비/룬 상세 UI + 드롭 라벨 + 포탈 오프셋) | **완료** — 로비 3탭 인벤토리 + 아이템/룬 팝업 + 월드 드롭 라벨 |
-| 24-Post (로비 인벤토리 UI 정리) | **완료** — 슬롯 아이콘 전용·GLG spacing 18·6열·UpperCenter, 3탭 높이 보정·HLG 균등, 하단 5탭 균등 (develop @ cf4068c) |
+| 24-Post (로비 인벤토리 UI 정리) | **완료** — 슬롯 아이콘 전용·GLG 6열·UpperLeft, 3탭 높이 보정·HLG 균등, 하단 5탭 균등, GridLayoutFiller(ILayoutSelfController) 신설 (develop @ 88c663b) |
 
 ---
 
