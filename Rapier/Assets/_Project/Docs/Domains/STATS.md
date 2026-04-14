@@ -42,7 +42,7 @@
 ### 3-1. 가산형 — HP / ATK / MS 등
 
 ```
-최종 = (기본값 + MetaStat 깡합) × (1 + MetaStat % 합) × (1 + RunStat % 합) + RunStat 깡합
+최종 = (기본값 + MetaStat 깡합) × (1 + MetaStat % 합 / 100) × (1 + RunStat % 합 / 100) + RunStat 깡합
 ```
 
 - 기본값: `CharacterStatData` (HP 500, ATK 50, MS 5)
@@ -51,19 +51,22 @@
 
 예시:
 ```
-기본 HP 500 + 장비 깡 200 + 장비 % +20% + 런 % +25% + 런 % +25%
-= (500 + 200) × 1.20 × 1.50 = 1260
+기본 HP 500 + 장비 깡 200 + 장비 % +20 + 런 % +25 + 런 % +25
+= (500 + 200) × (1 + 20/100) × (1 + 50/100) = 1260
 ```
 
-### 3-2. 감소율형 — DodgeCDR / ChargeTimeReduction 등
+> **% 단위 컨벤션**: SO 및 컨테이너 누산은 항상 **0~100 백분율 정수형 (예: 20 = 20%)**. `/100` 환산은 **최종 계산 단계 한 곳에서만** 수행한다. 누산 단계에서 0~1 로 변환하지 않아야 부동소수점 오차가 누적되지 않는다.
+
+### 3-2. 감소율형 — DodgeCDR / ChargeTimeReduction / InvincibilityBonus
 
 ```
-최종 = 기본값 × Π_i(1 − metaP_i) × Π_j(1 − runP_j)
+최종 = 기본값 × Π_i(1 − metaP_i / 100) × Π_j(1 − runP_j / 100)
 ```
 
 - **소스별 독립 곱연산**. 같은 Tier 내에서도 합산하지 않는다.
-- 20% 감소를 3회 획득하면 `(1−0.2)³ = 0.512` — 합산(40%) 이 아니다.
+- 20 (=20%) 감소를 3회 획득하면 `(1 − 20/100)³ = 0.512` — 합산(60%) 이 아니다.
 - Meta 와 Run 은 별도 누적되지만 최종은 둘 다 곱한다.
+- `InvincibilityBonus` 는 회피 무적시간 단축이 아니라 **연장**으로 해석되지만, 컨테이너 적용은 동일한 감소율형 누적식 (`× (1 − p/100)`) 을 그대로 사용한다 — 즉 "20% Bonus" 는 base × 0.8 처럼 동작 (현 프로토타입 합의).
 
 예시 (차지 시간):
 ```
@@ -100,3 +103,15 @@
 - **감소율 스탯은 소스 독립 곱연산**. 합산 필드(`_percentDodgeCdr` 등)를 두지 말고 `_multiplier = 1f` 단일 값만 유지. 같은 스탯이라도 장비 / 룬 / 인터미션 픽은 각각 독립 소스로 취급 — 세 번의 20% 감소 픽은 `× 0.8³` 이지 `× 0.4` 가 아니다.
 - **RunStat 구독 해제 쌍 필수**: `CharacterPresenterBase` 가 `OnStatChanged` 를 구독하면 `OnDisable` / `OnDestroy` / 씬 전환 모든 종료 경로에 해제가 있어야 한다. 누락 시 씬 재진입 후 중복 구독 → 이벤트 중복 발행.
 - HUD 등은 `CharacterModel` 의 `OnHpChanged` 또는 `RunStatContainer.OnStatChanged` 를 직접 구독.
+
+---
+
+## 6. 정수 반올림 정책
+
+- **HP / ATK / 데미지는 항상 정수.** 소수 누적 시 표기/연산 모호함이 생기고, 크리티컬 배율과 함께 곱해질 때 미세 오차가 누적된다.
+- 적용 지점:
+  - `CharacterModel.ComputeFinalsOnly` — `_finalMaxHp`, `_finalAttackPower` 를 `MathUtils.RoundHalfUp` 로 반올림.
+  - `CharacterModel.TakeDamage` / `EnemyModel.TakeDamage` — 입력 데미지에 `RoundHalfUp` 적용 후 차감.
+  - 이동속도(MS), 무적/쿨다운 시간 등 **시간·속도형 스탯은 실수 유지** (반올림 안 함).
+- **Mathf.Round 금지**: Unity `Mathf.Round` 는 banker's rounding (0.5 → 짝수). 표준 사사오입이 필요한 모든 곳은 `Game.Core.Utils.MathUtils.RoundHalfUp(x) = Floor(x + 0.5f)` 사용.
+- 유틸 위치: `Assets/_Project/Scripts/Core/Utils/MathUtils.cs`. UnityEngine.Mathf / System.Math 와 충돌하지 않도록 `Game.Core.Utils` 네임스페이스로 격리.
