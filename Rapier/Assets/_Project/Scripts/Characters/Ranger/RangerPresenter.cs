@@ -29,12 +29,10 @@ namespace Game.Characters.Ranger
     ///   AimIndicatorView 활성    진입: OnHold (Hold 성립 시)
     ///   AimIndicatorView 비활성  해제: HandleHoldRelease / OnDisable / OnBeforeDeath
     ///
-    /// [CanDodge 제한 — 팀장 보고 필요]
-    ///   CharacterPresenterBase.HandleSwipe 는 private 이며 virtual CanDodge 확장점이 없다.
-    ///   현재 구조로는 차지 중 Swipe(회피) 입력을 선제 차단할 수 없다.
-    ///   26-D 통합 시 Base 에 `protected virtual bool CanDodge => true` 를 추가해
-    ///   HandleSwipe 초입에서 체크하도록 수정 요청.
-    ///   이 티켓이 해결될 때까지 차지 중 Swipe 는 Base 레벨에서 차단되지 않음.
+    /// [CanDodge 제한 — Phase 26-D 에서 해결됨]
+    ///   CharacterPresenterBase.HandleSwipe 초입에 `if (!CanDodge) return;` 체크가 추가되어
+    ///   차지 경직 중(_isChargeLocked=true) Swipe 입력이 Base 레벨에서 차단된다.
+    ///   override: `protected override bool CanDodge => !_isChargeLocked;`
     /// </summary>
     [RequireComponent(typeof(CharacterView))]
     public class RangerPresenter : CharacterPresenterBase, IDamageable, IPlayerCharacter
@@ -84,7 +82,7 @@ namespace Game.Characters.Ranger
                 return;
             }
 
-            Init(_statData, _view);
+            Init(_statData, _view, "Ranger");
 
             if (_statData.sprite != null)
                 _view.SetSprite(_statData.sprite);
@@ -182,13 +180,19 @@ namespace Game.Characters.Ranger
         /// <inheritdoc/>
         public CharacterModel PublicModel => Model;
 
-        // ── CanAttack override ────────────────────────────────────────────
+        // ── CanAttack / CanDodge override ────────────────────────────────────────────
 
         /// <summary>
         /// 차지 경직 중에는 공격 불가.
         /// Base 의 Tap 차단과 AND 결합됨.
         /// </summary>
         protected override bool CanAttack => !_isChargeLocked;
+
+        /// <summary>
+        /// 차지 경직 중에는 회피 불가.
+        /// Base 의 HandleSwipe 초입 CanDodge 체크와 AND 결합됨.
+        /// </summary>
+        protected override bool CanDodge => !_isChargeLocked;
 
         // ── 사망 전처리 훅 ────────────────────────────────────────────────
 

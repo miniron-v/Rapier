@@ -84,7 +84,7 @@ namespace Game.Characters.Warrior
                 return;
             }
 
-            Init(_statData, _view);
+            Init(_statData, _view, "Warrior");
 
             if (_statData.sprite != null)
                 _view.SetSprite(_statData.sprite);

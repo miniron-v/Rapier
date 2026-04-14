@@ -9,15 +9,19 @@ namespace Game.UI.Lobby
     ///
     /// [Phase 23c]
     ///   - CharacterSelectModalView 관리
-    ///   - 캐릭터 목록 순환 (Rapier / Assassin / Warrior(잠금) / Ranger(잠금))
+    ///   - 캐릭터 목록 순환 (Rapier / Assassin / Warrior / Ranger)
     ///   - 선택하기 → OnCharacterSelected 이벤트 발행 + 모달 닫기
     ///   - CharacterInfoPanelPresenter 에서 구독
+    ///
+    /// [Phase 26-D]
+    ///   - Warrior / Ranger 슬롯 활성화 (Coming Soon → 플레이 가능)
+    ///   - _warriorData / _rangerData SerializedField 추가
     ///
     /// ── 캐릭터 순서 (index) ────────────────────────────────────────
     ///   0: Rapier   (구현됨)
     ///   1: Assassin (구현됨)
-    ///   2: Warrior  (잠금)
-    ///   3: Ranger   (잠금)
+    ///   2: Warrior  (구현됨 — Phase 26-D)
+    ///   3: Ranger   (구현됨 — Phase 26-D)
     /// </summary>
     public class CharacterSelectModalPresenter : MonoBehaviour
     {
@@ -28,6 +32,8 @@ namespace Game.UI.Lobby
         [Header("캐릭터 StatData")]
         [SerializeField] private CharacterStatData _rapierData;
         [SerializeField] private CharacterStatData _assassinData;
+        [SerializeField] private CharacterStatData _warriorData;
+        [SerializeField] private CharacterStatData _rangerData;
 
         // ── 이벤트 ──────────────────────────────────────────────────────────
 
@@ -46,10 +52,10 @@ namespace Game.UI.Lobby
             "레이피어", "어쌔신", "전사", "레인저"
         };
 
-        // 구현된 캐릭터 인덱스 (false = 잠금)
+        // 구현된 캐릭터 인덱스 (false = 잠금). Phase 26-D: Warrior/Ranger 활성화.
         private static readonly bool[] CHARACTER_UNLOCKED =
         {
-            true, true, false, false
+            true, true, true, true
         };
 
         private int _currentIndex;
@@ -60,11 +66,15 @@ namespace Game.UI.Lobby
         public void InitReferences(
             CharacterSelectModalView view,
             CharacterStatData        rapierData,
-            CharacterStatData        assassinData)
+            CharacterStatData        assassinData,
+            CharacterStatData        warriorData  = null,
+            CharacterStatData        rangerData   = null)
         {
             _view         = view;
             _rapierData   = rapierData;
             _assassinData = assassinData;
+            _warriorData  = warriorData;
+            _rangerData   = rangerData;
         }
 
         // ── Public Methods ───────────────────────────────────────────────────
@@ -145,6 +155,8 @@ namespace Game.UI.Lobby
             {
                 "Rapier"   => _rapierData,
                 "Assassin" => _assassinData,
+                "Warrior"  => _warriorData,
+                "Ranger"   => _rangerData,
                 _          => null
             };
         }

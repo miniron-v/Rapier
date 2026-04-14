@@ -108,10 +108,10 @@ namespace Game.Data.Equipment
 
         // Phase 14: 현재 프로젝트에 구현된 캐릭터 ID 화이트리스트.
         // equippedMap 복원 시 이 집합에 없는 키는 "미구현" 으로 판정되어 스킵된다 (§7-5 방어 로직).
-        // 향후 Warrior/Assassin/Ranger 추가 시 여기에 등록할 것.
         // PascalCase 리터럴 정책으로 통일 — OrdinalIgnoreCase 비교자 불필요.
+        // Phase 26-D: Warrior / Ranger 추가.
         private static readonly HashSet<string> _implementedCharacters
-            = new HashSet<string> { "Rapier", "Assassin" };
+            = new HashSet<string> { "Rapier", "Assassin", "Warrior", "Ranger" };
 
         // ── 초기화 ───────────────────────────────────────────────────────────
 

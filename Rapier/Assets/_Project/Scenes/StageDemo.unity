@@ -1896,6 +1896,10 @@ MonoBehaviour:
     prefab: {fileID: 4103008545235785697, guid: f46995ec1eb118546926171affd2a221, type: 3}
   - characterId: Assassin
     prefab: {fileID: 4103008545235785697, guid: 7f236f21cb704074b99675951820539a, type: 3}
+  - characterId: Warrior
+    prefab: {fileID: 4103008545235785697, guid: 8ca859161fb4436c90f51b19002f6d05, type: 3}
+  - characterId: Ranger
+    prefab: {fileID: 4103008545235785697, guid: b59c020e4c5d45d7ab8eab7cc7c78fc6, type: 3}
 --- !u!4 &516031181
 Transform:
   m_ObjectHideFlags: 0

@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a9d6f034c12e87b5de90714ca3f852e1, type: 3}
+  m_Name: WarriorStatData
+  m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Characters.WarriorStatData
+  sprite: {fileID: -2413806693520163455, guid: a86470a33a6bf42c4b3595704624658b, type: 3}
+  illustSprite: {fileID: 0}
+  characterName: Warrior
+  description: "\uBC29\uD328\uC640 \uAC80\uC73C\uB85C \uC804\uC7A5\uC744 \uC9C0\uBC30\uD558\uB294
+    \uC8FC\uC778\uACF5. \uD328\uB9B0\uC73C\uB85C \uC0AC\uAE30\uB97C \uBC18\uC804\uC2DC\uCF1C
+    \uB300\uC9C0 \uBD84\uC1C4\uB97C \uD130\uB728\uB9B0\uB2E4."
+  maxHp: 700
+  attackPower: 60
+  moveSpeed: 5
+  dodgeInvincibleDuration: 0.2
+  dodgeCooldown: 2
+  dashDistance: 3
+  dashSpeed: 14
+  chargeRequiredTime: 1.5
+  normalAttackPercent: 100
+  attackWidth: 1.5
+  attackHeight: 2
+  attackOffset: 1
+  _chargeDamagePercent: 350
+  _shieldSwingDamagePercent: 150
+  _shieldSwingKnockback: 2
+  _damageReductionPercent: 50
+  _shieldGuardHalfAngle: 60

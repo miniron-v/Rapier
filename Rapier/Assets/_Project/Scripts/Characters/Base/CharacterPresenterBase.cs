@@ -137,6 +137,14 @@ namespace Game.Characters
         /// </summary>
         protected virtual bool CanAttack => true;
 
+        /// <summary>
+        /// 회피 (Swipe) 입력 허용 여부.
+        /// 기본: 항상 true (Rapier/Assassin 기존 동작 유지).
+        /// 자식이 override 하여 특수 상태(예: RangerPresenter 차지 경직 중) 에서 회피 자체를 차단할 수 있다.
+        /// Base 의 쿨다운 차단과 AND 로 결합된다.
+        /// </summary>
+        protected virtual bool CanDodge => true;
+
         // ── 자식이 사용하는 상태 토글 훅 ──────────────────────────
         /// <summary>
         /// 자식 캐릭터가 자신의 고유 스킬 시퀀스에 진입할 때 호출한다.
@@ -207,7 +215,16 @@ namespace Game.Characters
         private const float GizmoDuration = 0.5f;
 
         // ── 초기화 ────────────────────────────────────────────────
-        protected void Init(CharacterStatData statData, ICharacterView view)
+        /// <summary>
+        /// 캐릭터 초기화. 각 Presenter 의 Awake 에서 호출된다.
+        /// </summary>
+        /// <param name="statData">캐릭터 스탯 SO</param>
+        /// <param name="view">캐릭터 뷰</param>
+        /// <param name="characterId">
+        /// EquipmentManager 장비 세트 키 (PascalCase — "Rapier", "Assassin", "Warrior", "Ranger").
+        /// 기본값 "Rapier" 는 하위 호환을 위해 유지하되, Phase 26-D 부터 각 자식이 명시 전달한다.
+        /// </param>
+        protected void Init(CharacterStatData statData, ICharacterView view, string characterId = "Rapier")
         {
             // MetaStat 주입 — ServiceLocator 에서 EquipmentManager 조회
             MetaStatContainer metaContainer = null;
@@ -215,8 +232,7 @@ namespace Game.Characters
             if (equipmentManager != null)
             {
                 var provider = new EquipmentMetaStatProvider(equipmentManager);
-                // CharacterStatData 에 characterId 필드 없음 → "Rapier" 고정 (현재 1종만 구현, PascalCase 리터럴 정책)
-                metaContainer = provider.BuildContainer("Rapier");
+                metaContainer = provider.BuildContainer(characterId);
             }
             else
             {
@@ -341,6 +357,7 @@ namespace Game.Characters
         private void HandleSwipe(Vector2 direction)
         {
             if (Model == null || !Model.IsAlive) return;
+            if (!CanDodge) return;
             if (_dodgeCooldownTimer > 0f) return;
 
             var stat  = Model.StatData;

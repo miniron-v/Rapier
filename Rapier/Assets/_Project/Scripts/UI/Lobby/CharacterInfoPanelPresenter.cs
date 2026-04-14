@@ -36,6 +36,8 @@ namespace Game.UI.Lobby
         [Header("캐릭터 StatData (주입)")]
         [SerializeField] private CharacterStatData _rapierData;
         [SerializeField] private CharacterStatData _assassinData;
+        [SerializeField] private CharacterStatData _warriorData;
+        [SerializeField] private CharacterStatData _rangerData;
 
         // ── Private Fields ───────────────────────────────────────────────────
 
@@ -46,17 +48,21 @@ namespace Game.UI.Lobby
 
         /// <summary>LobbyHudSetup 에서 호출.</summary>
         public void InitReferences(
-            CharacterInfoPanelView      view,
+            CharacterInfoPanelView       view,
             CharacterSelectModalPresenter modalPresenter,
             EquipmentPanelPresenter      equipmentPanel,
             CharacterStatData            rapierData,
-            CharacterStatData            assassinData)
+            CharacterStatData            assassinData,
+            CharacterStatData            warriorData  = null,
+            CharacterStatData            rangerData   = null)
         {
             _view            = view;
             _modalPresenter  = modalPresenter;
             _equipmentPanel  = equipmentPanel;
             _rapierData      = rapierData;
             _assassinData    = assassinData;
+            _warriorData     = warriorData;
+            _rangerData      = rangerData;
         }
 
         // ── 탭 진입점 ────────────────────────────────────────────────────────
@@ -152,6 +158,8 @@ namespace Game.UI.Lobby
             {
                 "Rapier"   => _rapierData,
                 "Assassin" => _assassinData,
+                "Warrior"  => _warriorData,
+                "Ranger"   => _rangerData,
                 _          => null
             };
         }

@@ -301,12 +301,18 @@ namespace Game.DevTools
             // CharacterStatData 로드
             const string RAPIER_DATA_PATH   = "Assets/_Project/ScriptableObjects/Characters/RapierStatData.asset";
             const string ASSASSIN_DATA_PATH = "Assets/_Project/ScriptableObjects/Characters/AssassinStatData.asset";
+            const string WARRIOR_DATA_PATH  = "Assets/_Project/ScriptableObjects/Characters/WarriorStatData.asset";
+            const string RANGER_DATA_PATH   = "Assets/_Project/ScriptableObjects/Characters/RangerStatData.asset";
             var rapierData   = AssetDatabase.LoadAssetAtPath<CharacterStatData>(RAPIER_DATA_PATH);
             var assassinData = AssetDatabase.LoadAssetAtPath<CharacterStatData>(ASSASSIN_DATA_PATH);
+            var warriorData  = AssetDatabase.LoadAssetAtPath<CharacterStatData>(WARRIOR_DATA_PATH);
+            var rangerData   = AssetDatabase.LoadAssetAtPath<CharacterStatData>(RANGER_DATA_PATH);
             if (rapierData   == null) Debug.LogWarning($"[LobbyHudSetup] RapierStatData 로드 실패: {RAPIER_DATA_PATH}");
             if (assassinData == null) Debug.LogWarning($"[LobbyHudSetup] AssassinStatData 로드 실패: {ASSASSIN_DATA_PATH}");
+            if (warriorData  == null) Debug.LogWarning($"[LobbyHudSetup] WarriorStatData 로드 실패: {WARRIOR_DATA_PATH}");
+            if (rangerData   == null) Debug.LogWarning($"[LobbyHudSetup] RangerStatData 로드 실패: {RANGER_DATA_PATH}");
 
-            modalPresenter.InitReferences(modal, rapierData, assassinData);
+            modalPresenter.InitReferences(modal, rapierData, assassinData, warriorData, rangerData);
 
             // B2: EquipmentPanelRoot — 장비 슬롯 8개 + 인벤토리 ScrollRect 실장
             var equipRoot = CreateRectChild(safeInset, "EquipmentPanelRoot");
@@ -558,7 +564,7 @@ namespace Game.DevTools
 
             // CharacterInfoPanelPresenter 조립
             var infoPanelPresenter = panel.AddComponent<CharacterInfoPanelPresenter>();
-            infoPanelPresenter.InitReferences(infoPanelView, modalPresenter, equipPresenter, rapierData, assassinData);
+            infoPanelPresenter.InitReferences(infoPanelView, modalPresenter, equipPresenter, rapierData, assassinData, warriorData, rangerData);
             EditorUtility.SetDirty(infoPanelPresenter);
             EditorUtility.SetDirty(modalPresenter);
 
