@@ -47,6 +47,22 @@ namespace Game.Input
         public event Action<InputState> OnRelease;
         public event Action<Vector2>    OnJustDodge;
 
+        /// <summary>
+        /// Hold 성립 후 매 프레임 발행. 시작점 대비 손가락 변위(raw, 정규화 안 함).
+        /// </summary>
+        public event Action<Vector2>        OnHoldDragUpdate;
+
+        /// <summary>
+        /// Hold 중 SWIPE_MIN_DISTANCE 이상 이동 + SWIPE_MAX_DURATION 이내 완료 시 단발 발행.
+        /// 발행 후 해당 터치는 소비됨(OnHoldRelease 차단).
+        /// </summary>
+        public event Action<Vector2>        OnHoldSwipe;
+
+        /// <summary>
+        /// Hold 중 손가락을 뗄 때 발행. OnHoldSwipe 가 이미 발행된 경우에는 발행하지 않음.
+        /// </summary>
+        public event Action<Vector2, bool>  OnHoldRelease;
+
         // 조이스틱 상태 공개 (UI 표시용)
         public Vector2    JoystickOrigin  { get; private set; }
         public Vector2    JoystickCurrent { get; private set; }
@@ -60,6 +76,12 @@ namespace Game.Input
         private float   _touchDuration;
         private bool    _gestureCommitted;
         private int     _attackWindowCount;
+
+        // Hold 확장 이벤트용 내부 상태
+        private bool    _holdConsumed;       // OnHoldSwipe 발행 시 true → OnHoldRelease 차단
+        private bool    _holdChargedFull;    // Presenter 가 SetChargedFull 로 세팅
+        private Vector2 _holdSwipeStartPos;  // Swipe 윈도우 시작 위치
+        private float   _holdSwipeStartTime; // Swipe 윈도우 시작 시각
 
         // ── 라이프사이클 ─────────────────────────────────────────
         private void OnEnable()
@@ -95,8 +117,12 @@ namespace Game.Input
                 }
                 else if (dist < TAP_MAX_DISTANCE && _touchDuration >= HOLD_MIN_DURATION)
                 {
-                    _gestureCommitted = true;
-                    CurrentState      = InputState.Hold;
+                    _gestureCommitted    = true;
+                    CurrentState         = InputState.Hold;
+                    // Hold 성립 시 Swipe 윈도우 초기화
+                    _holdSwipeStartPos   = _currentPos;
+                    _holdSwipeStartTime  = _touchDuration;
+                    _holdConsumed        = false;
                 }
             }
 
@@ -108,7 +134,35 @@ namespace Game.Input
             }
 
             if (CurrentState == InputState.Hold)
+            {
                 OnHold?.Invoke(_touchDuration);
+
+                // Hold 확장 이벤트: 매 프레임 변위 발행
+                OnHoldDragUpdate?.Invoke(_currentPos - _startPos);
+
+                // Hold 확장 이벤트: Swipe 판정 (아직 소비되지 않은 경우에만)
+                if (!_holdConsumed)
+                {
+                    float holdSwipeDist = Vector2.Distance(_currentPos, _holdSwipeStartPos);
+                    if (holdSwipeDist >= SWIPE_MIN_DISTANCE)
+                    {
+                        float elapsed = _touchDuration - _holdSwipeStartTime;
+                        if (elapsed <= SWIPE_MAX_DURATION)
+                        {
+                            // 기준 통과: OnHoldSwipe 발행 + 소비 플래그
+                            var swipeDir = (_currentPos - _holdSwipeStartPos).normalized;
+                            _holdConsumed = true;
+                            OnHoldSwipe?.Invoke(swipeDir);
+                        }
+                        else
+                        {
+                            // 너무 느리게 이동: 윈도우 리셋
+                            _holdSwipeStartPos  = _currentPos;
+                            _holdSwipeStartTime = _touchDuration;
+                        }
+                    }
+                }
+            }
         }
 
         // ── 터치 핸들러 ──────────────────────────────────────────
@@ -150,6 +204,15 @@ private void HandleFingerDown(Finger finger)
                 IsMoving = false;
                 OnMoveEnd?.Invoke();
             }
+            else if (last == InputState.Hold)
+            {
+                // Hold 상태에서 손가락을 뗀 경우
+                if (!_holdConsumed)
+                {
+                    OnHoldRelease?.Invoke(_currentPos - _startPos, _holdChargedFull);
+                }
+                // _holdConsumed == true 면 OnHoldSwipe 이미 발행 → OnHoldRelease 차단
+            }
             else if (dist >= SWIPE_MIN_DISTANCE && _touchDuration < SWIPE_MAX_DURATION)
             {
                 if (_attackWindowCount > 0)
@@ -189,6 +252,11 @@ private void HandleFingerDown(Finger finger)
         public void CloseAttackWindow() => _attackWindowCount = Mathf.Max(0, _attackWindowCount - 1);
         public bool IsAttackWindowOpen  => _attackWindowCount > 0;
 
+        /// <summary>
+        /// Presenter 가 차지 풀 여부를 세팅. OnHoldRelease 페이로드의 chargedFull 에 포함된다.
+        /// </summary>
+        public void SetChargedFull(bool value) => _holdChargedFull = value;
+
         // ── 내부 초기화 ──────────────────────────────────────────
         // ── UI 필터링 ──────────────────────────────────────────
         /// <summary>
@@ -209,15 +277,20 @@ private void HandleFingerDown(Finger finger)
             return results.Count > 0;
         }
 
-        
-private void ResetState()
+
+        private void ResetState()
         {
-            _isTouching       = false;
-            _touchDuration    = 0f;
-            _gestureCommitted = false;
-            JoystickOrigin    = Vector2.zero;
-            JoystickCurrent   = Vector2.zero;
-            CurrentState      = InputState.None;
+            _isTouching          = false;
+            _touchDuration       = 0f;
+            _gestureCommitted    = false;
+            JoystickOrigin       = Vector2.zero;
+            JoystickCurrent      = Vector2.zero;
+            CurrentState         = InputState.None;
+            // Hold 확장 상태 초기화
+            _holdConsumed        = false;
+            _holdChargedFull     = false;
+            _holdSwipeStartPos   = Vector2.zero;
+            _holdSwipeStartTime  = 0f;
         }
     }
 }
