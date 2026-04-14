@@ -49,3 +49,12 @@ MonoBehaviour:
     displayName: Gravekeeper
   _hpMultiplier: 4.5
   _atkMultiplier: 4.5
+  _gradeDropRates:
+  - grade: 0
+    dropRate: 0.95
+  - grade: 1
+    dropRate: 0.9
+  - grade: 2
+    dropRate: 0.6
+  - grade: 3
+    dropRate: 0.08

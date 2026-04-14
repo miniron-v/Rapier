@@ -49,3 +49,4 @@ MonoBehaviour:
     displayName: Specter
   _hpMultiplier: 1.2
   _atkMultiplier: 1.2
+  _gradeDropRates: []

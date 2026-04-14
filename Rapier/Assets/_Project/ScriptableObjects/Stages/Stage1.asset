@@ -49,3 +49,4 @@ MonoBehaviour:
     displayName: Titan
   _hpMultiplier: 1
   _atkMultiplier: 1
+  _gradeDropRates: []

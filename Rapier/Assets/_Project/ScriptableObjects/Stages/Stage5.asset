@@ -49,3 +49,4 @@ MonoBehaviour:
     displayName: Gravekeeper
   _hpMultiplier: 2
   _atkMultiplier: 2
+  _gradeDropRates: []

@@ -49,3 +49,4 @@ MonoBehaviour:
     displayName: Stormcaller
   _hpMultiplier: 1.4
   _atkMultiplier: 1.4
+  _gradeDropRates: []

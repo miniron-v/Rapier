@@ -562,6 +562,10 @@ namespace Game.DevTools
             EditorUtility.SetDirty(infoPanelPresenter);
             EditorUtility.SetDirty(modalPresenter);
 
+            // EquipmentPanelPresenter 에 캐릭터 StatData 주입 (인벤토리 상단 일러스트용)
+            equipPresenter.InitCharacterData(rapierData, assassinData);
+            EditorUtility.SetDirty(equipPresenter);
+
             // EquipmentPanelView の 8슬롯을 CharacterInfoPanelView 슬롯으로 재초기화
             // (좌3/우5 슬롯이 EquipmentPanelView 와는 별개로 직접 EquipmentSlotView 를 가짐)
             // EquipmentPanelView 의 _slotViews 는 기존 8슬롯 그리드 전용으로 유지.

@@ -110,8 +110,9 @@ namespace Game.UI.Lobby
 
             if (_illustrationImage != null)
             {
-                _illustrationImage.sprite = illustration;
-                _illustrationImage.color  = illustration != null ? Color.white : new Color(0.2f, 0.2f, 0.2f, 0.5f);
+                _illustrationImage.sprite         = illustration;
+                _illustrationImage.preserveAspect = true;
+                _illustrationImage.color          = illustration != null ? Color.white : new Color(0.2f, 0.2f, 0.2f, 0.5f);
             }
 
             // 잠금 오버레이

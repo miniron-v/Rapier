@@ -49,3 +49,4 @@ MonoBehaviour:
     displayName: TwinPhantoms
   _hpMultiplier: 2.8
   _atkMultiplier: 2.8
+  _gradeDropRates: []

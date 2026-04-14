@@ -13,8 +13,11 @@ namespace Game.Characters
     public class CharacterStatData : ScriptableObject
     {
         [Header("기본 정보")]
-        [Tooltip("시각적으로 표시할 스프라이트. SO에서 할당.")]
+        [Tooltip("인게임 캐릭터 스프라이트 (SpriteRenderer 용).")]
         public UnityEngine.Sprite sprite;
+
+        [Tooltip("캐릭터 선택창·인벤토리 상단에 표시할 일러스트 스프라이트 (UI Image 용).")]
+        public UnityEngine.Sprite illustSprite;
 
         public string characterName = "Unknown";
 

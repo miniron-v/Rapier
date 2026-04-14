@@ -132,7 +132,9 @@ namespace Game.UI.Lobby
         {
             if (_view == null) return;
             var data = GetStatData(characterId);
-            _view.SetIllustration(data?.sprite);
+            // illustSprite 우선, 없으면 fallback으로 sprite
+            var sprite = data?.illustSprite != null ? data.illustSprite : data?.sprite;
+            _view.SetIllustration(sprite);
         }
 
         private void ShowEquipmentPanel(string characterId)

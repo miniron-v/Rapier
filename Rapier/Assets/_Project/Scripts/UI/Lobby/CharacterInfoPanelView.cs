@@ -99,8 +99,9 @@ namespace Game.UI.Lobby
         public void SetIllustration(Sprite sprite)
         {
             if (_illustrationImage == null) return;
-            _illustrationImage.sprite = sprite;
-            _illustrationImage.color  = sprite != null ? Color.white : new Color(0f, 0f, 0f, 0f);
+            _illustrationImage.sprite         = sprite;
+            _illustrationImage.preserveAspect = true;
+            _illustrationImage.color          = sprite != null ? Color.white : new Color(0f, 0f, 0f, 0f);
         }
 
         // ── Private Methods ──────────────────────────────────────────────────

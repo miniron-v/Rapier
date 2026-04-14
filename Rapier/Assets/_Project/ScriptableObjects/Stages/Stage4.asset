@@ -49,3 +49,4 @@ MonoBehaviour:
     displayName: Berserker
   _hpMultiplier: 1.7
   _atkMultiplier: 1.7
+  _gradeDropRates: []

@@ -49,3 +49,12 @@ MonoBehaviour:
     displayName: Titan
   _hpMultiplier: 3.3
   _atkMultiplier: 3.3
+  _gradeDropRates:
+  - grade: 0
+    dropRate: 0.95
+  - grade: 1
+    dropRate: 0.8
+  - grade: 2
+    dropRate: 0.5
+  - grade: 3
+    dropRate: 0.03

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Game.Characters;
 using Game.Data.Equipment;
 using UnityEngine;
 
@@ -35,6 +36,10 @@ namespace Game.UI.Lobby.Equipment
         private EquipmentManager   _manager;
         private string             _characterId;
 
+        // 캐릭터별 StatData (일러스트 표시용)
+        private CharacterStatData  _rapierStatData;
+        private CharacterStatData  _assassinStatData;
+
         // ── Properties ──────────────────────────────────────────────────────
 
         /// <summary>
@@ -62,6 +67,13 @@ namespace Game.UI.Lobby.Equipment
             _actionBarPresenter = actionBarPresenter;
         }
 
+        /// <summary>캐릭터 StatData 주입 (인벤토리 상단 일러스트 표시용). LobbyHudSetup 에서 호출.</summary>
+        public void InitCharacterData(CharacterStatData rapierData, CharacterStatData assassinData)
+        {
+            _rapierStatData   = rapierData;
+            _assassinStatData = assassinData;
+        }
+
         /// <summary>
         /// 하위 호환: view 단독 주입 경로 (기존 LobbyHudSetup 호환).
         /// </summary>
@@ -80,6 +92,9 @@ namespace Game.UI.Lobby.Equipment
             _itemDetailPresenter?.Init(manager, characterId);
             _runeInventoryPresenter?.Init(manager, characterId);
             _actionBarPresenter?.Init(manager, characterId);
+
+            // 인벤토리 상단 일러스트 갱신
+            RefreshIllustration(characterId);
         }
 
         // ── Unity Lifecycle ──────────────────────────────────────────────────
@@ -315,6 +330,19 @@ namespace Game.UI.Lobby.Equipment
         {
             if (characterId != _characterId) return;
             RefreshAll();
+        }
+
+        private void RefreshIllustration(string characterId)
+        {
+            if (_view == null) return;
+            var data = characterId switch
+            {
+                "Rapier"   => _rapierStatData,
+                "Assassin" => _assassinStatData,
+                _          => null
+            };
+            var sprite = data?.illustSprite != null ? data.illustSprite : data?.sprite;
+            _view.SetIllustration(sprite);
         }
     }
 }

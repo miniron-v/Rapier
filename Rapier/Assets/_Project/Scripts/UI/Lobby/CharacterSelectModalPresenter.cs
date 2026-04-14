@@ -112,7 +112,8 @@ namespace Game.UI.Lobby
             bool   isLocked    = !CHARACTER_UNLOCKED[_currentIndex];
             var    data        = GetStatData(id);
             string description = isLocked ? "Coming Soon" : (data?.description ?? "");
-            var    sprite      = data?.sprite;
+            // illustSprite 우선, 없으면 fallback으로 sprite
+            var    sprite      = data?.illustSprite != null ? data.illustSprite : data?.sprite;
 
             _view.RefreshCharacter(name, description, sprite, isLocked);
         }
