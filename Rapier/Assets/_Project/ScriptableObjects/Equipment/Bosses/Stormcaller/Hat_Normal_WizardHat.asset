@@ -20,6 +20,6 @@ MonoBehaviour:
   _mainStat:
     statType: 4
     flatValue: 0
-    percentValue: 0.03
+    percentValue: 3
   _subStatPool: {fileID: 11400000, guid: 11c7065ca63b4af8977781d833711b34, type: 2}
   _mainStatPool: {fileID: 0}

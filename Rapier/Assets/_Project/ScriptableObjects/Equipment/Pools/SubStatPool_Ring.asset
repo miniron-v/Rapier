@@ -18,59 +18,59 @@ MonoBehaviour:
     usePercent: 1
     weight: 1
     normal:
-      min: 0.02
-      max: 0.03
+      min: 2
+      max: 3
     rare:
-      min: 0.04
-      max: 0.07
+      min: 4
+      max: 7.0
     epic:
-      min: 0.08
-      max: 0.12
+      min: 8
+      max: 12
     unique:
-      min: 0.13
-      max: 0.18
+      min: 13
+      max: 18
   - statType: 6
     usePercent: 1
     weight: 1
     normal:
-      min: 0.01
-      max: 0.01
+      min: 1
+      max: 1
     rare:
-      min: 0.01
-      max: 0.02
+      min: 1
+      max: 2
     epic:
-      min: 0.02
-      max: 0.03
+      min: 2
+      max: 3
     unique:
-      min: 0.03
-      max: 0.05
+      min: 3
+      max: 5
   - statType: 9
     usePercent: 1
     weight: 1
     normal:
-      min: 0.01
-      max: 0.02
+      min: 1
+      max: 2
     rare:
-      min: 0.03
-      max: 0.05
+      min: 3
+      max: 5
     epic:
-      min: 0.05
-      max: 0.08
+      min: 5
+      max: 8
     unique:
-      min: 0.08
-      max: 0.12
+      min: 8
+      max: 12
   - statType: 1
     usePercent: 1
     weight: 1
     normal:
-      min: 0.01
-      max: 0.02
+      min: 1
+      max: 2
     rare:
-      min: 0.02
-      max: 0.03
+      min: 2
+      max: 3
     epic:
-      min: 0.03
-      max: 0.05
+      min: 3
+      max: 5
     unique:
-      min: 0.05
-      max: 0.07
+      min: 5
+      max: 7.0

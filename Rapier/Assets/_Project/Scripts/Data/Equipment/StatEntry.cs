@@ -15,7 +15,7 @@ namespace Game.Data.Equipment
         [Tooltip("깡 수치 (예: HP +200)")]
         public float flatValue;
 
-        [Tooltip("비율 수치 (예: HP +20%). 0.2 = 20%")]
+        [Tooltip("비율 수치 (예: HP +20%). 20 = 20%. SO에는 0~100 범위로 입력")]
         public float percentValue;
     }
 }

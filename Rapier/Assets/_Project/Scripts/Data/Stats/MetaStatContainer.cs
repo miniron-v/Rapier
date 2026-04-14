@@ -6,8 +6,9 @@ namespace Game.Data.MetaStats
     /// <summary>
     /// MetaStat 깡합 + % 합 + 감소율 곱셈 누적 컨테이너.
     /// STATS.md §3 계산식:
-    ///   가산형 최종 = (기본값 + MetaStat 깡합) × (1 + MetaStat % 합)
-    ///   감소율형 최종 = 기본값 × Π_i(1 − metaP_i)  (소스별 독립 곱연산)
+    ///   가산형 최종 = (기본값 + MetaStat 깡합) × (1 + MetaStat % 합 / 100)
+    ///   감소율형 최종 = 기본값 × Π_i(1 − metaP_i / 100)  (소스별 독립 곱연산)
+    /// percentValue 단위: 0~100 (예: 20 = 20%). 누산은 백분율 그대로, 계산 시 /100 적용.
     /// MonoBehaviour 미사용. Presenter가 생성 후 CharacterModel에 주입.
     /// </summary>
     public class MetaStatContainer
@@ -39,17 +40,17 @@ namespace Game.Data.MetaStats
 
         // ── 최종 능력치 계산 (§3-1) ────────────────────────────────
 
-        /// <summary>최종 HP = (기본값 + MetaStat 깡합) × (1 + MetaStat % 합)</summary>
+        /// <summary>최종 HP = (기본값 + MetaStat 깡합) × (1 + MetaStat % 합 / 100)</summary>
         public float ComputeHp(float baseHp)
-            => (baseHp + _flatHp) * (1f + _percentHp);
+            => (baseHp + _flatHp) * (1f + _percentHp / 100f);
 
         /// <summary>최종 ATK.</summary>
         public float ComputeAtk(float baseAtk)
-            => (baseAtk + _flatAtk) * (1f + _percentAtk);
+            => (baseAtk + _flatAtk) * (1f + _percentAtk / 100f);
 
         /// <summary>최종 이동속도.</summary>
         public float ComputeMs(float baseMs)
-            => (baseMs + _flatMs) * (1f + _percentMs);
+            => (baseMs + _flatMs) * (1f + _percentMs / 100f);
 
         /// <summary>
         /// 회피 쿨다운 감소 누적 곱 multiplier.
@@ -183,16 +184,16 @@ namespace Game.Data.MetaStats
                     _percentMs   += percent;
                     break;
                 case StatType.DodgeCDR:
-                    // 감소율형 — 소스별 독립 곱연산
-                    if (percent < 1f) _dodgeCdrMultiplier   *= (1f - percent);
+                    // 감소율형 — 소스별 독립 곱연산. percentValue 단위: 0~100
+                    if (percent < 100f) _dodgeCdrMultiplier   *= (1f - percent / 100f);
                     break;
                 case StatType.ChargeTimeReduction:
-                    // 감소율형 — 소스별 독립 곱연산
-                    if (percent < 1f) _chargeTimeMultiplier *= (1f - percent);
+                    // 감소율형 — 소스별 독립 곱연산. percentValue 단위: 0~100
+                    if (percent < 100f) _chargeTimeMultiplier *= (1f - percent / 100f);
                     break;
                 case StatType.InvincibilityBonus:
-                    // 감소율형 — DodgeCDR/ChargeTimeReduction과 동일 패턴 (STATS.md §3-2)
-                    if (percent < 1f) _invincMultiplier *= (1f - percent);
+                    // 감소율형 — DodgeCDR/ChargeTimeReduction과 동일 패턴 (STATS.md §3-2). percentValue 단위: 0~100
+                    if (percent < 100f) _invincMultiplier *= (1f - percent / 100f);
                     break;
                 case StatType.CritChance:
                     _percentCritChance   += percent;

@@ -19,4 +19,4 @@ MonoBehaviour:
   _statEffect:
     statType: 3
     flatValue: 0
-    percentValue: -0.2
+    percentValue: -20

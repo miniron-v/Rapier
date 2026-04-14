@@ -168,13 +168,15 @@ namespace Game.UI.Lobby.Equipment
             bool isAccessory = data.SlotType == EquipmentSlotType.Necklace
                             || data.SlotType == EquipmentSlotType.Ring;
 
-            StatEntry mainStat;
+            StatEntry rawMainStat;
             if (isAccessory && instance.RolledMainStat.HasValue)
-                mainStat = instance.RolledMainStat.Value;
+                rawMainStat = instance.RolledMainStat.Value;
             else
-                mainStat = data.MainStat;
+                rawMainStat = data.MainStat;
 
-            _mainStatText.text = FormatStatEntry(mainStat);
+            // 강화 배율 적용 (enhanceLevel 0이면 ×1.0 — 변화 없음)
+            float enhanceMult = 1f + 0.10f * instance.EnhanceLevel;
+            _mainStatText.text = FormatStatEntryWithEnhance(rawMainStat, enhanceMult);
 
             // 서브 스탯 (고정 크기 영역 — 없으면 비워둠)
             var subStats = instance.SubStats;
@@ -324,8 +326,20 @@ namespace Game.UI.Lobby.Equipment
             if (entry.flatValue != 0f)
                 return $"{label} +{entry.flatValue:F0}";
             if (entry.percentValue != 0f)
-                return $"{label} +{entry.percentValue:F1}%";
+                return $"{label} +{entry.percentValue:F1}%";  // percentValue 단위: 0~100, 직접 표시
             return label;
+        }
+
+        /// <summary>강화 배율이 적용된 StatEntry를 포맷한다.</summary>
+        private static string FormatStatEntryWithEnhance(StatEntry entry, float enhanceMultiplier)
+        {
+            var enhanced = new StatEntry
+            {
+                statType     = entry.statType,
+                flatValue    = entry.flatValue    * enhanceMultiplier,
+                percentValue = entry.percentValue * enhanceMultiplier,
+            };
+            return FormatStatEntry(enhanced);
         }
 
         private static string GetStatLabel(StatType type)

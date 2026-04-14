@@ -179,8 +179,8 @@ namespace Game.Characters
                 * (_meta?.InvincMultiplier    ?? 1f)
                 * (_runStat?.InvincMultiplier ?? 1f);
 
-            // 스킬 데미지 배수 (가산형 누적, RunStat 미포함 — STATS.md §2 표)
-            _skillDamageMultiplier = 1f + (_meta?.SkillDamagePercent ?? 0f);
+            // 스킬 데미지 배수 (가산형 누적, RunStat 미포함 — STATS.md §2 표). SkillDamagePercent 단위: 0~100
+            _skillDamageMultiplier = 1f + (_meta?.SkillDamagePercent ?? 0f) / 100f;
         }
 
         // ── HP ────────────────────────────────────────────────────
