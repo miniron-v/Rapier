@@ -158,8 +158,9 @@ namespace Game.Characters
             float metaAtk = _meta?.ComputeAtk(StatData.attackPower) ?? StatData.attackPower;
             float metaMs  = _meta?.ComputeMs(StatData.moveSpeed)    ?? StatData.moveSpeed;
 
-            _finalMaxHp       = metaHp  * (1f + (_runStat?.HpPercent  ?? 0f));
-            _finalAttackPower = metaAtk * (1f + (_runStat?.AtkPercent ?? 0f));
+            // HP/ATK는 정수 반올림 — 소수 데미지 방지
+            _finalMaxHp       = Mathf.Round(metaHp  * (1f + (_runStat?.HpPercent  ?? 0f)));
+            _finalAttackPower = Mathf.Round(metaAtk * (1f + (_runStat?.AtkPercent ?? 0f)));
             _finalMoveSpeed   = metaMs  * (1f + (_runStat?.MsPercent  ?? 0f));
 
             // 감소율형 §3-2 — base × Π_i(1 − metaP_i) × Π_j(1 − runP_j)
