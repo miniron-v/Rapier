@@ -36,6 +36,34 @@ New Input System → GestureRecognizer → InputState Enum → C# event → Char
 
 ---
 
+## 3-1. Hold 중 확장 제스처 (캐릭터 옵션)
+
+Hold 가 성립된 시점(=차지 시작, `_gestureCommitted && CurrentState == Hold`)부터, 일반 Hold/Swipe 배타 규칙이 풀리고 **손가락을 떼지 않은 채로 이동** 을 허용한다. 이 모드에서 발행되는 이벤트 3종은 Ranger/Warrior 가 각자 구독해 해석한다.
+
+| 이벤트 | 발행 시점 | 페이로드 |
+|---|---|---|
+| `OnHoldDragUpdate(Vector2 fromStart)` | Hold 성립 후 매 프레임, 시작점 대비 손가락 변위 벡터 | 스크린 좌표 벡터 (정규화 안 된 raw) |
+| `OnHoldSwipe(Vector2 direction)` | Hold 중 손가락이 **SWIPE_MIN_DISTANCE 이상** 이동 + 해당 이동이 **SWIPE_MAX_DURATION 이내** 에 완료될 때 단발 발행. 이후 터치는 종료 처리, 같은 터치의 Release 는 무시 | 스와이프 방향 (정규화) |
+| `OnHoldRelease(Vector2 fromStart, bool chargedFull)` | Hold 중 손가락을 뗀 순간 (`OnHoldSwipe` 가 이미 발행된 터치에서는 발행 안 됨) | 시작점 대비 현재 손가락 변위 + 풀차지 여부 |
+
+### 캐릭터별 해석
+
+| 캐릭터 | OnHoldDragUpdate | OnHoldSwipe | OnHoldRelease |
+|---|---|---|---|
+| Rapier | 무시 | 무시 | 기존 Release 와 동일 (fromStart 무시) |
+| Assassin | 무시 | 무시 | 기존 Release 와 동일 |
+| Warrior | **무시** (차지 중 드래그 무의미) | 차지 Full 상태에서만 수신 → 방패 휘두르기 (방향=Swipe 방향) | 기존 Release 와 동일. 차지 Full 이면 대지 분쇄 |
+| Ranger | **매 프레임 조준 방향 갱신** (fromStart 사용) | 무시 (Ranger 는 Drag/Swipe 구분 없이 방향만 사용) | **차지량 + 현재 조준 방향으로 발사**. fromStart=0 이면 기본 전방 |
+
+### 불변식
+
+- `OnHoldSwipe` 와 `OnHoldRelease` 는 **같은 터치에서 동시에 발행되지 않는다** (Swipe 발행 시 터치 종료 처리, Release 차단).
+- `OnHoldDragUpdate` 는 `OnHoldSwipe` 발행 후엔 더 이상 발행되지 않는다.
+- 기존 `OnHold(float duration)` 는 Hold 중 매 프레임 계속 발행된다 (차지 게이지 UI 갱신용).
+- `OnMoveDirection` 은 Drag 상태에서만 발행 — Hold 중 손가락 이동은 Drag 로 전환되지 않는다.
+
+---
+
 ## 4. 저스트 회피 트리거
 
 - 회피 대시 중(`CharacterPresenterBase.JustDodgeAvailable == true`) 피격 시 `GestureRecognizer.TriggerJustDodge(Vector2 direction)` 호출.
@@ -56,6 +84,8 @@ New Input System → GestureRecognizer → InputState Enum → C# event → Char
 | 차지 스킬 발동 | Tap |
 | 공격 인디케이터 표시 중 (0.4초) | Tap |
 | 회피 쿨다운 (2초) | Swipe |
+| Ranger 차지 중 (Hold 성립 이후) | Tap, Swipe(일반), Drag (이동) — 본인 경직 |
+| Warrior Hold 차지 중 (Full 전) | Release/Swipe 모두 무효 (아무 동작 없음, 차지만 유지) |
 
 - 차단은 GestureRecognizer 또는 CharacterPresenterBase 레벨에서 처리한다. 공격 인디케이터 차단은 `_isAttacking` 플래그 경로로 별도 처리.
 - 차단된 입력은 절대 큐잉되지 않으며, 상태 종료 후에도 자동 발동되지 않는다.

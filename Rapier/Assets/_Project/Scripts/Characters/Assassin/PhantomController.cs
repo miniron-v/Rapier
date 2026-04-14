@@ -43,9 +43,6 @@ namespace Game.Characters.Assassin
         [Tooltip("잔상 일반 공격 인디케이터에 쓸 사각형 스프라이트. 미할당 시 런타임 생성.")]
         [SerializeField] private Sprite _attackRangeSprite;
 
-        [Tooltip("잔상 AoE 인디케이터용 원형 스프라이트. Assets/_Project/Art/UI/Circle.png 할당.")]
-        [SerializeField] private Sprite _circleIndicatorSprite;
-
         // ── 비직렬화 런타임 필드 ──────────────────────────────────
         [NonSerialized] private float          _remainingTime;
         [NonSerialized] private float          _damagePercent;
@@ -224,7 +221,7 @@ namespace Game.Characters.Assassin
             go.transform.localScale = new Vector3(radius * 2f, radius * 2f, 1f);
 
             var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite       = _circleIndicatorSprite != null ? _circleIndicatorSprite : CreateCircleSprite(64);
+            sr.sprite       = CreateCircleSprite(64);
             sr.color        = new Color(0.7f, 0.5f, 1f, 0.25f); // 잔상 색조 (연보라)
             sr.sortingOrder = 10;
 

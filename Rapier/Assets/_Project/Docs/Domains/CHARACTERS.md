@@ -6,16 +6,13 @@
 
 ```
 CharacterPresenterBase (abstract)   ← 공통 로직 (이동, 공격, 회피, 차지)
-└── RapierPresenter                 ← 표식 시스템 + 대시 스킬 (구현 완료)
-
-[미구현 — 향후 추가]
-├── WarriorPresenter                ← 방패 방어 + 패링
-├── AssassinPresenter               ← 잔상 스태킹
-└── RangerPresenter                 ← 원거리 사격 + 지뢰
+├── RapierPresenter                 ← 표식 시스템 + 대시 스킬 (구현 완료)
+├── AssassinPresenter               ← 잔상 스태킹 (구현 완료)
+├── WarriorPresenter                ← 방패 방어 + 패링 (Phase 26 예정)
+└── RangerPresenter                 ← 원거리 사격 + 지뢰 + 차지 조준 (Phase 26 예정)
 ```
 
-> **현재 (2026-04-12) 구현된 캐릭터: Rapier (완료), Assassin (Phase 19 진행 중).**
-> Warrior/Ranger 클래스는 존재하지 않으며, 캐릭터 선택 화면에서 "Coming Soon" 잠금으로 표현된다.
+> **현재 구현 상태 (2026-04-14): Rapier, Assassin 2종 구현 완료. Warrior, Ranger 는 Phase 26 에서 병렬 작업 예정.**
 > 신규 캐릭터 추가는 OCP를 만족해야 하며, 기존 코드 수정 없이 확장 가능해야 한다.
 
 - `CharacterModel`: 순수 데이터 (HP, 상태 등). MonoBehaviour 아님.
@@ -40,10 +37,90 @@ CharacterPresenterBase (abstract)   ← 공통 로직 (이동, 공격, 회피, �
 
 ### Warrior — 인내와 패링
 
-- Hold 중: 방패 방어 (데미지 감소)
-- Hold → Release: 대지 분쇄 (전방 광역)
-- Hold → Swipe: 방패 밀쳐내기 (데미지 + 넉백). 피격 중이면 패링(저스트 회피) 발동
-- 저스트 회피 후 고유 스킬: 즉시 대지 분쇄 (차지 없이)
+**핵심 철학**: 일반 저스트 회피를 쓰지 않는 유일한 캐릭터. 모든 고유 스킬 트리거가 "차지 Full + 방패 휘두르기 → 패링" 경로로 집중된다.
+
+#### 메커니즘
+
+- **Hold 시작**: 차지 게이지 충전 시작. 충전 중 피격 데미지 **50% 감소**.
+- **차지 게이지 Full 전**: Release/Swipe/Drag 등 모든 Hold 후 입력 **무시** (차지만 유지).
+- **차지 중 Hold 취소 (손가락 뗌)**: 게이지·데미지 감소 즉시 소멸. 쿨다운 없음 (차지 중엔 공격 불가이므로 악용 불가).
+- **차지 Full 후 Release (`OnHoldRelease` chargedFull=true)**: **대지 분쇄** — 전방 광역 `ATK × 350% × SkillDmgMult`.
+- **차지 Full 후 `OnHoldSwipe` (Swipe 임계 통과)**: **방패 휘두르기** — Swipe 방향으로 근접 히트박스, `ATK × 150%` 데미지 + 넉백. 휘두르는 동안(=`dodgeDashDuration` 재활용) 해당 방향 ±60° 각도에서 오는 공격에 대해 무적.
+- **방패 휘두르기 무적 중 해당 각도 공격 피격 → 패링 성립**: 슬로우 모션 + 즉시 대지 분쇄 발동 (Rapier 의 저스트 회피 후 고유 스킬 포지션).
+- **방패 휘두르기 중 비방어 각 피격**: 정상 피격 (무적 아님).
+- **일반 저스트 회피 (회피 대시 중 피격)**: **미발동**. Warrior 는 `GestureRecognizer.OpenAttackWindow` 를 호출하지 않는다.
+
+#### 구현 구조
+
+| 객체 | 책임 |
+|------|------|
+| `WarriorPresenter` | `CharacterPresenterBase` 상속. `OnHoldSwipe`/`OnHoldRelease` override, 방패 휘두르기 루틴 관리, 방향성 무적 창 오픈 |
+| `WarriorStatData` (SO) | `CharacterStatData` 상속. 아래 고유 필드 |
+| 방향성 무적 | `CharacterModel` 에 `SetDirectionalGuard(Vector2 normal, float halfAngleDeg)` / `ClearDirectionalGuard()` 추가. `TakeDamage` 경로에서 knockbackDir 비교 후 `dot(attackDir, -shieldNormal) ≥ cos(halfAngle)` 면 무효 + 패링 콜백 |
+
+#### WarriorStatData 고유 필드
+
+| 필드 | 기본값 | 설명 |
+|---|---|---|
+| `chargeDamagePercent` | 350 | 대지 분쇄 ATK % |
+| `shieldSwingDamagePercent` | 150 | 방패 휘두르기 ATK % |
+| `shieldSwingKnockback` | 2.0f | 방패 히트 넉백 거리 (unit) |
+| `damageReductionPercent` | 50 | Hold 차지 중 피격 데미지 감소율 |
+| `shieldGuardHalfAngle` | 60 | 방어 반각 (도). 전체 방어 범위는 120° |
+| `shieldSwingDuration` | `dodgeDashDuration` 재활용 | 별도 필드 없음. 방패 휘두르기 지속 = 회피 대시 지속과 동일 |
+
+### Ranger — 거리 조절과 화망
+
+**핵심 철학**: 자유로운 조준. 모든 투사체/지뢰가 공간 제어 도구이며, 차지 스킬은 LoL 바루스 Q 스타일의 방향 드래그 조준.
+
+#### 메커니즘
+
+- **Tap (원거리 사격)**: 근접 광역 공격을 대체. 전방으로 투사체 발사. 발사 쿨다운은 기존 Tap 공격 쿨다운과 동일. `ATK × 100%`, 속도 25 unit/s, 사거리 8 unit.
+- **Swipe (회피 대시 + 지뢰 설치)**: 회피 종료 지점에 지뢰 1개 배치. 모든 회피마다 설치되며 별도 쿨다운 없음.
+- **저스트 회피 후 고유 스킬 (Hold → Release)**: 강화 관통 화살 — 일반 Tap 투사체 대비 **가로 너비 3배**, 사거리 10 unit, `ATK × 300%`, 관통 무제한 (감쇠 없음), 폭발 아님.
+- **차지 스킬 (Hold → Drag → Release, 바루스 Q 스타일)**:
+  - Hold 성립 순간부터 **본인 경직** (이동/회피/Tap 불가).
+  - Hold 성립 이후 손가락 위치를 매 프레임 추적하여, 캐릭터 본체 → "Hold 시작점 → 현재 손가락 위치" 방향을 조준 방향으로 사용 (`OnHoldDragUpdate` 의 `fromStart` 벡터).
+  - 차지량에 따라 **사거리/데미지/너비 모두 선형 보간**:
+    - 차지 0 (Hold 성립 직후 즉시 뗌): 사거리 4 unit, `ATK × 100%`, 너비 = Tap 투사체와 동일
+    - 차지 Full: 사거리 14 unit, `ATK × 300%`, 너비 Tap × 3 (= 저스트 회피 화살과 동일 스펙)
+  - 조준 방향으로 사거리 표시기 렌더링 (차지량 비례 길이).
+  - `OnHoldRelease` 발행 시 그 순간 조준 방향·차지량으로 발사. Hold 성립 직후 떼도 발사 (최소 차지 시간 없음). `fromStart == Vector2.zero` 이면 기본 전방 방향.
+  - 관통 무제한, 감쇠 없음.
+
+#### 구현 구조
+
+| 객체 | 책임 |
+|---|---|
+| `RangerPresenter` | `CharacterPresenterBase` 상속. Tap/저스트 스킬/차지 발사 전부 override. `OnHoldDragUpdate` 구독해 조준 방향 갱신. 차지 중 경직 플래그 유지 |
+| `RangerStatData` (SO) | `CharacterStatData` 상속. 아래 고유 필드 |
+| `RangerArrow` (MonoBehaviour) | 투사체 — 직선 이동 + 관통 적 리스트 (중복 타격 방지) + 사거리 도달/경계 이탈 시 despawn |
+| `RangerMine` (MonoBehaviour) | 지뢰 — 5초 수명, 적 접촉 시 즉발 (반경 1.5 unit 광역). 최대 동시 6개, Assassin 잔상 방식(초과 시 최고참 제거) |
+| `AimIndicatorView` | 차지 중 사거리 표시기 (캐릭터→조준 방향, 차지량 비례 길이) |
+
+#### RangerStatData 고유 필드
+
+| 필드 | 기본값 | 설명 |
+|---|---|---|
+| `tapDamagePercent` | 100 | Tap 사격 ATK % |
+| `tapProjectileSpeed` | 25.0f | Tap 투사체 속도 (unit/s) |
+| `tapProjectileRange` | 8.0f | Tap 투사체 최대 사거리 |
+| `tapProjectileWidth` | 0.4f | Tap 투사체 히트박스 폭 (참고 기본값, 에셋 맞춰 조정) |
+| `justDodgeArrowDamagePercent` | 300 | 저스트 회피 후 강화 화살 ATK % |
+| `justDodgeArrowRange` | 10.0f | 강화 화살 사거리 |
+| `justDodgeArrowWidthMult` | 3.0f | 강화 화살 너비 = Tap 너비 × 배수 |
+| `chargeArrowMinDamagePercent` | 100 | 차지 0 시점 ATK % |
+| `chargeArrowMaxDamagePercent` | 300 | 차지 Full 시점 ATK % |
+| `chargeArrowMinRange` | 4.0f | 차지 0 사거리 |
+| `chargeArrowMaxRange` | 14.0f | 차지 Full 사거리 |
+| `chargeArrowMaxWidthMult` | 3.0f | 차지 Full 너비 = Tap 너비 × 배수. 차지 0 시점 배수는 1.0f |
+| `minePlaceOnDodge` | true | 회피 시 지뢰 자동 설치 |
+| `mineDamagePercent` | 80 | 지뢰 폭발 ATK % |
+| `mineExplosionRadius` | 1.5f | 지뢰 폭발 반경 |
+| `mineLifetime` | 5.0f | 지뢰 수명 (초) |
+| `maxActiveMines` | 6 | 동시 존재 최대 수 (초과 시 최고참 제거) |
+
+### Rapier — 빌드업과 수확
 
 ### Assassin — 잔상 스태킹과 난무
 
@@ -75,13 +152,6 @@ CharacterPresenterBase (abstract)   ← 공통 로직 (이동, 공격, 회피, �
 - 차지 스킬: 표식 보유 적에게 `ATK × (chargeSkillPercent/100) × stacks × SkillDmgMult` 데미지. 표식 소비. (`chargeSkillPercent` 기본 100 = 100%)
 - 스킬 대시~복귀 구간 전체 무적. 스킬/회피 중 일반 공격 차단.
 
-### Ranger — 거리 조절과 화망
-
-- Tap: 원거리 사격으로 대체
-- 회피: 대시 + 회피 지점에 지뢰 설치
-- 저스트 회피 후 고유 스킬: 즉시 강화 폭발 화살 (차지 없이)
-- 차지 스킬: 직선 관통 화살. 시전 중 경직 부여.
-
 ---
 
 ## 4. 저스트 회피 (공통)
@@ -90,6 +160,7 @@ CharacterPresenterBase (abstract)   ← 공통 로직 (이동, 공격, 회피, �
 - 효과: 슬로우 모션 + 카메라 줌 + 무적 유지.
 - 슬로우 중 Hold → 캐릭터 고유 스킬 즉시 발동.
 - `GestureRecognizer.TriggerJustDodge(Vector2 direction)`가 유일한 발동 API. `JustDodgeAvailable` / `ConsumeJustDodge()`는 `CharacterPresenterBase` 소유.
+- **Warrior 예외**: 일반 저스트 회피 미발동. 고유 스킬 트리거는 "차지 Full + 방패 휘두르기 중 방어 각도 피격" 으로 대체됨 (§3 참조).
 
 ---
 

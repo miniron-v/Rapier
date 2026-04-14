@@ -85,10 +85,6 @@ namespace Game.Characters
         private const float ATTACK_INDICATOR_DURATION = 0.4f;
         private const float ARRIVE_THRESHOLD          = 0.05f;
 
-        // ── AoE 인디케이터 스프라이트 ─────────────────────────────
-        [Tooltip("차지 스킬 등 원형 AoE 인디케이터 스프라이트. Assets/_Project/Art/UI/Circle.png 할당.")]
-        [SerializeField] private Sprite _aoeIndicatorSprite;
-
         // ── 내부 참조 ─────────────────────────────────────────────
         protected CharacterModel    Model   { get; private set; }
         protected ICharacterView    View    { get; private set; }
@@ -774,7 +770,7 @@ namespace Game.Characters
             go.transform.localScale = new Vector3(radius * 2f, radius * 2f, 1f);
 
             var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite       = _aoeIndicatorSprite != null ? _aoeIndicatorSprite : CreateCircleSprite(64);
+            sr.sprite       = CreateCircleSprite(64);
             sr.color        = new Color(1f, 0.5f, 0f, 0.25f); // 주황 반투명
             sr.sortingOrder = 10;
 
