@@ -521,8 +521,28 @@ namespace Game.DevTools
             // EnhanceModal → ItemDetailPresenter 역참조 (서브스탯 펄스 힌트 전달용)
             enhanceModalPresenter.InitReferences(enhanceModalView, itemDetailPresenter);
 
+            // ── (g) Phase 25-B: EquipmentActionBar ──────────────────────────────
+            // EquipmentPanelRoot 의 탭바(0~0.22)와 스크롤(0.22~1.0) 사이에 ActionBar 삽입.
+            // 탭바 위치를 하단 0~0.14 로 내리고, ActionBar 가 0.14~0.22 차지, 스크롤 0.22~1.0 유지.
+            // (기존 tabBarRect 는 0~0.2 이므로 0~0.14 로 재조정)
+            var tabBarRect2 = tabBarGo.GetComponent<RectTransform>();
+            SetAnchors(tabBarRect2, new Vector2(0f, 0.0f), new Vector2(1f, 0.14f));
+
+            var (actionBarView, actionBarPresenter, resultModalPresenter) =
+                CreateActionBarAndModal(equipRoot.gameObject, panel, GetFont());
+
+            // ActionBar 는 탭바(0~0.14) 바로 위, 스크롤(0.22~1.0) 바로 아래 = 0.14~0.22
+            var actionBarRect = actionBarView.GetComponent<RectTransform>();
+            SetAnchors(actionBarRect, new Vector2(0f, 0.14f), new Vector2(1f, 0.22f));
+            actionBarRect.offsetMin = actionBarRect.offsetMax = Vector2.zero;
+
+            // 스크롤 위치는 이미 tabBarRect 재조정으로 맞춰져 있으므로 유지.
+
             var equipPresenter = equipRoot.gameObject.AddComponent<EquipmentPanelPresenter>();
             equipPresenter.InitReferences(equipView, itemDetailPresenter, runeInventoryPresenter);
+            equipPresenter.InitActionBar(actionBarPresenter);
+            EditorUtility.SetDirty(actionBarPresenter);
+            EditorUtility.SetDirty(resultModalPresenter);
 
             EditorUtility.SetDirty(enhanceModalPresenter);
 
@@ -1660,6 +1680,185 @@ namespace Game.DevTools
 
             popupGo.SetActive(false);
             return (view, presenter);
+        }
+
+        // ── Phase 25-B 헬퍼: EquipmentActionBar + BulkSelectDropdown + DismantleResultModal ──
+
+        private static (EquipmentActionBarView actionBarView,
+                         EquipmentActionBarPresenter actionBarPresenter,
+                         DismantleResultModalPresenter resultModalPresenter)
+            CreateActionBarAndModal(GameObject equipRootGo, GameObject panelParent, TMP_FontAsset font)
+        {
+            // ── ActionBar GO ────────────────────────────────────────────────
+            var barGo  = new GameObject("EquipmentActionBar", typeof(RectTransform));
+            barGo.transform.SetParent(equipRootGo.transform, false);
+            var barBg  = barGo.AddComponent<Image>();
+            barBg.color = new Color(0.10f, 0.10f, 0.13f, 0.95f);
+
+            // 가루 텍스트 (좌측)
+            var dustGo  = new GameObject("DustText");
+            dustGo.transform.SetParent(barGo.transform, false);
+            var dustTmp = dustGo.AddComponent<TextMeshProUGUI>();
+            dustTmp.text      = "강화의 가루 ×0";
+            dustTmp.fontSize  = 24f;
+            dustTmp.alignment = TextAlignmentOptions.MidlineLeft;
+            dustTmp.color     = new Color(0.9f, 0.85f, 0.5f);
+            if (font != null) dustTmp.font = font;
+            else Debug.LogWarning("[LobbyHudSetup] ActionBar DustText — font null");
+            var dustRect = dustGo.GetComponent<RectTransform>();
+            SetAnchors(dustRect, new Vector2(0.02f, 0f), new Vector2(0.50f, 1f));
+            dustRect.offsetMin = dustRect.offsetMax = Vector2.zero;
+
+            // ── 기본 모드 루트 ──────────────────────────────────────────────
+            var defaultRoot = new GameObject("DefaultModeRoot", typeof(RectTransform));
+            defaultRoot.transform.SetParent(barGo.transform, false);
+            var defaultRect = defaultRoot.GetComponent<RectTransform>();
+            SetAnchors(defaultRect, new Vector2(0.55f, 0f), Vector2.one);
+            defaultRect.offsetMin = defaultRect.offsetMax = Vector2.zero;
+            var defaultHLayout = defaultRoot.AddComponent<HorizontalLayoutGroup>();
+            defaultHLayout.childAlignment        = TextAnchor.MiddleRight;
+            defaultHLayout.childForceExpandWidth = false;
+            defaultHLayout.childForceExpandHeight= true;
+            defaultHLayout.spacing               = 8f;
+            defaultHLayout.padding               = new RectOffset(4, 8, 4, 4);
+
+            // [분해] 버튼
+            var dismantleEnterBtn = CreateSimpleButton(defaultRoot, "DismantleEnterButton", "분해",
+                Vector2.zero, Vector2.zero,  // 앵커는 LayoutGroup 이 관리
+                new Color(0.7f, 0.3f, 0.15f), font);
+            var dismantleEnterLE = dismantleEnterBtn.GetComponent<LayoutElement>()
+                                    ?? dismantleEnterBtn.AddComponent<LayoutElement>();
+            dismantleEnterLE.preferredWidth  = 140f;
+            dismantleEnterLE.preferredHeight = 60f;
+            dismantleEnterLE.flexibleWidth   = 0f;
+
+            // ── 분해 모드 루트 ──────────────────────────────────────────────
+            var dismantleRoot = new GameObject("DismantleModeRoot", typeof(RectTransform));
+            dismantleRoot.transform.SetParent(barGo.transform, false);
+            var dismantleRect = dismantleRoot.GetComponent<RectTransform>();
+            SetAnchors(dismantleRect, Vector2.zero, Vector2.one);
+            dismantleRect.offsetMin = dismantleRect.offsetMax = Vector2.zero;
+            dismantleRoot.SetActive(false);
+
+            // 좌측: [돌아가기]
+            var backBtn = CreateSimpleButton(dismantleRoot, "BackButton", "돌아가기",
+                new Vector2(0.01f, 0.1f), new Vector2(0.28f, 0.9f),
+                new Color(0.3f, 0.3f, 0.4f), font);
+
+            // 우측: [일괄 선택 ▼]
+            var bulkBtn = CreateSimpleButton(dismantleRoot, "BulkSelectButton", "일괄 선택 ▼",
+                new Vector2(0.50f, 0.1f), new Vector2(0.74f, 0.9f),
+                new Color(0.25f, 0.4f, 0.6f), font);
+
+            // 우측: [분해하기]
+            var dosDismantleBtn = CreateSimpleButton(dismantleRoot, "DosDismantleButton", "분해하기",
+                new Vector2(0.76f, 0.1f), new Vector2(0.99f, 0.9f),
+                new Color(0.7f, 0.3f, 0.15f), font);
+            var dosDismantleLabel = dosDismantleBtn.GetComponentInChildren<TextMeshProUGUI>();
+
+            // EquipmentActionBarView 조립
+            var actionBarView = barGo.AddComponent<EquipmentActionBarView>();
+            actionBarView.InitReferences(
+                dustTmp,
+                defaultRoot,
+                dismantleEnterBtn.GetComponent<Button>(),
+                dismantleRoot,
+                backBtn.GetComponent<Button>(),
+                bulkBtn.GetComponent<Button>(),
+                dosDismantleBtn.GetComponent<Button>(),
+                dosDismantleLabel);
+
+            // ── BulkSelectDropdown ────────────────────────────────────────────
+            var dropdownGo = new GameObject("BulkSelectDropdown", typeof(RectTransform));
+            dropdownGo.transform.SetParent(equipRootGo.transform, false);
+            dropdownGo.AddComponent<Image>().color = new Color(0.08f, 0.08f, 0.12f, 0.97f);
+            var dropdownRect = dropdownGo.GetComponent<RectTransform>();
+            // 액션바(0.14~0.22) 위에 펼침 — 0.22~0.52 영역 (등급 4종 × 80px)
+            SetAnchors(dropdownRect, new Vector2(0.30f, 0.22f), new Vector2(1.00f, 0.52f));
+            dropdownRect.offsetMin = dropdownRect.offsetMax = Vector2.zero;
+            dropdownGo.SetActive(false);
+
+            // 등급 4종 항목
+            var gradeButtons   = new List<Button>();
+            var gradeDotImages = new List<Image>();
+            var gradeTexts     = new List<TextMeshProUGUI>();
+            string[] gradeLabels = { "Normal", "Rare", "Epic", "Unique" };
+            for (int i = 0; i < 4; i++)
+            {
+                float yMax = 1.0f - i * 0.25f;
+                float yMin = yMax - 0.24f;
+                var rowGo = new GameObject($"GradeRow_{gradeLabels[i]}", typeof(RectTransform));
+                rowGo.transform.SetParent(dropdownGo.transform, false);
+                var rowRect = rowGo.GetComponent<RectTransform>();
+                SetAnchors(rowRect, new Vector2(0f, yMin), new Vector2(1f, yMax));
+                rowRect.offsetMin = rowRect.offsetMax = Vector2.zero;
+                rowGo.AddComponent<Image>().color = new Color(0.13f, 0.13f, 0.17f, 0.9f);
+                var rowBtn = rowGo.AddComponent<Button>();
+
+                // 등급 색 점 (●)
+                var dotGo  = new GameObject("GradeDot", typeof(RectTransform));
+                dotGo.transform.SetParent(rowGo.transform, false);
+                var dotImg  = dotGo.AddComponent<Image>();
+                dotImg.color = Color.gray;
+                var dotRect = dotGo.GetComponent<RectTransform>();
+                SetAnchors(dotRect, new Vector2(0.03f, 0.2f), new Vector2(0.15f, 0.8f));
+                dotRect.offsetMin = dotRect.offsetMax = Vector2.zero;
+
+                // 텍스트
+                var labelGo = CreateTmpLabel(rowGo, $"Label_{gradeLabels[i]}", gradeLabels[i], 30f, font);
+                var labelRect = labelGo.GetComponent<RectTransform>();
+                SetAnchors(labelRect, new Vector2(0.18f, 0f), Vector2.one);
+                labelRect.offsetMin = labelRect.offsetMax = Vector2.zero;
+                labelGo.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.MidlineLeft;
+
+                gradeButtons.Add(rowBtn);
+                gradeDotImages.Add(dotImg);
+                gradeTexts.Add(labelGo.GetComponent<TextMeshProUGUI>());
+            }
+
+            var dropdownView = dropdownGo.AddComponent<BulkSelectDropdownView>();
+            dropdownView.InitReferences(gradeButtons, gradeDotImages, gradeTexts);
+
+            // ── DismantleResultModal ────────────────────────────────────────
+            // panelParent 직속 자식, LobbyCanvas と同レベル (실제로는 Panel 하위이지만
+            // Canvas sortingOrder 는 루트 Canvas 단위이므로 여기서는 Panel 계층 내 최상위 배치)
+            var modalGo = new GameObject("DismantleResultModal", typeof(RectTransform));
+            modalGo.transform.SetParent(panelParent.transform, false);
+            var modalBg   = modalGo.AddComponent<Image>();
+            modalBg.color = new Color(0f, 0f, 0f, 0.85f);
+            var modalRect = modalGo.GetComponent<RectTransform>();
+            SetAnchors(modalRect, Vector2.zero, Vector2.one);
+            modalRect.offsetMin = modalRect.offsetMax = Vector2.zero;
+            modalGo.SetActive(false);
+
+            // 타이틀
+            var titleGo = CreateTmpLabel(modalGo, "Title", "분해 완료", 48f, font);
+            titleGo.GetComponent<TextMeshProUGUI>().fontStyle = FontStyles.Bold;
+            SetAnchors(titleGo.GetComponent<RectTransform>(), new Vector2(0.05f, 0.60f), new Vector2(0.95f, 0.75f));
+            titleGo.GetComponent<RectTransform>().offsetMin = titleGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
+
+            // 본문
+            var bodyGo  = CreateTmpLabel(modalGo, "BodyText", "획득: 강화의 가루 ×0", 36f, font);
+            bodyGo.GetComponent<TextMeshProUGUI>().color = new Color(0.9f, 0.85f, 0.5f);
+            SetAnchors(bodyGo.GetComponent<RectTransform>(), new Vector2(0.05f, 0.44f), new Vector2(0.95f, 0.59f));
+            bodyGo.GetComponent<RectTransform>().offsetMin = bodyGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
+
+            // 닫기 버튼
+            var closeBtn = CreateSimpleButton(modalGo, "CloseButton", "닫기",
+                new Vector2(0.25f, 0.28f), new Vector2(0.75f, 0.42f),
+                new Color(0.3f, 0.3f, 0.5f), font);
+
+            var modalView = modalGo.AddComponent<DismantleResultModalView>();
+            modalView.InitReferences(bodyGo.GetComponent<TextMeshProUGUI>(), closeBtn.GetComponent<Button>());
+
+            var modalPresenter = modalGo.AddComponent<DismantleResultModalPresenter>();
+            modalPresenter.InitReferences(modalView);
+
+            // EquipmentActionBarPresenter 조립
+            var actionBarPresenter = barGo.AddComponent<EquipmentActionBarPresenter>();
+            actionBarPresenter.InitReferences(actionBarView, dropdownView, modalPresenter);
+
+            return (actionBarView, actionBarPresenter, modalPresenter);
         }
 
         // ── Phase 24 공통 UI 헬퍼 ──────────────────────────────────

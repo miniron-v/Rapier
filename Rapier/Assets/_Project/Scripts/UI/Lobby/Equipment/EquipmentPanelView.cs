@@ -16,6 +16,12 @@ namespace Game.UI.Lobby.Equipment
     ///   - 인벤토리 탭 3개 (무기/방어구/장신구) 추가
     ///   - 탭 전환 이벤트 OnInventoryTabChanged 추가
     ///   - RefreshInventory 는 현재 탭에 맞게 필터링된 목록만 표시
+    ///
+    /// Phase 25-B 변경:
+    ///   - 분해 모드 시각화 (InventoryItemView 에 DismantleMode / Selected 상태 전달)
+    ///   - OnInventoryItemLongPressed 이벤트 추가
+    ///   - OnInventoryItemDismantleToggled 이벤트 추가
+    ///   - RefreshInventoryDismantle: 장착 여부를 함께 전달
     /// </summary>
     public class EquipmentPanelView : MonoBehaviour, IEquipmentPanelView
     {
@@ -46,6 +52,17 @@ namespace Game.UI.Lobby.Equipment
         private readonly List<InventoryItemView> _inventoryItems = new();
         private InventoryTab _currentTab = InventoryTab.Weapon;
 
+        // 현재 분해 모드 여부 (슬롯 시각화에 사용)
+        private bool _isDismantleMode;
+
+        // 현재 장착 상태 (분해 모드 시 장착 여부 판단)
+        private IReadOnlyDictionary<EquipmentSlotType, EquipmentInstance> _equippedMap
+            = new Dictionary<EquipmentSlotType, EquipmentInstance>();
+
+        // 현재 선택 집합 (분해 모드)
+        private IReadOnlyCollection<EquipmentInstance> _selectedSet
+            = Array.Empty<EquipmentInstance>();
+
         // ── 인벤토리 탭 정의 ────────────────────────────────────────────────
 
         /// <summary>인벤토리 탭 분류.</summary>
@@ -64,6 +81,12 @@ namespace Game.UI.Lobby.Equipment
 
         /// <summary>인벤토리 탭 전환 이벤트.</summary>
         public event Action<InventoryTab> OnInventoryTabChanged;
+
+        /// <summary>분해 모드 탭 → 선택 토글 이벤트.</summary>
+        public event Action<EquipmentInstance> OnInventoryItemDismantleToggled;
+
+        /// <summary>롱프레스 완료 이벤트.</summary>
+        public event Action<EquipmentInstance> OnInventoryItemLongPressed;
 
         // ── Unity Lifecycle ──────────────────────────────────────────────────
 
@@ -109,10 +132,11 @@ namespace Game.UI.Lobby.Equipment
         /// <inheritdoc/>
         public void RefreshSlots(IReadOnlyDictionary<EquipmentSlotType, EquipmentInstance> equipped)
         {
+            _equippedMap = equipped ?? new Dictionary<EquipmentSlotType, EquipmentInstance>();
             var slotTypes = (EquipmentSlotType[])System.Enum.GetValues(typeof(EquipmentSlotType));
             for (int i = 0; i < _slotViews.Count && i < slotTypes.Length; i++)
             {
-                equipped.TryGetValue(slotTypes[i], out var instance);
+                _equippedMap.TryGetValue(slotTypes[i], out var instance);
                 _slotViews[i].Refresh(instance);
             }
         }
@@ -137,11 +161,20 @@ namespace Game.UI.Lobby.Equipment
                 else
                 {
                     view = Instantiate(_inventoryItemPrefab, _inventoryContent);
-                    view.OnClicked += HandleInventoryItemClicked;
+                    view.OnClicked             += HandleInventoryItemClicked;
+                    view.OnDismantleToggled    += HandleInventoryItemDismantleToggled;
+                    view.OnLongPressed         += HandleInventoryItemLongPressed;
                     _inventoryItems.Add(view);
                 }
+
                 view.gameObject.SetActive(true);
                 view.Refresh(filtered[i]);
+
+                // 분해 모드 시각화
+                bool isEquipped = IsEquipped(filtered[i]);
+                bool isSelected = _selectedSet.Contains(filtered[i]);
+                view.SetDismantleMode(_isDismantleMode, isEquipped);
+                view.SetSelected(isSelected);
             }
         }
 
@@ -158,7 +191,38 @@ namespace Game.UI.Lobby.Equipment
             gameObject.SetActive(visible);
         }
 
-        // ── Private 탭 메서드 ────────────────────────────────────────────────
+        // ── Public Phase 25-B 메서드 ─────────────────────────────────────────
+
+        /// <summary>분해 모드 전환. 모든 인벤토리 슬롯 시각화를 갱신한다.</summary>
+        public void SetDismantleMode(bool isDismantle,
+            IReadOnlyDictionary<EquipmentSlotType, EquipmentInstance> equipped,
+            IReadOnlyCollection<EquipmentInstance> selectedSet)
+        {
+            _isDismantleMode = isDismantle;
+            _equippedMap     = equipped  ?? new Dictionary<EquipmentSlotType, EquipmentInstance>();
+            _selectedSet     = selectedSet ?? Array.Empty<EquipmentInstance>();
+            RefreshAllItemVisuals();
+        }
+
+        /// <summary>선택 집합 변경 시 인벤토리 슬롯 선택 시각화 갱신.</summary>
+        public void RefreshSelectionVisuals(
+            IReadOnlyCollection<EquipmentInstance> selectedSet)
+        {
+            _selectedSet = selectedSet ?? Array.Empty<EquipmentInstance>();
+            RefreshAllItemVisuals();
+        }
+
+        // ── Private 메서드 ────────────────────────────────────────────────────
+
+        private void RefreshAllItemVisuals()
+        {
+            // 인벤토리 재필터링은 Presenter 에 위임 (Presenter 가 manager.EquipmentInventory 를 알고 있음).
+            // View 는 Presenter 에게 갱신 요청만 보낸다.
+            OnRequestInventoryRefresh?.Invoke();
+        }
+
+        // 내부 갱신 요청 (Presenter 구독)
+        internal event Action OnRequestInventoryRefresh;
 
         private void InitTabButtons()
         {
@@ -224,6 +288,14 @@ namespace Game.UI.Lobby.Equipment
             };
         }
 
+        private bool IsEquipped(EquipmentInstance instance)
+        {
+            if (instance == null || _equippedMap == null) return false;
+            foreach (var kv in _equippedMap)
+                if (kv.Value == instance) return true;
+            return false;
+        }
+
         // ── Private Slot 메서드 ──────────────────────────────────────────────
 
         private void InitSlotViews()
@@ -249,14 +321,16 @@ namespace Game.UI.Lobby.Equipment
 
         // ── Event Handlers ───────────────────────────────────────────────────
 
-        private void HandleSlotClicked(EquipmentSlotType slot)
-        {
+        private void HandleSlotClicked(EquipmentSlotType slot) =>
             OnSlotClicked?.Invoke(slot);
-        }
 
-        private void HandleInventoryItemClicked(EquipmentInstance instance)
-        {
+        private void HandleInventoryItemClicked(EquipmentInstance instance) =>
             OnInventoryItemClicked?.Invoke(instance);
-        }
+
+        private void HandleInventoryItemDismantleToggled(EquipmentInstance instance) =>
+            OnInventoryItemDismantleToggled?.Invoke(instance);
+
+        private void HandleInventoryItemLongPressed(EquipmentInstance instance) =>
+            OnInventoryItemLongPressed?.Invoke(instance);
     }
 }
