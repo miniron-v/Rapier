@@ -167,7 +167,7 @@ namespace Game.UI.Lobby.Equipment
             // 최대 강화 단계는 진입 자체를 막음 (View 에서 버튼 비활성화되어 있어야 하지만 방어 처리)
             if (_currentInstance.EnhanceLevel >= _currentInstance.MaxEnhanceLevel) return;
 
-            _enhanceModalPresenter.Show(_currentInstance);
+            _enhanceModalPresenter.Show(_currentInstance, _currentSlot, _disableActions);
         }
 
         private void HandleCloseClicked()

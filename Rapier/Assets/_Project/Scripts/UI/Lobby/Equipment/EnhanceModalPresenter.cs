@@ -28,6 +28,10 @@ namespace Game.UI.Lobby.Equipment
         private EquipmentInstance          _currentInstance;
         private ItemDetailPopupPresenter   _itemDetailPresenter;
 
+        // ItemDetailPopup 재오픈에 필요한 context (Show 시 보관)
+        [System.NonSerialized] private EquipmentSlotType _savedSlot;
+        [System.NonSerialized] private bool              _savedDisableActions;
+
         // 강화 성공 시 서브스탯 펄스 힌트 보관 (-1이면 힌트 없음)
         [System.NonSerialized] private int _pendingSubStatPulseIndex = -1;
 
@@ -75,14 +79,23 @@ namespace Game.UI.Lobby.Equipment
 
         /// <summary>
         /// 강화 모달을 열어 인스턴스 정보를 표시한다.
+        /// ItemDetailPopup 을 먼저 숨긴 뒤 모달을 표시하므로 닫힐 때 최신 데이터로 재오픈할 수 있다.
         /// EquipmentManager 이벤트를 임시 구독한다.
         /// </summary>
-        public void Show(EquipmentInstance instance)
+        /// <param name="instance">강화할 장비 인스턴스.</param>
+        /// <param name="slot">ItemDetailPopup 재오픈 시 사용할 슬롯.</param>
+        /// <param name="disableActions">ItemDetailPopup 재오픈 시 사용할 disableActions 값.</param>
+        public void Show(EquipmentInstance instance, EquipmentSlotType slot, bool disableActions = false)
         {
             if (_view == null || instance == null || _manager == null) return;
 
-            _currentInstance = instance;
-            _isAnimating     = false;
+            _currentInstance     = instance;
+            _savedSlot           = slot;
+            _savedDisableActions = disableActions;
+            _isAnimating         = false;
+
+            // ItemDetailPopup 을 숨겨 렌더 파이프라인 갱신 문제 방지
+            _itemDetailPresenter?.Hide();
 
             // 이전 코루틴 정지 (잔여 연출 방지)
             if (_effectCoroutine != null)
@@ -108,16 +121,22 @@ namespace Game.UI.Lobby.Equipment
                 _effectCoroutine = null;
             }
 
-            _isAnimating     = false;
+            _isAnimating = false;
+
+            // 재오픈에 쓸 context 를 로컬 변수에 보관 후 필드 초기화
+            var instanceToReopen = _currentInstance;
             _currentInstance = null;
 
             UnsubscribeManagerEvents();
             _view?.SetVisible(false);
 
-            // 아이템 상세 팝업 스탯 텍스트 재갱신 (강화 후 수치 반영)
-            _itemDetailPresenter?.RefreshCurrentItem();
+            // ItemDetailPopup 을 최신 인스턴스 데이터로 재오픈 (비활성 후 재활성 → 렌더 파이프라인 정상 반영)
+            if (_itemDetailPresenter != null && instanceToReopen != null)
+            {
+                _itemDetailPresenter.Show(instanceToReopen, _savedSlot, _savedDisableActions);
+            }
 
-            // 서브스탯 펄스 힌트 전달 (모달 닫힌 후 ItemDetailPopup 에 표시)
+            // 서브스탯 펄스 힌트 전달 (ItemDetailPopup 재오픈 후)
             if (_pendingSubStatPulseIndex >= 0 && _itemDetailPresenter != null)
             {
                 _itemDetailPresenter.HintSubStatPulse(_pendingSubStatPulseIndex);
