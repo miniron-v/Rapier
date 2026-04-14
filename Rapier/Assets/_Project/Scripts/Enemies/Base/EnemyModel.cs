@@ -50,7 +50,7 @@ namespace Game.Enemies
         public void TakeDamage(float amount)
         {
             if (!IsAlive) return;
-            CurrentHp = Mathf.Max(0f, CurrentHp - amount);
+            CurrentHp = Mathf.Max(0f, CurrentHp - Mathf.Floor(amount + 0.5f));
             float ratio = EffectiveMaxHp > 0f ? CurrentHp / EffectiveMaxHp : 0f;
             OnHpChanged?.Invoke(ratio);
             if (!IsAlive) OnDeath?.Invoke();

@@ -158,9 +158,9 @@ namespace Game.Characters
             float metaAtk = _meta?.ComputeAtk(StatData.attackPower) ?? StatData.attackPower;
             float metaMs  = _meta?.ComputeMs(StatData.moveSpeed)    ?? StatData.moveSpeed;
 
-            // HP/ATK는 정수 반올림 — 소수 데미지 방지
-            _finalMaxHp       = Mathf.Round(metaHp  * (1f + (_runStat?.HpPercent  ?? 0f)));
-            _finalAttackPower = Mathf.Round(metaAtk * (1f + (_runStat?.AtkPercent ?? 0f)));
+            // HP/ATK는 정수 반올림 (0.5 항상 올림) — 소수 데미지 방지. Mathf.Round는 banker's rounding이므로 Floor(x+0.5) 사용
+            _finalMaxHp       = Mathf.Floor(metaHp  * (1f + (_runStat?.HpPercent  ?? 0f)) + 0.5f);
+            _finalAttackPower = Mathf.Floor(metaAtk * (1f + (_runStat?.AtkPercent ?? 0f)) + 0.5f);
             _finalMoveSpeed   = metaMs  * (1f + (_runStat?.MsPercent  ?? 0f));
 
             // 감소율형 §3-2 — base × Π_i(1 − metaP_i) × Π_j(1 − runP_j)
@@ -188,7 +188,7 @@ namespace Game.Characters
         public void TakeDamage(float amount)
         {
             if (!IsAlive || IsInvincible) return;
-            CurrentHp = Mathf.Max(0f, CurrentHp - amount);
+            CurrentHp = Mathf.Max(0f, CurrentHp - Mathf.Floor(amount + 0.5f));
             OnHpChanged?.Invoke(CurrentHp);
             if (!IsAlive) OnDeath?.Invoke();
         }
