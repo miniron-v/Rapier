@@ -43,6 +43,9 @@ namespace Game.Characters.Assassin
         [Tooltip("잔상 일반 공격 인디케이터에 쓸 사각형 스프라이트. 미할당 시 런타임 생성.")]
         [SerializeField] private Sprite _attackRangeSprite;
 
+        [Tooltip("잔상 AoE 인디케이터용 원형 스프라이트. Assets/_Project/Art/UI/Circle.png 할당.")]
+        [SerializeField] private Sprite _circleIndicatorSprite;
+
         // ── 비직렬화 런타임 필드 ──────────────────────────────────
         [NonSerialized] private float          _remainingTime;
         [NonSerialized] private float          _damagePercent;
@@ -221,7 +224,7 @@ namespace Game.Characters.Assassin
             go.transform.localScale = new Vector3(radius * 2f, radius * 2f, 1f);
 
             var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite       = CreateCircleSprite(64);
+            sr.sprite       = _circleIndicatorSprite != null ? _circleIndicatorSprite : CreateCircleSprite(64);
             sr.color        = new Color(0.7f, 0.5f, 1f, 0.25f); // 잔상 색조 (연보라)
             sr.sortingOrder = 10;
 
@@ -244,7 +247,7 @@ namespace Game.Characters.Assassin
         }
 
         /// <summary>
-        /// 흰색 원형 스프라이트를 런타임에 생성한다.
+        /// 흰색 원형 스프라이트를 런타임에 생성한다 (_circleIndicatorSprite 미할당 폴백).
         /// </summary>
         private static Sprite CreateCircleSprite(int size)
         {
@@ -253,17 +256,14 @@ namespace Game.Characters.Assassin
             float cx   = size * 0.5f - 0.5f;
             float cy   = size * 0.5f - 0.5f;
             float rSq  = (size * 0.5f) * (size * 0.5f);
-
             for (int y = 0; y < size; y++)
             for (int x = 0; x < size; x++)
             {
-                float dx = x - cx;
-                float dy = y - cy;
+                float dx = x - cx, dy = y - cy;
                 pixels[y * size + x] = (dx * dx + dy * dy) <= rSq
                     ? new Color32(255, 255, 255, 255)
                     : new Color32(0, 0, 0, 0);
             }
-
             tex.SetPixels32(pixels);
             tex.Apply();
             return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), size);

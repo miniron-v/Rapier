@@ -94,8 +94,15 @@ namespace Game.UI.Lobby.Equipment
             _savedDisableActions = disableActions;
             _isAnimating         = false;
 
+            // ItemDetailPopup 참조가 인스펙터에서 빠진 경우 런타임 fallback 탐색
+            if (_itemDetailPresenter == null)
+                _itemDetailPresenter = FindFirstObjectByType<ItemDetailPopupPresenter>(FindObjectsInactive.Include);
+
             // ItemDetailPopup 을 숨겨 렌더 파이프라인 갱신 문제 방지
-            _itemDetailPresenter?.Hide();
+            if (_itemDetailPresenter != null)
+                _itemDetailPresenter.Hide();
+            else
+                Debug.LogWarning("[EnhanceModalPresenter] _itemDetailPresenter 참조 없음 — Hide/Show 토글 실패. 로비 리빌드 필요.");
 
             // 이전 코루틴 정지 (잔여 연출 방지)
             if (_effectCoroutine != null)
