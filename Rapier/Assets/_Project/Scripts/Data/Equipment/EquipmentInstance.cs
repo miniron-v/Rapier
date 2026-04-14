@@ -30,6 +30,9 @@ namespace Game.Data.Equipment
         // Phase 22-B: 장신구 전용 롤된 메인스탯. null 이면 SO._mainStat 사용.
         [NonSerialized] private StatEntry? _rolledMainStat;
 
+        // Phase 25-A: 강화 단계 (0 = 강화 없음)
+        [NonSerialized] private int _enhanceLevel;
+
         // ── 프로퍼티 ────────────────────────────────────────────────────────
 
         /// <summary>인스턴스 고유 ID</summary>
@@ -54,6 +57,12 @@ namespace Game.Data.Equipment
         /// 무기/방어구에서는 항상 null.
         /// </summary>
         public StatEntry? RolledMainStat => _rolledMainStat;
+
+        /// <summary>현재 강화 단계. 0 = 강화 없음.</summary>
+        public int EnhanceLevel => _enhanceLevel;
+
+        /// <summary>이 장비의 최대 강화 단계 (등급 기반).</summary>
+        public int MaxEnhanceLevel => EquipmentGradeHelper.GetMaxEnhance(Grade);
 
         // ── 생성자 (드롭 경로) ───────────────────────────────────────────────
 
@@ -115,12 +124,14 @@ namespace Game.Data.Equipment
             EquipmentGrade runtimeGrade,
             List<StatEntry> subStats,
             bool hasRolledMain,
-            StatEntry rolledMain)
+            StatEntry rolledMain,
+            int enhanceLevel = 0)
         {
-            _instanceId   = instanceId;
-            _data         = data;
-            _runtimeGrade = runtimeGrade;
-            _subStats     = subStats ?? new List<StatEntry>();
+            _instanceId    = instanceId;
+            _data          = data;
+            _runtimeGrade  = runtimeGrade;
+            _subStats      = subStats ?? new List<StatEntry>();
+            _enhanceLevel  = enhanceLevel;
 
             // 소켓 수는 저장값 Grade 기준으로 결정 (SO 원본 Grade 아님)
             int socketCount = EquipmentGradeHelper.GetRuneSocketCount(runtimeGrade);
@@ -134,7 +145,7 @@ namespace Game.Data.Equipment
         /// subStats/rolledMain 없이 이전 포맷 저장 데이터 로드 시 사용.
         /// </summary>
         internal EquipmentInstance(string instanceId, EquipmentItemData data, EquipmentGrade runtimeGrade)
-            : this(instanceId, data, runtimeGrade, null, false, default)
+            : this(instanceId, data, runtimeGrade, null, false, default, 0)
         {
         }
 
@@ -168,6 +179,32 @@ namespace Game.Data.Equipment
         public void InitRunes()
         {
             _equippedRunes = new RuneItemData[_data != null ? _data.RuneSocketCount : 0];
+        }
+
+        // ── 강화 조작 (Phase 25-A) ────────────────────────────────────────────
+
+        /// <summary>
+        /// 강화 단계를 설정한다. 저장 복원 및 강화 API 전용.
+        /// 직접 호출은 EquipmentManager.TryEnhance 또는 Deserialize 경로에서만.
+        /// </summary>
+        internal void SetEnhanceLevel(int level)
+        {
+            _enhanceLevel = level;
+        }
+
+        /// <summary>
+        /// 서브스탯 누적값을 강화로 가산한다. EquipmentManager.TryEnhance 전용.
+        /// </summary>
+        /// <param name="index">_subStats 내 인덱스</param>
+        /// <param name="deltaFlat">flat 가산량</param>
+        /// <param name="deltaPercent">percent 가산량</param>
+        internal void EnhanceSubStat(int index, float deltaFlat, float deltaPercent)
+        {
+            if (_subStats == null || index < 0 || index >= _subStats.Count) return;
+            var sub = _subStats[index];
+            sub.flatValue    += deltaFlat;
+            sub.percentValue += deltaPercent;
+            _subStats[index]  = sub;
         }
 
         // ── 내부 헬퍼 ──────────────────────────────────────────────────────

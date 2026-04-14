@@ -8,10 +8,44 @@ using UnityEngine;
 namespace Game.Data.Equipment
 {
     /// <summary>
+    /// 강화 결과를 나타내는 읽기 전용 구조체 (Phase 25-A).
+    /// </summary>
+    public readonly struct EnhanceResult
+    {
+        /// <summary>강화 성공 여부</summary>
+        public readonly bool Success;
+        /// <summary>소모된 가루</summary>
+        public readonly int DustSpent;
+        /// <summary>강화 전 단계</summary>
+        public readonly int PreviousLevel;
+        /// <summary>강화 후 단계 (실패 시 PreviousLevel 과 동일)</summary>
+        public readonly int NewLevel;
+        /// <summary>서브스탯이 업그레이드되었는지 여부</summary>
+        public readonly bool HasUpgradedSubStat;
+        /// <summary>업그레이드된 서브스탯 타입 (HasUpgradedSubStat 이 true 일 때만 유효)</summary>
+        public readonly StatType UpgradedSubStat;
+        /// <summary>업그레이드된 서브스탯 가산량 (HasUpgradedSubStat 이 true 일 때만 유효)</summary>
+        public readonly float UpgradedSubAmount;
+
+        internal EnhanceResult(bool success, int dustSpent, int previousLevel, int newLevel,
+                               bool hasUpgradedSubStat = false, StatType upgradedSubStat = default, float upgradedSubAmount = 0f)
+        {
+            Success             = success;
+            DustSpent           = dustSpent;
+            PreviousLevel       = previousLevel;
+            NewLevel            = newLevel;
+            HasUpgradedSubStat  = hasUpgradedSubStat;
+            UpgradedSubStat     = upgradedSubStat;
+            UpgradedSubAmount   = upgradedSubAmount;
+        }
+    }
+
+    /// <summary>
     /// 장착/해제/룬 서비스. 인벤토리 및 캐릭터별 장착 세트를 관리한다.
     /// Phase 15-A: Init(saveManager, database) 로 SaveManager 직접 배선.
     /// Equip/Unequip/EquipRune/UnequipRune 내부에서 TrySave → SaveManager.Save() 체인.
     /// IEquipmentSaveProvider (Game.Data.Save) 를 직접 구현하여 SaveManager 에 제공한다.
+    /// Phase 25-A: 분해(Dismantle) / 강화(TryEnhance) / 가루(Dust) API 추가.
     /// </summary>
     public class EquipmentManager : Game.Data.Save.IEquipmentSaveProvider
     {
@@ -36,6 +70,22 @@ namespace Game.Data.Equipment
         /// </summary>
         public event Action OnInventoryChanged;
 
+        /// <summary>
+        /// 장비 인벤토리가 분해 등으로 직접 변경될 때 발행 (Phase 25-A).
+        /// Dismantle 완료 후 발행된다.
+        /// </summary>
+        public event Action OnEquipmentInventoryChanged;
+
+        /// <summary>
+        /// 가루 수량이 변경될 때 발행 (Phase 25-A). 파라미터 = 변경 후 가루 수량.
+        /// </summary>
+        public event Action<int> OnDustChanged;
+
+        /// <summary>
+        /// 강화 완료 시 발행 (Phase 25-A). 성공/실패 무관 (단, Max/비용부족은 발행 X).
+        /// </summary>
+        public event Action<EquipmentInstance, EnhanceResult> OnEquipmentEnhanced;
+
         // ── 내부 상태 ────────────────────────────────────────────────────────
 
         // 전체 보유 장비 인스턴스 인벤토리
@@ -53,6 +103,9 @@ namespace Game.Data.Equipment
         // Phase 14: SO 레지스트리 (Deserialize 에서 assetId → SO 조회)
         private EquipmentDatabase _database;
 
+        // Phase 25-A: 강화 테이블 (null 이면 강화 안전 모드 — 항상 실패 반환)
+        private EnhanceTableData _enhanceTable;
+
         // Phase 14: 현재 프로젝트에 구현된 캐릭터 ID 화이트리스트.
         // equippedMap 복원 시 이 집합에 없는 키는 "미구현" 으로 판정되어 스킵된다 (§7-5 방어 로직).
         // 향후 Warrior/Assassin/Ranger 추가 시 여기에 등록할 것.
@@ -68,15 +121,20 @@ namespace Game.Data.Equipment
         /// <para>
         /// <paramref name="saveManager"/> 는 Equip/Unequip 시 TrySave → Save() 체인에 사용된다.
         /// <paramref name="database"/> 가 null 이면 Deserialize 단계에서 모든 항목이 스킵된다 (경고만, 예외 없음).
+        /// <paramref name="enhanceTable"/> 가 null 이면 강화 API 가 항상 실패 반환하는 안전 모드로 동작한다.
         /// </para>
         /// </summary>
-        public void Init(Game.Data.Save.SaveManager saveManager = null, EquipmentDatabase database = null)
+        public void Init(Game.Data.Save.SaveManager saveManager = null, EquipmentDatabase database = null, EnhanceTableData enhanceTable = null)
         {
-            _saveManager = saveManager;
-            _database    = database;
+            _saveManager  = saveManager;
+            _database     = database;
+            _enhanceTable = enhanceTable;
 
             if (_database == null)
                 Debug.LogWarning("[EquipmentManager] EquipmentDatabase is null — all deserialize will skip.");
+
+            if (_enhanceTable == null)
+                Debug.LogWarning("[EquipmentManager] EnhanceTableData is null — TryEnhance will always fail (safe mode).");
 
             // 이미 다른 인스턴스가 등록된 경우 중복 등록 방지 (경고 없이 조회)
             var existing = ServiceLocator.TryGet<EquipmentManager>();
@@ -263,6 +321,233 @@ namespace Game.Data.Equipment
             _saveManager?.Save();
         }
 
+        // ── 가루 (Dust) API (Phase 25-A) ─────────────────────────────────────
+
+        /// <summary>현재 보유 가루 수량.</summary>
+        public int Dust => _saveManager?.Current?.dust ?? 0;
+
+        /// <summary>
+        /// 가루를 추가한다. TrySave() 및 OnDustChanged 이벤트를 자동 발행한다.
+        /// </summary>
+        public void AddDust(int amount)
+        {
+            if (_saveManager?.Current == null || amount <= 0) return;
+            _saveManager.Current.dust += amount;
+            TrySave();
+            OnDustChanged?.Invoke(_saveManager.Current.dust);
+        }
+
+        /// <summary>
+        /// 가루를 소모한다. 성공 시 true, 부족 시 false 반환.
+        /// 성공 시 TrySave() 및 OnDustChanged 이벤트를 자동 발행한다.
+        /// </summary>
+        public bool TryConsumeDust(int amount)
+        {
+            if (_saveManager?.Current == null) return false;
+            if (_saveManager.Current.dust < amount) return false;
+            _saveManager.Current.dust -= amount;
+            TrySave();
+            OnDustChanged?.Invoke(_saveManager.Current.dust);
+            return true;
+        }
+
+        // ── 분해 API (Phase 25-A) ─────────────────────────────────────────────
+
+        /// <summary>
+        /// 분해 시 획득할 가루 수량을 계산한다 (실제 분해 없음).
+        /// </summary>
+        public int CalculateDismantleYield(EquipmentInstance inst)
+        {
+            if (inst == null) return 0;
+            (int baseYield, int perEnhance) = GetDismantleYield(inst.Grade);
+            return baseYield + perEnhance * inst.EnhanceLevel;
+        }
+
+        /// <summary>
+        /// 장비 목록을 분해하여 가루를 획득한다.
+        /// 장착 중인 항목은 스킵 + LogWarning. 총 획득 가루를 반환한다.
+        /// </summary>
+        public int Dismantle(IEnumerable<EquipmentInstance> targets)
+        {
+            if (targets == null) return 0;
+
+            int totalDust = 0;
+            var toRemove  = new List<EquipmentInstance>();
+
+            foreach (var inst in targets)
+            {
+                if (inst == null) continue;
+
+                // 장착 중인 항목 스킵
+                if (AnyCharacterEquipsInstance(inst))
+                {
+                    Debug.LogWarning($"[EquipmentManager] Dismantle skipped — instance '{inst.InstanceId}' is equipped.");
+                    continue;
+                }
+
+                totalDust += CalculateDismantleYield(inst);
+                toRemove.Add(inst);
+            }
+
+            // 인벤토리에서 제거
+            foreach (var inst in toRemove)
+                _equipmentInventory.Remove(inst);
+
+            if (totalDust > 0)
+                AddDust(totalDust);    // TrySave + OnDustChanged 내부 발행
+            else
+                TrySave();             // 인벤토리 변경만 저장
+
+            OnEquipmentInventoryChanged?.Invoke();
+            return totalDust;
+        }
+
+        /// <summary>
+        /// 어떤 캐릭터든 해당 인스턴스를 장착 중이면 true 반환.
+        /// </summary>
+        private bool AnyCharacterEquipsInstance(EquipmentInstance inst)
+        {
+            foreach (var set in _characterSets.Values)
+            {
+                foreach (var kv in set.GetAllEquipped())
+                {
+                    if (kv.Value == inst) return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>등급별 분해 기본 가루와 강화당 보너스를 반환한다.</summary>
+        private static (int baseYield, int perEnhance) GetDismantleYield(EquipmentGrade grade)
+        {
+            return grade switch
+            {
+                EquipmentGrade.Normal => (5,   2),
+                EquipmentGrade.Rare   => (20,  5),
+                EquipmentGrade.Epic   => (80,  15),
+                EquipmentGrade.Unique => (250, 40),
+                _                    => (5,   2),
+            };
+        }
+
+        // ── 강화 API (Phase 25-A) ─────────────────────────────────────────────
+
+        /// <summary>
+        /// 장비 인스턴스 강화를 시도한다.
+        /// <list type="bullet">
+        ///   <item>최대 강화 단계 도달 → Success=false, DustSpent=0 (이벤트 발행 X)</item>
+        ///   <item>가루 부족 → Success=false, DustSpent=0 (이벤트 발행 X)</item>
+        ///   <item>성공/실패 모두 이벤트 OnEquipmentEnhanced 발행</item>
+        /// </list>
+        /// </summary>
+        public EnhanceResult TryEnhance(EquipmentInstance inst)
+        {
+            if (inst == null)
+                return new EnhanceResult(false, 0, 0, 0);
+
+            int prevLevel = inst.EnhanceLevel;
+            int maxLevel  = inst.MaxEnhanceLevel;
+
+            // 1. 최대 강화 단계 도달
+            if (prevLevel >= maxLevel)
+                return new EnhanceResult(false, 0, prevLevel, prevLevel);
+
+            // 2. 강화 테이블 없음 (안전 모드)
+            if (_enhanceTable == null)
+            {
+                Debug.LogWarning("[EquipmentManager] TryEnhance: EnhanceTableData is null — safe mode, always fail.");
+                return new EnhanceResult(false, 0, prevLevel, prevLevel);
+            }
+
+            int targetLevel = prevLevel + 1;
+            int cost        = _enhanceTable.GetDustCost(targetLevel);
+
+            // 3. 가루 부족
+            if (Dust < cost)
+                return new EnhanceResult(false, 0, prevLevel, prevLevel);
+
+            // 4. 가루 소모
+            TryConsumeDust(cost);   // TrySave + OnDustChanged 내부 발행
+
+            // 5. 성공률 굴림
+            int successPercent = _enhanceTable.GetSuccessPercent(targetLevel);
+            bool success = UnityEngine.Random.Range(0, 100) < successPercent;
+
+            bool hasUpgraded    = false;
+            StatType upgStat    = default;
+            float    upgAmount  = 0f;
+
+            if (success)
+            {
+                inst.SetEnhanceLevel(targetLevel);
+
+                // 서브스탯 강화 (3·6·9·12·15 단계)
+                if (IsSubStatEnhanceStep(targetLevel) && inst.SubStats != null && inst.SubStats.Count > 0)
+                {
+                    int pickedIndex = UnityEngine.Random.Range(0, inst.SubStats.Count);
+                    var pickedSub   = inst.SubStats[pickedIndex];
+
+                    // 풀에서 해당 서브스탯 엔트리 조회 → max × 0.25 가산
+                    var pool = inst.Data?.SubStatPool;
+                    if (pool != null)
+                    {
+                        StatRollEntry matchedEntry = null;
+                        foreach (var e in pool.Entries)
+                        {
+                            if (e != null && e.statType == pickedSub.statType)
+                            {
+                                matchedEntry = e;
+                                break;
+                            }
+                        }
+
+                        if (matchedEntry != null)
+                        {
+                            float rangeMax = GetRangeMax(matchedEntry, inst.Grade);
+                            float delta    = rangeMax * 0.25f;
+
+                            if (matchedEntry.usePercent)
+                                inst.EnhanceSubStat(pickedIndex, 0f, delta);
+                            else
+                                inst.EnhanceSubStat(pickedIndex, delta, 0f);
+
+                            hasUpgraded = true;
+                            upgStat     = pickedSub.statType;
+                            upgAmount   = delta;
+                        }
+                        else
+                        {
+                            Debug.LogWarning($"[EquipmentManager] TryEnhance: SubStatPool 에서 {pickedSub.statType} 매칭 실패 — 서브스탯 강화 스킵.");
+                        }
+                    }
+                }
+            }
+
+            TrySave();
+
+            var result = new EnhanceResult(success, cost, prevLevel, inst.EnhanceLevel, hasUpgraded, upgStat, upgAmount);
+            OnEquipmentEnhanced?.Invoke(inst, result);
+            return result;
+        }
+
+        /// <summary>서브스탯 강화가 발생하는 단계(3·6·9·12·15)이면 true.</summary>
+        private static bool IsSubStatEnhanceStep(int level)
+        {
+            return level == 3 || level == 6 || level == 9 || level == 12 || level == 15;
+        }
+
+        /// <summary>StatRollEntry 의 등급별 max 값을 반환한다.</summary>
+        private static float GetRangeMax(StatRollEntry entry, EquipmentGrade grade)
+        {
+            return grade switch
+            {
+                EquipmentGrade.Rare   => entry.rare.max,
+                EquipmentGrade.Epic   => entry.epic.max,
+                EquipmentGrade.Unique => entry.unique.max,
+                _                    => entry.normal.max,
+            };
+        }
+
         // ── IEquipmentSaveProvider (Game.Data.Save) 구현 ────────────────────
 
         /// <summary>
@@ -301,6 +586,8 @@ namespace Game.Data.Equipment
                     subStats      = subStatsCopy,
                     hasRolledMain = hasRolled,
                     rolledMain    = rolledMainVal,
+                    // Phase 25-A
+                    enhanceLevel  = instance.EnhanceLevel,
                 };
                 result.Add(entry);
             }
@@ -370,7 +657,8 @@ namespace Game.Data.Equipment
                     grade,
                     savedSubs,
                     entry.hasRolledMain,
-                    entry.rolledMain);
+                    entry.rolledMain,
+                    entry.enhanceLevel);   // Phase 25-A
 
                 // 룬 소켓 복원
                 if (entry.runeAssetIds != null)

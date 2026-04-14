@@ -1,0 +1,46 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ce32f338ec4d4dbba005c83381804855, type: 3}
+  m_Name: EnhanceTableData
+  m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Equipment.EnhanceTableData
+  _successPercent:
+  - 100
+  - 100
+  - 90
+  - 80
+  - 70
+  - 60
+  - 50
+  - 40
+  - 30
+  - 25
+  - 20
+  - 15
+  - 12
+  - 8
+  - 5
+  _dustCost:
+  - 10
+  - 20
+  - 40
+  - 70
+  - 110
+  - 160
+  - 230
+  - 320
+  - 430
+  - 580
+  - 770
+  - 1000
+  - 1300
+  - 1700
+  - 2200

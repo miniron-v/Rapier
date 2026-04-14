@@ -45,11 +45,21 @@ namespace Game.Data.MetaStats
 
                 // 메인 스탯 누산
                 // Phase 22-B: 장신구(Necklace/Ring)는 RolledMainStat 우선, null 이면 SO._mainStat fallback
+                // Phase 25-A: 강화 레벨에 따라 메인스탯에 × (1 + 0.10 × enhanceLevel) 배율 적용
                 bool isAccessory = instance.Data.SlotType == EquipmentSlotType.Necklace
                                 || instance.Data.SlotType == EquipmentSlotType.Ring;
-                var mainStat = isAccessory
+                var rawMainStat = isAccessory
                     ? (instance.RolledMainStat ?? instance.Data.MainStat)
                     : instance.Data.MainStat;
+
+                // 강화 배율 적용 (enhanceLevel 0 이면 배율 1.0 — 변화 없음)
+                float enhanceMultiplier = 1f + 0.10f * instance.EnhanceLevel;
+                var mainStat = new StatEntry
+                {
+                    statType     = rawMainStat.statType,
+                    flatValue    = rawMainStat.flatValue    * enhanceMultiplier,
+                    percentValue = rawMainStat.percentValue * enhanceMultiplier,
+                };
                 container.Apply(mainStat);
 
                 // 서브 스탯 누산 (Phase 22-B: 인스턴스 롤 결과 사용)

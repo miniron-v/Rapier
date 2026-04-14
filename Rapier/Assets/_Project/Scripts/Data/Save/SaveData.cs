@@ -52,6 +52,8 @@ namespace Game.Data.Save
         public int  gachaTicket      = 0;
         public int  reinforceMaterial = 0;
         public int  runeGachaTicket  = 0;
+        /// <summary>분해 가루. 분해/강화 시스템에서 사용.</summary>
+        public int  dust             = 0;
 
         // ── 미션 ───────────────────────────────────────────────────
         public List<MissionProgressEntry> dailyMissions  = new();
@@ -99,6 +101,10 @@ namespace Game.Data.Save
         public bool hasRolledMain = false;
         /// <summary>장신구 드롭 시 롤된 메인스탯. hasRolledMain 이 true 일 때만 유효.</summary>
         public StatEntry rolledMain;
+
+        // Phase 25-A: 강화 단계
+        /// <summary>강화 단계. 0 = 강화 없음.</summary>
+        public int enhanceLevel = 0;
     }
 
     [Serializable]

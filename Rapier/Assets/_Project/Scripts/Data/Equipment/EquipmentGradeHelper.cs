@@ -51,5 +51,21 @@ namespace Game.Data.Equipment
                 ? c
                 : UnityEngine.Color.white;
         }
+
+        /// <summary>
+        /// 등급에 대응하는 최대 강화 단계를 반환한다.
+        /// Normal=6, Rare=9, Epic=12, Unique=15
+        /// </summary>
+        public static int GetMaxEnhance(EquipmentGrade grade)
+        {
+            return grade switch
+            {
+                EquipmentGrade.Normal => 6,
+                EquipmentGrade.Rare   => 9,
+                EquipmentGrade.Epic   => 12,
+                EquipmentGrade.Unique => 15,
+                _                    => 6
+            };
+        }
     }
 }

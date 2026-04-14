@@ -45,6 +45,13 @@ namespace Game.Core.Services
                 if (db == null)
                     Debug.LogWarning("[GameBootstrap] EquipmentDatabase not found in Resources — Deserialize will skip all entries.");
 
+                // Phase 25-A: EnhanceTableData SO 로드.
+                //    Resources/EnhanceTableData.asset 에 위치해야 한다.
+                //    실패 시 경고 후 null 로 진행 — 강화 API 가 안전 모드(항상 실패 반환)로 동작.
+                var enhanceTable = Resources.Load<EnhanceTableData>("EnhanceTableData");
+                if (enhanceTable == null)
+                    Debug.LogWarning("[GameBootstrap] EnhanceTableData not found in Resources — TryEnhance will always fail (safe mode). Bootstrap continues.");
+
                 // 3. EquipmentManager 생성 (Init 은 sm 준비 후 호출)
                 var em = new EquipmentManager();
 
@@ -54,7 +61,8 @@ namespace Game.Core.Services
 
                 // 5. em.Init — sm 주입 후 호출해야 Equip → TrySave → sm.Save() 체인이 즉시 유효.
                 //    Init 내부에서 ServiceLocator.Register(em) 수행.
-                em.Init(saveManager: sm, database: db);
+                //    Phase 25-A: enhanceTable 추가 주입.
+                em.Init(saveManager: sm, database: db, enhanceTable: enhanceTable);
 
                 // 6. Load 전에 파일 존재 여부를 캡처 (Load 이후엔 파일이 생성되어 판정 불가)
                 string savePath = Path.Combine(Application.persistentDataPath, "save.json");
