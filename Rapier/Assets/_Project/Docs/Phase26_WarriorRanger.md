@@ -2,6 +2,8 @@
 
 **작성일**: 2026-04-14
 **기준 커밋**: develop @ 77d3d69
+**완료일**: 2026-04-14 (세션 15, develop @ d99820d)
+**상태**: **코드 구현 전부 완료. Unity 플레이 테스트 + 비주얼 에셋 수동 할당 대기.**
 **목표**: 기존 Rapier/Assassin 2종 라인업에 Warrior/Ranger 를 추가, 4종 체제 완성.
 **참조 문서**: `Domains/CHARACTERS.md` §3 (갱신 완료), `Domains/INPUT.md` §3-1 (신설)
 
@@ -9,12 +11,12 @@
 
 ## 1. 전체 구조
 
-| Phase | 범위 | 브랜치 | 담당 | 의존성 |
+| Phase | 범위 | 브랜치 | 커밋 | 상태 |
 |---|---|---|---|---|
-| 26-A | GestureRecognizer 확장 (Hold 후 Drag/Swipe 이벤트 3종) | `phase-26a-input-holdext` | 단독 먼저 완료 | — |
-| 26-B | CharacterModel 방향성 방어 API + Warrior 구현 | `phase-26b-warrior` | 26-A 이후 | 26-A |
-| 26-C | Ranger 구현 (투사체/지뢰/차지 조준) | `phase-26c-ranger` | 26-A 이후 | 26-A |
-| 26-D | 캐릭터 선택 UI 활성화 + CharacterSpawner 등록 + 프리팹/Stat SO 에셋 생성 | `phase-26d-integration` | B/C 머지 후 | B, C |
+| 26-A | GestureRecognizer 확장 (Hold 후 Drag/Swipe 이벤트 3종) | `phase-26a-input-holdext` | c97268a | ff-merged (세션 14) |
+| 26-B | CharacterModel 방향성 방어 API + Warrior 구현 | `phase-26b-warrior` | ca7680e | ff-merged (세션 15) |
+| 26-C | Ranger 구현 (투사체/지뢰/차지 조준) | `phase-26c-ranger` | 08cb985 | ff-merged (세션 15, rebase onto 26-B 후) |
+| 26-D | 캐릭터 선택 UI 활성화 + CharacterSpawner 등록 + 프리팹/Stat SO 에셋 생성 | `phase-26d-integration` | d99820d | ff-merged (세션 15) |
 
 **병렬 포인트**: 26-A 를 먼저 ff-머지한 뒤, 26-B 와 26-C 를 **병렬 워크트리**로 동시 진행 가능. 충돌 영역은 26-D 에서 통합.
 
@@ -156,6 +158,28 @@
 
 ## 7. 오픈 이슈 (작업 중 확정 필요)
 
-- AimIndicatorView 의 시각 에셋: 라인렌더러 / 스프라이트 / Mesh 중 어느 방식? (Rapier-Private 에셋 의존)
+- AimIndicatorView 의 시각 에셋: 라인렌더러 / 스프라이트 / Mesh 중 어느 방식? (Rapier-Private 에셋 의존) → **LineRenderer 기본으로 구현됨, 스프라이트 필드 SerializeField 노출 (후속 교체 가능)**
 - 방패 휘두르기 / 대지 분쇄 이펙트 에셋도 Phase 26-D 에서 플레이스홀더 → 후속 폴리시로 교체
-- 지뢰/화살 프리팹 레이어: Projectile 레이어 재사용 가능한지 26-C 시작 시 확인
+- 지뢰/화살 프리팹 레이어: Projectile 레이어 재사용 가능한지 26-C 시작 시 확인 → **RangerPlayer.prefab `_arrowPrefab` / `_minePrefab` null 상태. Unity 에서 프리팹 생성 후 할당 필요**
+
+---
+
+## 8. 완료 후 잔여 과제 (세션 15 기준)
+
+### Unity 인스펙터 수동 작업 (에이전트 수행 불가)
+
+1. **WarriorStatData.illustSprite / RangerStatData.illustSprite** 할당 (Rapier-Private 에셋)
+2. **RangerPlayer.prefab `_arrowPrefab` / `_minePrefab`** 프리팹 생성 후 드래그 할당
+3. **WarriorPlayer / RangerPlayer 캐릭터 고유 시각 에셋** (현재 Rapier 기본값 복사) 교체
+4. **LobbyHudSetup 에디터 메뉴 재실행** — 기존 씬 HUD 의 `_warriorData` / `_rangerData` 슬롯 자동 할당
+
+### 식별된 기존 버그 (이번 범위 외)
+
+- **Assassin characterId 기본값 버그**: `AssassinPresenter.Init` 이 Base.Init 의 characterId 기본값 `"Rapier"` 를 사용 → 장비 저장/조회 시 Rapier 와 동일 키로 처리됨. Unity 테스트 단계에서 재현 후 수정 예정.
+
+### 다음 세션 플레이 테스트 시나리오
+
+- Warrior/Ranger 로비 선택 → 게임 씬 진입 → 해당 프리팹 스폰 확인
+- Warrior: 차지 중 데미지 50% 감소 / Full 전 무반응 / Full 후 Swipe 패링 / Full 후 Release 대지 분쇄 / 가드 방향 일치 피격 → 패링 콜백
+- Ranger: Tap 화살 / Hold 중 이동·회피·Tap 차단 (CanDodge=false) / Release 차지량 lerp / DodgeComplete 지뢰 (max 6) / 저스트 회피 강화 화살
+- 기존 Rapier/Assassin 회귀 없음 확인 (TakeDamage 시그니처 확장 + CanDodge 기본 true)
