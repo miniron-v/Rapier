@@ -121,6 +121,18 @@ namespace Game.UI.Lobby.Equipment
             _view?.PulseSubStatHighlight(subStatIndex);
         }
 
+        /// <summary>
+        /// 현재 표시 중인 아이템의 View 데이터를 재갱신한다.
+        /// 강화 완료 후 EnhanceModalPresenter 에서 닫힐 때 호출한다.
+        /// </summary>
+        public void RefreshCurrentItem()
+        {
+            if (_view == null || _currentInstance == null) return;
+            bool isEquipped    = IsEquippedByCurrentChar(_currentInstance);
+            bool equippedOther = !isEquipped && IsEquippedByAnyChar(_currentInstance);
+            _view.SetData(_currentInstance, isEquipped, equippedOther, _disableActions);
+        }
+
         // ── Event Handlers ───────────────────────────────────────────────────
 
         private void HandleEquipClicked()
@@ -131,13 +143,10 @@ namespace Game.UI.Lobby.Equipment
             bool isEquipped = IsEquippedByCurrentChar(_currentInstance);
             if (isEquipped)
             {
-                // 해제
+                // 해제 후 즉시 창 닫기 (장착과 대칭)
                 _manager.Unequip(_characterId, _currentSlot);
                 Debug.Log($"[ItemDetailPresenter] 해제: {_currentInstance.Data.ItemName} 슬롯={_currentSlot}");
-                // 해제 후 버튼 상태만 갱신 (창 유지)
-                bool nowEquipped = IsEquippedByCurrentChar(_currentInstance);
-                bool nowOther    = !nowEquipped && IsEquippedByAnyChar(_currentInstance);
-                _view.SetData(_currentInstance, nowEquipped, nowOther, _disableActions);
+                Hide();
             }
             else
             {

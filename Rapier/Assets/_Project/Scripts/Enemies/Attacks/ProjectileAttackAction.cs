@@ -61,6 +61,10 @@ namespace Game.Enemies
             float   traveled = 0f;
             bool    hit      = false;
 
+            // 스테이지 경계 (null 이면 무한)
+            float halfW = ctx.Stage != null ? ctx.Stage.stageWidth  * 0.5f : float.MaxValue;
+            float halfH = ctx.Stage != null ? ctx.Stage.stageHeight * 0.5f : float.MaxValue;
+
             while (traveled < maxRange)
             {
                 if (proj == null) break;
@@ -78,6 +82,11 @@ namespace Game.Enemies
                 step = Mathf.Min(step, maxRange - traveled);
                 proj.transform.position = (Vector2)proj.transform.position + dir * step;
                 traveled += step;
+
+                // 스테이지 경계 이탈 시 소멸
+                Vector2 pos2d = proj.transform.position;
+                if (Mathf.Abs(pos2d.x) >= halfW || Mathf.Abs(pos2d.y) >= halfH)
+                    break;
 
                 // 히트 판정
                 if (ctx.PlayerTransform != null &&

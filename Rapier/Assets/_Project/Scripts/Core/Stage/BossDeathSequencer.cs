@@ -3,6 +3,7 @@ using System.Collections;
 using UnityEngine;
 using Game.Core;
 using Game.Data.Equipment;
+using Game.Data.Stage;
 using Game.Enemies;
 using Game.Input;
 
@@ -169,8 +170,12 @@ namespace Game.Core.Stage
             // ④ 드롭 판정 + ⑤ DroppedItemView 흩뿌림 (최종 보스만)
             if (spawnDrops)
             {
+                // 스테이지 공통 드롭률 오버라이드 취득
+                var stageMgr = ServiceLocator.TryGet<StageManager>();
+                GradeDropRate[] stageDropRates = stageMgr?.CurrentStageData?.GradeDropRates;
+
                 var lootManager = new LootManager();
-                var drops = lootManager.RollDrop(statData?.dropTable);
+                var drops = lootManager.RollDrop(statData?.dropTable, stageDropRates);
 
                 if (_droppedItemPrefab == null)
                 {

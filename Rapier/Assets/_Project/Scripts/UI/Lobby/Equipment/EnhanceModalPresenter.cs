@@ -114,6 +114,9 @@ namespace Game.UI.Lobby.Equipment
             UnsubscribeManagerEvents();
             _view?.SetVisible(false);
 
+            // 아이템 상세 팝업 스탯 텍스트 재갱신 (강화 후 수치 반영)
+            _itemDetailPresenter?.RefreshCurrentItem();
+
             // 서브스탯 펄스 힌트 전달 (모달 닫힌 후 ItemDetailPopup 에 표시)
             if (_pendingSubStatPulseIndex >= 0 && _itemDetailPresenter != null)
             {

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using Game.Data.Stage;
 
 namespace Game.Data.Equipment
 {
@@ -14,11 +15,14 @@ namespace Game.Data.Equipment
         /// <para>
         /// - dropTable이 null이면 빈 리스트를 반환한다.<br/>
         /// - 등급별 독립 판정: 각 DropEntry의 DropRate를 Random.value와 비교.<br/>
+        /// - stageDropRates가 지정되면 해당 등급의 드롭률을 오버라이드한다.<br/>
         /// - 최대 MaxDrops 개 제한 (기본 5): 상위 등급(Unique → Epic → Rare → Normal) 우선, 초과분 버림.<br/>
         /// - pool이 비어있거나 null인 항목은 스킵.
         /// </para>
         /// </summary>
-        public List<EquipmentInstance> RollDrop(DropTableData dropTable)
+        /// <param name="dropTable">보스의 드롭 테이블.</param>
+        /// <param name="stageDropRates">스테이지 공통 등급별 드롭률 오버라이드. null 또는 빈 배열이면 DropTable 기본값 사용.</param>
+        public List<EquipmentInstance> RollDrop(DropTableData dropTable, GradeDropRate[] stageDropRates = null)
         {
             var result = new List<EquipmentInstance>();
 
@@ -30,10 +34,8 @@ namespace Game.Data.Equipment
                 return result;
 
             // 상위 등급 우선 정렬을 위해 내부 버킷 사용 (Unique=3 → Normal=0 순)
-            // DropEntry 리스트를 등급 내림차순으로 처리
             var candidates = new List<EquipmentInstance>();
 
-            // 등급 높은 순으로 순회하기 위해 내림차순 정렬된 복사본 활용
             var sortedEntries = new List<DropEntry>(entries.Count);
             for (int i = 0; i < entries.Count; i++)
             {
@@ -47,10 +49,23 @@ namespace Game.Data.Equipment
                 if (entry.Pool == null || entry.Pool.Length == 0)
                     continue;
 
-                // 독립 확률 판정
-                if (Random.value <= entry.DropRate)
+                // 스테이지 오버라이드 드롭률 적용 (없으면 DropEntry 기본값)
+                float rate = entry.DropRate;
+                if (stageDropRates != null)
                 {
-                    // pool에서 랜덤 1개 선택
+                    foreach (var sr in stageDropRates)
+                    {
+                        if (sr.grade == entry.Grade)
+                        {
+                            rate = sr.dropRate;
+                            break;
+                        }
+                    }
+                }
+
+                // 독립 확률 판정
+                if (Random.value <= rate)
+                {
                     var validPool = new List<EquipmentItemData>();
                     foreach (var item in entry.Pool)
                     {
