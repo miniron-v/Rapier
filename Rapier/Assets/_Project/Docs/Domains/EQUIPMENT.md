@@ -143,7 +143,15 @@ foreach (DropEntry entry in dropTable.entries)  // 등급별 독립 판정 (높�
 ```
 
 기본 확률 (SO에서 조정): 노말 80% / 레어 30% / 에픽 10% / 유니크 2%.
-스테이지 스케일링은 드롭 확률에 영향 없음.
+
+**스테이지별 등급 드롭률 오버라이드**: `StageData._gradeDropRates` (GradeDropRate[]) 가 설정된 스테이지에서는 DropEntry.dropRate 대신 등급별 오버라이드 값을 사용. BossDeathSequencer → LootManager.RollDrop(dropTable, stageDropRates) 경로로 전달. Rate=0 이면 해당 등급 차단. 저스테이지 상위 등급 봉쇄 + 고스테이지 유니크 해금에 사용.
+
+| 스테이지 | Normal | Rare | Epic | Unique |
+|---|---|---|---|---|
+| 1~2 | 90~95% | 0 | 0 | 0 |
+| 3~4 | 95% | 50~70% | 0 | 0 |
+| 5~7 | 95% | 80~90% | 30~60% | 0 |
+| 8~10 | 95% | 80~90% | 50~60% | 3~8% |
 
 ### DroppedItemView 비주얼 및 감지
 
