@@ -755,6 +755,56 @@ namespace Game.Characters
             return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), size);
         }
 
+        /// <summary>
+        /// 원형 AoE 공격 범위 인디케이터를 생성하고 duration 후 자동 소멸시킨다.
+        /// 원형 스프라이트는 런타임 Texture2D로 생성한다 (SerializeField 없이 동작).
+        /// 외부 스프라이트가 필요하면 자식 클래스에서 오버라이드 없이 해당 GO에 직접 할당할 것.
+        /// </summary>
+        /// <param name="center">인디케이터 월드 중심 좌표</param>
+        /// <param name="radius">원의 반지름 (UnityUnit)</param>
+        /// <param name="duration">표시 지속 시간 (초)</param>
+        protected void ShowAoeRangeIndicator(Vector2 center, float radius, float duration)
+        {
+            var go = new GameObject("AoeRangeIndicator");
+            go.transform.position = new Vector3(center.x, center.y, 0f);
+            // 사각형 스프라이트를 동일 비율(1:1) 스케일로 배치 → 원처럼 보이려면 원형 스프라이트 권장.
+            // 현재는 런타임 원형 텍스처(Texture2D 픽셀 연산)로 생성하여 사용한다.
+            go.transform.localScale = new Vector3(radius * 2f, radius * 2f, 1f);
+
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite       = CreateCircleSprite(64);
+            sr.color        = new Color(1f, 0.5f, 0f, 0.25f); // 주황 반투명
+            sr.sortingOrder = 10;
+
+            Destroy(go, duration);
+        }
+
+        /// <summary>
+        /// 지정 크기의 원형 Sprite를 런타임에 생성한다 (흰색 불투명).
+        /// </summary>
+        private static Sprite CreateCircleSprite(int size)
+        {
+            var tex    = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            var pixels = new Color32[size * size];
+            float cx   = size * 0.5f - 0.5f;
+            float cy   = size * 0.5f - 0.5f;
+            float rSq  = (size * 0.5f) * (size * 0.5f);
+
+            for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+            {
+                float dx = x - cx;
+                float dy = y - cy;
+                pixels[y * size + x] = (dx * dx + dy * dy) <= rSq
+                    ? new Color32(255, 255, 255, 255)
+                    : new Color32(0, 0, 0, 0);
+            }
+
+            tex.SetPixels32(pixels);
+            tex.Apply();
+            return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), size);
+        }
+
         // ── 타겟 탐색 ─────────────────────────────────────────────
         /// <summary>
         /// Physics2D 기반 근접 적 탐색. WaveManager/BossRushManager 의존 없이 어느 씬에서든 동작.

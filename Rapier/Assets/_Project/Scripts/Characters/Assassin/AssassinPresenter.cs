@@ -258,6 +258,9 @@ namespace Game.Characters.Assassin
                                * Model.SkillDamageMultiplier;
             int   enemyLayer = LayerMask.GetMask("Enemy");
 
+            // 360도 광역 베기 범위 인디케이터 — 공격 판정 직전에 표시
+            ShowAoeRangeIndicator(transform.position, radius, 0.15f);
+
             var hits     = Physics2D.OverlapCircleAll(transform.position, radius, enemyLayer);
             int hitCount = 0;
 

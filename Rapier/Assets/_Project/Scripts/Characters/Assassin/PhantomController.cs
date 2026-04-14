@@ -30,15 +30,18 @@ namespace Game.Characters.Assassin
     public class PhantomController : MonoBehaviour
     {
         // ── 상수 ──────────────────────────────────────────────────
-        private const float FADE_DURATION        = 0.5f;
-        private const float PHANTOM_ALPHA        = 0.5f;
-        private const float ATTACK_BOX_WIDTH     = 2.0f;
-        private const float ATTACK_BOX_HEIGHT    = 1.5f;
-        private const float ATTACK_BOX_OFFSET    = 1.0f;
-        private const float ATTACK_RANGE         = 3.0f;
+        private const float FADE_DURATION         = 0.5f;
+        private const float PHANTOM_ALPHA         = 0.5f;
+        private const float ATTACK_BOX_WIDTH      = 2.0f;
+        private const float ATTACK_BOX_HEIGHT     = 1.5f;
+        private const float ATTACK_BOX_OFFSET     = 1.0f;
+        private const float ATTACK_RANGE          = 3.0f;
         private const float ATTACK_FLASH_DURATION = 0.08f;
+        private const float INDICATOR_DURATION    = 0.15f;
 
-        // ── 직렬화 필드 (없음 — 모두 Init 주입) ──────────────────
+        // ── 직렬화 필드 ────────────────────────────────────────────
+        [Tooltip("잔상 일반 공격 인디케이터에 쓸 사각형 스프라이트. 미할당 시 런타임 생성.")]
+        [SerializeField] private Sprite _attackRangeSprite;
 
         // ── 비직렬화 런타임 필드 ──────────────────────────────────
         [NonSerialized] private float          _remainingTime;
@@ -101,6 +104,9 @@ namespace Game.Characters.Assassin
             Vector2 dir = (targetPos - (Vector2)transform.position).normalized;
             if (dir == Vector2.zero) dir = Vector2.up;
 
+            // 잔상 일반 공격 범위 인디케이터 — 판정 직전 표시
+            ShowBoxIndicator(dir);
+
             float damage     = baseDamage * (_damagePercent / 100f);
             var   boxCenter  = (Vector2)transform.position + dir * ATTACK_BOX_OFFSET;
             var   boxSize    = new Vector2(ATTACK_BOX_WIDTH, ATTACK_BOX_HEIGHT);
@@ -161,6 +167,9 @@ namespace Game.Characters.Assassin
         {
             if (_isExpired) return;
 
+            // 잔상 AoE 범위 인디케이터 — 판정 직전 표시
+            ShowCircleIndicator(ATTACK_RANGE);
+
             int   enemyLayer = LayerMask.GetMask("Enemy");
             var   hits       = Physics2D.OverlapCircleAll(transform.position, ATTACK_RANGE, enemyLayer);
             int   hitCount   = 0;
@@ -176,6 +185,88 @@ namespace Game.Characters.Assassin
 
             ShowAttackFlash();
             Debug.Log($"[PhantomController] AoE 동참 @ {transform.position}, 히트: {hitCount}");
+        }
+
+        // ── 인디케이터 ────────────────────────────────────────────
+
+        /// <summary>
+        /// 잔상 일반 공격용 사각형 인디케이터를 생성하고 INDICATOR_DURATION 후 자동 소멸한다.
+        /// _attackRangeSprite 미할당 시 런타임 생성 사각형 스프라이트로 대체.
+        /// </summary>
+        private void ShowBoxIndicator(Vector2 dir)
+        {
+            var   boxCenter = (Vector2)transform.position + dir * ATTACK_BOX_OFFSET;
+            float angle     = Vector2.SignedAngle(Vector2.up, dir);
+
+            var go = new GameObject("PhantomBoxIndicator");
+            go.transform.position   = new Vector3(boxCenter.x, boxCenter.y, 0f);
+            go.transform.rotation   = Quaternion.Euler(0f, 0f, angle);
+            go.transform.localScale = new Vector3(ATTACK_BOX_WIDTH, ATTACK_BOX_HEIGHT, 1f);
+
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite       = _attackRangeSprite != null ? _attackRangeSprite : CreateSquareSprite();
+            sr.color        = new Color(0.7f, 0.5f, 1f, 0.25f); // 잔상 색조 (연보라)
+            sr.sortingOrder = 10;
+
+            Destroy(go, INDICATOR_DURATION);
+        }
+
+        /// <summary>
+        /// 잔상 AoE 공격용 원형 인디케이터를 생성하고 INDICATOR_DURATION 후 자동 소멸한다.
+        /// </summary>
+        private void ShowCircleIndicator(float radius)
+        {
+            var go = new GameObject("PhantomCircleIndicator");
+            go.transform.position   = transform.position;
+            go.transform.localScale = new Vector3(radius * 2f, radius * 2f, 1f);
+
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite       = CreateCircleSprite(64);
+            sr.color        = new Color(0.7f, 0.5f, 1f, 0.25f); // 잔상 색조 (연보라)
+            sr.sortingOrder = 10;
+
+            Destroy(go, INDICATOR_DURATION);
+        }
+
+        /// <summary>
+        /// 흰색 사각형 스프라이트를 런타임에 생성한다 (_attackRangeSprite 미할당 폴백).
+        /// </summary>
+        private static Sprite CreateSquareSprite()
+        {
+            const int size = 32;
+            var tex    = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            var pixels = new Color32[size * size];
+            for (int i = 0; i < pixels.Length; i++)
+                pixels[i] = new Color32(255, 255, 255, 255);
+            tex.SetPixels32(pixels);
+            tex.Apply();
+            return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), size);
+        }
+
+        /// <summary>
+        /// 흰색 원형 스프라이트를 런타임에 생성한다.
+        /// </summary>
+        private static Sprite CreateCircleSprite(int size)
+        {
+            var tex    = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            var pixels = new Color32[size * size];
+            float cx   = size * 0.5f - 0.5f;
+            float cy   = size * 0.5f - 0.5f;
+            float rSq  = (size * 0.5f) * (size * 0.5f);
+
+            for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+            {
+                float dx = x - cx;
+                float dy = y - cy;
+                pixels[y * size + x] = (dx * dx + dy * dy) <= rSq
+                    ? new Color32(255, 255, 255, 255)
+                    : new Color32(0, 0, 0, 0);
+            }
+
+            tex.SetPixels32(pixels);
+            tex.Apply();
+            return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), size);
         }
 
         // ── 공격 시각 피드백 ──────────────────────────────────────
