@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using Game.Data.Equipment;
 using TMPro;
@@ -9,8 +10,9 @@ namespace Game.UI.Lobby.Equipment
 {
     /// <summary>
     /// 아이템 상세 팝업 View.
-    /// 아이콘, 스탯창(메인+서브 고정 크기), 룬 소켓 행, 설명, 장착/닫기 버튼을 세로 정렬로 표시한다.
+    /// 아이콘, 스탯창(메인+서브 고정 크기), 룬 소켓 행, 설명, 장착/강화/닫기 버튼을 세로 정렬로 표시한다.
     /// 로직 없음 — 표시 및 이벤트 발행만 담당. (MVP View 규칙)
+    /// Phase 25-C: 3버튼화 (장착/해제 · 강화 · 닫기), disableActions, 서브스탯 노란 펄스 지원.
     /// </summary>
     public class ItemDetailPopupView : MonoBehaviour
     {
@@ -34,6 +36,8 @@ namespace Game.UI.Lobby.Equipment
         [Header("버튼")]
         [SerializeField] private Button          _equipButton;
         [SerializeField] private TextMeshProUGUI _equipButtonText;
+        [SerializeField] private Button          _enhanceButton;
+        [SerializeField] private TextMeshProUGUI _enhanceButtonText;
         [SerializeField] private Button          _closeButton;
 
         // ── 이벤트 (View → Presenter) ────────────────────────────────────────
@@ -41,17 +45,25 @@ namespace Game.UI.Lobby.Equipment
         /// <summary>장착/해제 버튼 클릭</summary>
         public event Action OnEquipClicked;
 
+        /// <summary>강화 버튼 클릭</summary>
+        public event Action OnEnhanceClicked;
+
         /// <summary>닫기 버튼 클릭</summary>
         public event Action OnCloseClicked;
 
         /// <summary>룬 소켓 클릭 (소켓 인덱스)</summary>
         public event Action<int> OnRuneSocketClicked;
 
+        // ── Private ──────────────────────────────────────────────────────────
+
+        [System.NonSerialized] private Coroutine _subStatPulseCoroutine;
+
         // ── Unity Lifecycle ──────────────────────────────────────────────────
 
         private void Awake()
         {
             _equipButton?.onClick.AddListener(() => OnEquipClicked?.Invoke());
+            _enhanceButton?.onClick.AddListener(() => OnEnhanceClicked?.Invoke());
             _closeButton?.onClick.AddListener(() => OnCloseClicked?.Invoke());
 
             for (int i = 0; i < _runeSocketButtons.Count; i++)
@@ -64,6 +76,7 @@ namespace Game.UI.Lobby.Equipment
         private void OnDestroy()
         {
             _equipButton?.onClick.RemoveAllListeners();
+            _enhanceButton?.onClick.RemoveAllListeners();
             _closeButton?.onClick.RemoveAllListeners();
             foreach (var btn in _runeSocketButtons)
                 btn?.onClick.RemoveAllListeners();
@@ -73,6 +86,7 @@ namespace Game.UI.Lobby.Equipment
 
         /// <summary>
         /// LobbyHudSetup 에서 참조를 주입한다.
+        /// Phase 25-C: enhanceButton, enhanceButtonText 추가.
         /// </summary>
         public void InitReferences(
             TextMeshProUGUI itemNameText,
@@ -84,6 +98,8 @@ namespace Game.UI.Lobby.Equipment
             TextMeshProUGUI descriptionText,
             Button          equipButton,
             TextMeshProUGUI equipButtonText,
+            Button          enhanceButton,
+            TextMeshProUGUI enhanceButtonText,
             Button          closeButton)
         {
             _itemNameText      = itemNameText;
@@ -95,11 +111,15 @@ namespace Game.UI.Lobby.Equipment
             _descriptionText   = descriptionText;
             _equipButton       = equipButton;
             _equipButtonText   = equipButtonText;
+            _enhanceButton     = enhanceButton;
+            _enhanceButtonText = enhanceButtonText;
             _closeButton       = closeButton;
 
             // 런타임 주입 후 리스너 재등록
             _equipButton?.onClick.RemoveAllListeners();
             _equipButton?.onClick.AddListener(() => OnEquipClicked?.Invoke());
+            _enhanceButton?.onClick.RemoveAllListeners();
+            _enhanceButton?.onClick.AddListener(() => OnEnhanceClicked?.Invoke());
             _closeButton?.onClick.RemoveAllListeners();
             _closeButton?.onClick.AddListener(() => OnCloseClicked?.Invoke());
 
@@ -118,9 +138,10 @@ namespace Game.UI.Lobby.Equipment
 
         /// <summary>
         /// 아이템 상세 정보를 표시한다.
-        /// isAccessory: 장신구면 RolledMainStat 사용, 아니면 SO MainStat 사용.
+        /// disableActions: 분해 모드 진입 시 true — 장착/강화 모두 비활성.
         /// </summary>
-        public void SetData(EquipmentInstance instance, bool isEquipped, bool equippedByOther)
+        public void SetData(EquipmentInstance instance, bool isEquipped, bool equippedByOther,
+                            bool disableActions = false)
         {
             if (instance == null) return;
 
@@ -162,6 +183,9 @@ namespace Game.UI.Lobby.Equipment
                 {
                     _subStatTexts[i].text     = FormatStatEntry(subStats[i]);
                     _subStatTexts[i].gameObject.SetActive(true);
+                    // 펄스 중이 아닌 경우 기본 색 복원
+                    if (_subStatPulseCoroutine == null)
+                        _subStatTexts[i].color = new Color(0.8f, 0.8f, 0.8f);
                 }
                 else
                 {
@@ -186,15 +210,108 @@ namespace Game.UI.Lobby.Equipment
             // 설명
             _descriptionText.text = data.Description;
 
-            // 장착/해제 버튼 라벨 + 색상
-            // 해제: 빨강 (닫기 버튼과 동일) / 장착: 녹색
-            _equipButtonText.text = isEquipped ? "해제" : "장착";
-            if (_equipButton != null && _equipButton.image != null)
+            // 장착/해제 버튼 상태
+            if (disableActions)
             {
-                _equipButton.image.color = isEquipped
-                    ? new Color(0.5f, 0.2f, 0.2f)   // 해제 = 닫기와 동일 빨강
-                    : new Color(0.2f, 0.7f, 0.3f);  // 장착 = 녹색
+                SetEquipButtonDisabled();
+                SetEnhanceButtonDisabled();
             }
+            else
+            {
+                // 장착/해제 버튼 라벨 + 색상
+                _equipButtonText.text = isEquipped ? "해제" : "장착";
+                if (_equipButton != null)
+                {
+                    _equipButton.interactable = true;
+                    if (_equipButton.image != null)
+                    {
+                        _equipButton.image.color = isEquipped
+                            ? new Color(0.5f, 0.2f, 0.2f)   // 해제 = 빨강
+                            : new Color(0.2f, 0.7f, 0.3f);  // 장착 = 녹색
+                    }
+                }
+
+                // 강화 버튼 활성 조건
+                bool atMax = instance.EnhanceLevel >= instance.MaxEnhanceLevel;
+                if (atMax)
+                    SetEnhanceButtonDisabled();
+                else
+                    SetEnhanceButtonEnabled();
+            }
+        }
+
+        /// <summary>
+        /// 서브스탯 강화 발동 시 지정 인덱스 텍스트를 1.5초 노란 펄스로 강조한다.
+        /// HasUpgradedSubStat=true 인 서브스탯을 ItemDetailPopupPresenter 가 hint 전달.
+        /// </summary>
+        public void PulseSubStatHighlight(int subStatIndex)
+        {
+            if (subStatIndex < 0 || subStatIndex >= _subStatTexts.Count) return;
+            if (_subStatTexts[subStatIndex] == null) return;
+
+            if (_subStatPulseCoroutine != null)
+                StopCoroutine(_subStatPulseCoroutine);
+
+            _subStatPulseCoroutine = StartCoroutine(SubStatPulseRoutine(subStatIndex, 1.5f));
+        }
+
+        // ── Private ──────────────────────────────────────────────────────────
+
+        private void SetEquipButtonDisabled()
+        {
+            if (_equipButton != null)
+            {
+                _equipButton.interactable = false;
+                if (_equipButton.image != null)
+                    _equipButton.image.color = new Color(0.4f, 0.4f, 0.4f);
+            }
+        }
+
+        private void SetEnhanceButtonEnabled()
+        {
+            if (_enhanceButton != null)
+            {
+                _enhanceButton.interactable = true;
+                if (_enhanceButton.image != null)
+                    _enhanceButton.image.color = new Color(0.8f, 0.55f, 0.1f); // 강화 = 주황
+            }
+            if (_enhanceButtonText != null)
+                _enhanceButtonText.color = Color.white;
+        }
+
+        private void SetEnhanceButtonDisabled()
+        {
+            if (_enhanceButton != null)
+            {
+                _enhanceButton.interactable = false;
+                if (_enhanceButton.image != null)
+                    _enhanceButton.image.color = new Color(0.4f, 0.4f, 0.4f);
+            }
+            if (_enhanceButtonText != null)
+                _enhanceButtonText.color = new Color(0.6f, 0.6f, 0.6f);
+        }
+
+        private IEnumerator SubStatPulseRoutine(int index, float duration)
+        {
+            var tmp        = _subStatTexts[index];
+            var normalColor = new Color(0.8f, 0.8f, 0.8f);
+            var pulseColor  = Color.yellow;
+
+            float elapsed  = 0f;
+            float period   = 0.4f; // 펄스 주기
+
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float t    = (elapsed % period) / period;
+                float ping = Mathf.PingPong(t * 2f, 1f); // 0→1→0
+                tmp.color  = Color.Lerp(normalColor, pulseColor, ping);
+                yield return null;
+            }
+
+            // 복원
+            if (tmp != null) tmp.color = normalColor;
+            _subStatPulseCoroutine = null;
         }
 
         // ── Private 유틸 ─────────────────────────────────────────────────────

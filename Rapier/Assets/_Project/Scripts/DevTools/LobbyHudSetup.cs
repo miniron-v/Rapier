@@ -509,13 +509,22 @@ namespace Game.DevTools
             var (runeInventoryView, runeInventoryPresenter, runeDetailPresenter) =
                 CreateRuneInventoryPopup(panel, GetFont());
 
-            // ── (e) 아이템 상세 팝업 (Phase 24) ────────────────────────────────
+            // ── (e) 아이템 상세 팝업 (Phase 24/25-C) ──────────────────────────────
             var (itemDetailView, itemDetailPresenter) = CreateItemDetailPopup(panel, GetFont());
-            // 룬 소켓 클릭 → 룬 인벤토리 팝업 연결
-            itemDetailPresenter.InitReferences(itemDetailView, runeInventoryPresenter);
+
+            // ── (e-2) 강화 모달 (Phase 25-C) ───────────────────────────────────
+            var (enhanceModalView, enhanceModalPresenter) = CreateEnhanceModal(panel, GetFont());
+
+            // 룬 소켓 클릭 → 룬 인벤토리 팝업 연결 + 강화 모달 연결
+            itemDetailPresenter.InitReferences(itemDetailView, runeInventoryPresenter, enhanceModalPresenter);
+
+            // EnhanceModal → ItemDetailPresenter 역참조 (서브스탯 펄스 힌트 전달용)
+            enhanceModalPresenter.InitReferences(enhanceModalView, itemDetailPresenter);
 
             var equipPresenter = equipRoot.gameObject.AddComponent<EquipmentPanelPresenter>();
             equipPresenter.InitReferences(equipView, itemDetailPresenter, runeInventoryPresenter);
+
+            EditorUtility.SetDirty(enhanceModalPresenter);
 
             // 초기 상태: 패널 비활성 (CharacterInfoPanelPresenter.Show 에서 Show 호출)
             equipRoot.gameObject.SetActive(false);
@@ -1305,11 +1314,13 @@ namespace Game.DevTools
             SetAnchors(descGo.GetComponent<RectTransform>(), new Vector2(0.02f, 0.24f), new Vector2(0.98f, 0.49f));
             descGo.GetComponent<RectTransform>().offsetMin = descGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
 
-            // 6. 장착/닫기 버튼 행
-            var equipBtn = CreateSimpleButton(popupGo, "EquipButton", "장착",
-                new Vector2(0.05f, 0.02f), new Vector2(0.55f, 0.14f), new Color(0.2f, 0.7f, 0.3f), font);
-            var closeBtn = CreateSimpleButton(popupGo, "CloseButton", "닫기",
-                new Vector2(0.60f, 0.02f), new Vector2(0.95f, 0.14f), new Color(0.5f, 0.2f, 0.2f), font);
+            // 6. 장착/강화/닫기 버튼 행 (Phase 25-C: 3버튼 가로 균등 분할)
+            var equipBtn   = CreateSimpleButton(popupGo, "EquipButton", "장착",
+                new Vector2(0.02f, 0.02f), new Vector2(0.34f, 0.14f), new Color(0.2f, 0.7f, 0.3f), font);
+            var enhanceBtn = CreateSimpleButton(popupGo, "EnhanceButton", "강화",
+                new Vector2(0.36f, 0.02f), new Vector2(0.64f, 0.14f), new Color(0.8f, 0.55f, 0.1f), font);
+            var closeBtn   = CreateSimpleButton(popupGo, "CloseButton", "닫기",
+                new Vector2(0.66f, 0.02f), new Vector2(0.98f, 0.14f), new Color(0.5f, 0.2f, 0.2f), font);
 
             var view = popupGo.AddComponent<ItemDetailPopupView>();
             view.InitReferences(
@@ -1322,12 +1333,155 @@ namespace Game.DevTools
                 descTmp,
                 equipBtn.GetComponent<Button>(),
                 equipBtn.GetComponentInChildren<TextMeshProUGUI>(),
+                enhanceBtn.GetComponent<Button>(),
+                enhanceBtn.GetComponentInChildren<TextMeshProUGUI>(),
                 closeBtn.GetComponent<Button>());
 
             var presenter = popupGo.AddComponent<ItemDetailPopupPresenter>();
             presenter.InitReferences(view);
 
             popupGo.SetActive(false);
+            return (view, presenter);
+        }
+
+        // ── Phase 25-C 헬퍼: 강화 모달 생성 ─────────────────────────
+
+        private static (EnhanceModalView view, EnhanceModalPresenter presenter)
+            CreateEnhanceModal(GameObject panelParent, TMP_FontAsset font)
+        {
+            // 루트 — 전체화면 darken 배경, sortingOrder 300
+            var modalGo = new GameObject("EnhanceModal", typeof(RectTransform));
+            modalGo.transform.SetParent(panelParent.transform, false);
+
+            var darken   = modalGo.AddComponent<Image>();
+            darken.color = new Color(0f, 0f, 0f, 0.85f);
+            var darkenRt = modalGo.GetComponent<RectTransform>();
+            SetAnchors(darkenRt, Vector2.zero, Vector2.one);
+            darkenRt.offsetMin = darkenRt.offsetMax = Vector2.zero;
+
+            // 모달 내용 패널 (ItemDetailPopup 기반 크기)
+            var panelGo = new GameObject("ModalPanel", typeof(RectTransform));
+            panelGo.transform.SetParent(modalGo.transform, false);
+            panelGo.AddComponent<Image>().color = new Color(0.08f, 0.08f, 0.10f, 1f);
+            var panelRt = panelGo.GetComponent<RectTransform>();
+            SetAnchors(panelRt, new Vector2(0.05f, 0.08f), new Vector2(0.95f, 0.95f));
+            panelRt.offsetMin = panelRt.offsetMax = Vector2.zero;
+
+            // 1. 아이콘
+            var iconGo  = new GameObject("ItemIcon", typeof(RectTransform));
+            iconGo.transform.SetParent(panelGo.transform, false);
+            var iconImg = iconGo.AddComponent<Image>();
+            iconImg.color = Color.white;
+            SetAnchors(iconGo.GetComponent<RectTransform>(), new Vector2(0.02f, 0.82f), new Vector2(0.28f, 0.98f));
+            iconGo.GetComponent<RectTransform>().offsetMin = iconGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
+
+            // 2. 아이템 이름
+            var nameGo = CreateTmpLabel(panelGo, "ItemName", "아이템 이름", 34f, font);
+            SetAnchors(nameGo.GetComponent<RectTransform>(), new Vector2(0.30f, 0.90f), new Vector2(0.98f, 0.98f));
+            nameGo.GetComponent<RectTransform>().offsetMin = nameGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
+
+            // 3. 강화 단계 (+N → +N+1)
+            var levelGo = CreateTmpLabel(panelGo, "EnhanceLevel", "+0 → +1", 40f, font);
+            levelGo.GetComponent<TextMeshProUGUI>().color = new Color(1f, 0.9f, 0.3f);
+            levelGo.GetComponent<TextMeshProUGUI>().fontStyle = TMPro.FontStyles.Bold;
+            SetAnchors(levelGo.GetComponent<RectTransform>(), new Vector2(0.30f, 0.80f), new Vector2(0.98f, 0.90f));
+            levelGo.GetComponent<RectTransform>().offsetMin = levelGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
+
+            // 4. 메인 스탯 미리보기
+            var mainPreviewGo = CreateTmpLabel(panelGo, "MainStatPreview", "메인 스탯 미리보기", 30f, font);
+            mainPreviewGo.GetComponent<TextMeshProUGUI>().color = new Color(1f, 0.9f, 0.5f);
+            mainPreviewGo.GetComponent<TextMeshProUGUI>().alignment = TMPro.TextAlignmentOptions.Left;
+            SetAnchors(mainPreviewGo.GetComponent<RectTransform>(), new Vector2(0.03f, 0.68f), new Vector2(0.97f, 0.78f));
+            mainPreviewGo.GetComponent<RectTransform>().offsetMin = mainPreviewGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
+
+            // 5. 서브스탯 강화 단계 강조
+            var subBonusGo = CreateTmpLabel(panelGo, "SubStatBonus", "★ 서브스탯 강화 단계!", 32f, font);
+            subBonusGo.GetComponent<TextMeshProUGUI>().color = new Color(1f, 0.9f, 0.2f);
+            SetAnchors(subBonusGo.GetComponent<RectTransform>(), new Vector2(0.03f, 0.57f), new Vector2(0.97f, 0.67f));
+            subBonusGo.GetComponent<RectTransform>().offsetMin = subBonusGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
+            subBonusGo.SetActive(false); // 기본 숨김
+
+            // 6. 성공률
+            var successGo = CreateTmpLabel(panelGo, "SuccessPercent", "성공 확률: --%", 30f, font);
+            successGo.GetComponent<TextMeshProUGUI>().alignment = TMPro.TextAlignmentOptions.Left;
+            SetAnchors(successGo.GetComponent<RectTransform>(), new Vector2(0.03f, 0.46f), new Vector2(0.97f, 0.56f));
+            successGo.GetComponent<RectTransform>().offsetMin = successGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
+
+            // 7. 가루 비용
+            var dustGo = CreateTmpLabel(panelGo, "DustCost", "필요 가루: -- / 보유 --", 30f, font);
+            dustGo.GetComponent<TextMeshProUGUI>().alignment = TMPro.TextAlignmentOptions.Left;
+            SetAnchors(dustGo.GetComponent<RectTransform>(), new Vector2(0.03f, 0.35f), new Vector2(0.97f, 0.45f));
+            dustGo.GetComponent<RectTransform>().offsetMin = dustGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
+
+            // 8. 강화하기 / 닫기 버튼 (2등분)
+            var enhBtn  = CreateSimpleButton(panelGo, "EnhanceButton", "강화하기",
+                new Vector2(0.02f, 0.02f), new Vector2(0.49f, 0.13f), new Color(0.2f, 0.7f, 0.3f), font);
+            var closeBtn = CreateSimpleButton(panelGo, "CloseButton", "닫기",
+                new Vector2(0.51f, 0.02f), new Vector2(0.98f, 0.13f), new Color(0.5f, 0.2f, 0.2f), font);
+
+            // 9. 플래시 Image (전체화면, 기본 비활성)
+            var flashGo = new GameObject("FlashImage", typeof(RectTransform));
+            flashGo.transform.SetParent(panelGo.transform, false);
+            var flashImg = flashGo.AddComponent<Image>();
+            flashImg.color = new Color(1f, 1f, 1f, 0f);
+            flashImg.raycastTarget = false;
+            SetAnchors(flashGo.GetComponent<RectTransform>(), Vector2.zero, Vector2.one);
+            flashGo.GetComponent<RectTransform>().offsetMin = flashGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
+            flashGo.SetActive(false);
+
+            // 10. 파편 5개 (중앙에서 분산용)
+            var shards = new List<Image>();
+            for (int i = 0; i < 5; i++)
+            {
+                var shardGo = new GameObject($"Shard_{i}", typeof(RectTransform));
+                shardGo.transform.SetParent(panelGo.transform, false);
+                var shardImg = shardGo.AddComponent<Image>();
+                shardImg.color = new Color(1f, 0.9f, 0.3f, 1f);
+                shardImg.raycastTarget = false;
+                var shardRt  = shardGo.GetComponent<RectTransform>();
+                SetAnchors(shardRt, new Vector2(0.45f, 0.45f), new Vector2(0.55f, 0.55f));
+                shardRt.offsetMin = shardRt.offsetMax = Vector2.zero;
+                shardRt.sizeDelta = new Vector2(20f, 20f);
+                shardGo.SetActive(false);
+                shards.Add(shardImg);
+            }
+
+            // 11. 토스트 텍스트 (중앙)
+            var toastGo = CreateTmpLabel(panelGo, "ToastText", string.Empty, 40f, font);
+            toastGo.GetComponent<TextMeshProUGUI>().fontStyle = TMPro.FontStyles.Bold;
+            SetAnchors(toastGo.GetComponent<RectTransform>(), new Vector2(0.05f, 0.20f), new Vector2(0.95f, 0.34f));
+            toastGo.GetComponent<RectTransform>().offsetMin = toastGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
+            toastGo.SetActive(false);
+
+            // EnhanceModalView 조립
+            var view = modalGo.AddComponent<EnhanceModalView>();
+            view.InitReferences(
+                iconImg,
+                nameGo.GetComponent<TextMeshProUGUI>(),
+                levelGo.GetComponent<TextMeshProUGUI>(),
+                mainPreviewGo.GetComponent<TextMeshProUGUI>(),
+                subBonusGo.GetComponent<TextMeshProUGUI>(),
+                successGo.GetComponent<TextMeshProUGUI>(),
+                dustGo.GetComponent<TextMeshProUGUI>(),
+                enhBtn.GetComponent<Button>(),
+                enhBtn.GetComponentInChildren<TextMeshProUGUI>(),
+                closeBtn.GetComponent<Button>(),
+                flashImg,
+                shards,
+                toastGo.GetComponent<TextMeshProUGUI>());
+
+            // EnhanceModalPresenter 조립
+            var presenter = modalGo.AddComponent<EnhanceModalPresenter>();
+            presenter.InitReferences(view);
+
+            // EnhanceTableData 주입
+            const string ENHANCE_TABLE_PATH = "Assets/_Project/Resources/EnhanceTableData.asset";
+            var enhanceTable = AssetDatabase.LoadAssetAtPath<Game.Data.Equipment.EnhanceTableData>(ENHANCE_TABLE_PATH);
+            if (enhanceTable == null)
+                Debug.LogWarning($"[LobbyHudSetup] EnhanceTableData 로드 실패: {ENHANCE_TABLE_PATH}");
+            presenter.InitEnhanceTable(enhanceTable);
+
+            modalGo.SetActive(false);
             return (view, presenter);
         }
 

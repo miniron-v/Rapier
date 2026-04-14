@@ -12,6 +12,10 @@ namespace Game.UI.Lobby.Equipment
     ///   - 다른 캐릭터에 장착 중 → "장착" (타 캐릭터 자동 해제, 룬 유지)
     ///   - 미장착 → "장착"
     ///
+    /// [강화 규칙 (Phase 25-C)]
+    ///   - 강화 버튼 클릭 → EnhanceModalPresenter.Show 호출
+    ///   - disableActions 모드 또는 최대 단계 도달 시 강화 버튼 비활성
+    ///
     /// [이벤트 구독/해제]
     ///   OnEnable / OnDisable 쌍으로 View 이벤트를 구독/해제한다.
     /// </summary>
@@ -21,6 +25,7 @@ namespace Game.UI.Lobby.Equipment
 
         [SerializeField] private ItemDetailPopupView         _view;
         [SerializeField] private RuneInventoryPopupPresenter _runeInventoryPresenter;
+        [SerializeField] private EnhanceModalPresenter       _enhanceModalPresenter;
 
         // ── Private Fields ───────────────────────────────────────────────────
 
@@ -28,14 +33,19 @@ namespace Game.UI.Lobby.Equipment
         private string             _characterId;
         private EquipmentInstance  _currentInstance;
         private EquipmentSlotType  _currentSlot;
+        private bool               _disableActions;
 
         // ── 초기화 ───────────────────────────────────────────────────────────
 
-        /// <summary>LobbyHudSetup 에서 View + 룬 인벤토리 팝업 참조를 주입한다.</summary>
-        public void InitReferences(ItemDetailPopupView view, RuneInventoryPopupPresenter runeInventoryPresenter = null)
+        /// <summary>LobbyHudSetup 에서 View + 룬 인벤토리 팝업 + 강화 모달 참조를 주입한다.</summary>
+        public void InitReferences(
+            ItemDetailPopupView view,
+            RuneInventoryPopupPresenter runeInventoryPresenter = null,
+            EnhanceModalPresenter enhanceModalPresenter = null)
         {
             _view                   = view;
             _runeInventoryPresenter = runeInventoryPresenter;
+            _enhanceModalPresenter  = enhanceModalPresenter;
         }
 
         /// <summary>수동 DI. EquipmentPanelPresenter 에서 호출한다.</summary>
@@ -43,6 +53,9 @@ namespace Game.UI.Lobby.Equipment
         {
             _manager     = manager;
             _characterId = characterId;
+
+            // EnhanceModalPresenter 에도 manager 주입
+            _enhanceModalPresenter?.Init(manager);
         }
 
         // ── Unity Lifecycle ──────────────────────────────────────────────────
@@ -51,6 +64,7 @@ namespace Game.UI.Lobby.Equipment
         {
             if (_view == null) return;
             _view.OnEquipClicked      += HandleEquipClicked;
+            _view.OnEnhanceClicked    += HandleEnhanceClicked;
             _view.OnCloseClicked      += HandleCloseClicked;
             _view.OnRuneSocketClicked += HandleRuneSocketClicked;
         }
@@ -59,6 +73,7 @@ namespace Game.UI.Lobby.Equipment
         {
             if (_view == null) return;
             _view.OnEquipClicked      -= HandleEquipClicked;
+            _view.OnEnhanceClicked    -= HandleEnhanceClicked;
             _view.OnCloseClicked      -= HandleCloseClicked;
             _view.OnRuneSocketClicked -= HandleRuneSocketClicked;
         }
@@ -70,17 +85,22 @@ namespace Game.UI.Lobby.Equipment
         /// </summary>
         /// <param name="instance">표시할 장비 인스턴스.</param>
         /// <param name="slot">연관 슬롯 타입 (장착 시 사용).</param>
-        public void Show(EquipmentInstance instance, EquipmentSlotType slot)
+        /// <param name="disableActions">
+        /// true 이면 분해 모드 — 장착/강화 버튼 모두 비활성, 닫기만 활성.
+        /// 25-B 에서 분해 모드 진입 시 이 플래그를 true 로 호출한다.
+        /// </param>
+        public void Show(EquipmentInstance instance, EquipmentSlotType slot, bool disableActions = false)
         {
             if (_view == null || instance == null) return;
 
             _currentInstance = instance;
             _currentSlot     = slot;
+            _disableActions  = disableActions;
 
             bool isEquipped    = IsEquippedByCurrentChar(instance);
             bool equippedOther = !isEquipped && IsEquippedByAnyChar(instance);
 
-            _view.SetData(instance, isEquipped, equippedOther);
+            _view.SetData(instance, isEquipped, equippedOther, disableActions);
             _view.transform.SetAsLastSibling();
             _view.SetVisible(true);
         }
@@ -92,11 +112,21 @@ namespace Game.UI.Lobby.Equipment
             _currentInstance = null;
         }
 
+        /// <summary>
+        /// 강화 완료 후 서브스탯 펄스 힌트를 받아 View 에 전달한다.
+        /// EnhanceModalPresenter 또는 외부 시스템에서 호출할 수 있다.
+        /// </summary>
+        public void HintSubStatPulse(int subStatIndex)
+        {
+            _view?.PulseSubStatHighlight(subStatIndex);
+        }
+
         // ── Event Handlers ───────────────────────────────────────────────────
 
         private void HandleEquipClicked()
         {
             if (_manager == null || _currentInstance == null) return;
+            if (_disableActions) return;
 
             bool isEquipped = IsEquippedByCurrentChar(_currentInstance);
             if (isEquipped)
@@ -107,7 +137,7 @@ namespace Game.UI.Lobby.Equipment
                 // 해제 후 버튼 상태만 갱신 (창 유지)
                 bool nowEquipped = IsEquippedByCurrentChar(_currentInstance);
                 bool nowOther    = !nowEquipped && IsEquippedByAnyChar(_currentInstance);
-                _view.SetData(_currentInstance, nowEquipped, nowOther);
+                _view.SetData(_currentInstance, nowEquipped, nowOther, _disableActions);
             }
             else
             {
@@ -117,6 +147,18 @@ namespace Game.UI.Lobby.Equipment
                 // 장착 즉시 창 닫기
                 Hide();
             }
+        }
+
+        private void HandleEnhanceClicked()
+        {
+            if (_manager == null || _currentInstance == null) return;
+            if (_disableActions) return;
+            if (_enhanceModalPresenter == null) return;
+
+            // 최대 강화 단계는 진입 자체를 막음 (View 에서 버튼 비활성화되어 있어야 하지만 방어 처리)
+            if (_currentInstance.EnhanceLevel >= _currentInstance.MaxEnhanceLevel) return;
+
+            _enhanceModalPresenter.Show(_currentInstance);
         }
 
         private void HandleCloseClicked()
