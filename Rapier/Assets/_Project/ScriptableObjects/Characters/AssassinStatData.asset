@@ -12,9 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6e9c3b15a7d2840f5b1e7c29d4f06a83, type: 3}
   m_Name: AssassinStatData
   m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Characters.AssassinStatData
-  sprite: {fileID: -2413806693520163455, guid: a86470a33a6bf42c4b3595704624658b, type: 3}
+  sprite: {fileID: 21300000, guid: 07b2c2dd79dec124084391046c5be107, type: 3}
   characterName: Assassin
-  description: "\uC785\uC2E0\uC758 \uCE74\uD134\uC5D0 \uC228\uC5B4 \uAE30\uD68C\uB97C \uB178\uB9AC\uB294 \uD32C\uD140 \uC554\uC0B4\uC790. \uBD84\uC2E0\uC744 \uBD88\uB7EC \uC801\uC744 \uD63C\uB780\uC2DC\uD0A8\uB2E4."
+  description: "\uC785\uC2E0\uC758 \uCE74\uD134\uC5D0 \uC228\uC5B4 \uAE30\uD68C\uB97C
+    \uB178\uB9AC\uB294 \uD32C\uD140 \uC554\uC0B4\uC790. \uBD84\uC2E0\uC744 \uBD88\uB7EC
+    \uC801\uC744 \uD63C\uB780\uC2DC\uD0A8\uB2E4."
   maxHp: 400
   attackPower: 45
   moveSpeed: 7
