@@ -49,4 +49,12 @@ MonoBehaviour:
     displayName: Berserker
   _hpMultiplier: 1.7
   _atkMultiplier: 1.7
-  _gradeDropRates: []
+  _gradeDropRates:
+  - grade: 0
+    dropRate: 0.95
+  - grade: 1
+    dropRate: 0.7
+  - grade: 2
+    dropRate: 0
+  - grade: 3
+    dropRate: 0

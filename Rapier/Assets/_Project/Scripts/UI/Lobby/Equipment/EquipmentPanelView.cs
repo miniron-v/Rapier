@@ -27,9 +27,6 @@ namespace Game.UI.Lobby.Equipment
     {
         // ── Serialized Fields ────────────────────────────────────────────────
 
-        [Header("캐릭터 일러스트 (인벤토리 상단)")]
-        [SerializeField] private Image _illustrationImage;
-
         [Header("8 슬롯 뷰 (순서: Weapon/Hat/Top/Bottom/Shoes/Gloves/Necklace/Ring)")]
         [SerializeField] private List<EquipmentSlotView> _slotViews = new();
 
@@ -105,23 +102,11 @@ namespace Game.UI.Lobby.Equipment
         /// 런타임 생성 시 SerializeField 참조를 외부에서 주입한다 (LobbyHudSetup 에서 호출).
         /// </summary>
         public void InitReferences(List<EquipmentSlotView> slots, Transform inventoryContent,
-                                   InventoryItemView inventoryItemPrefab,
-                                   Image illustrationImage = null)
+                                   InventoryItemView inventoryItemPrefab)
         {
             _slotViews           = slots ?? new List<EquipmentSlotView>();
             _inventoryContent    = inventoryContent;
             _inventoryItemPrefab = inventoryItemPrefab;
-            if (illustrationImage != null)
-                _illustrationImage = illustrationImage;
-        }
-
-        /// <summary>인벤토리 상단 캐릭터 일러스트를 설정한다 (null 허용).</summary>
-        public void SetIllustration(Sprite sprite)
-        {
-            if (_illustrationImage == null) return;
-            _illustrationImage.sprite         = sprite;
-            _illustrationImage.preserveAspect = true;
-            _illustrationImage.color          = sprite != null ? Color.white : new Color(0f, 0f, 0f, 0f);
         }
 
         /// <summary>탭 버튼 참조를 주입한다 (LobbyHudSetup 에서 호출).</summary>

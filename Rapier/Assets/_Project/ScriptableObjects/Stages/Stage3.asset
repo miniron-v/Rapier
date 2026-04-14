@@ -49,4 +49,12 @@ MonoBehaviour:
     displayName: Stormcaller
   _hpMultiplier: 1.4
   _atkMultiplier: 1.4
-  _gradeDropRates: []
+  _gradeDropRates:
+  - grade: 0
+    dropRate: 0.95
+  - grade: 1
+    dropRate: 0.5
+  - grade: 2
+    dropRate: 0
+  - grade: 3
+    dropRate: 0
