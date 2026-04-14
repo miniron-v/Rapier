@@ -1,3 +1,4 @@
+using System;
 using Game.Core.Utils;
 using Game.Data.MetaStats;
 using Game.Data.RunStats;
@@ -74,6 +75,21 @@ namespace Game.Characters
         public float ChargeRatio        { get; private set; } // 0~1
         public bool  IsJustDodgeReady   { get; private set; }
         public float DodgeCooldownRatio { get; private set; } // 0=쿨다운 중, 1=사용 가능
+
+        // ── 방향성 방어 (Warrior 전용) ─────────────────────────────
+        [System.NonSerialized] private bool    _directionalGuardActive;
+        [System.NonSerialized] private Vector2 _shieldNormal;
+        [System.NonSerialized] private float   _shieldHalfAngleDeg;
+        [System.NonSerialized] private Action  _onParryCallback;
+
+        /// <summary>방향성 방어 활성 여부.</summary>
+        public bool IsDirectionalGuardActive => _directionalGuardActive;
+
+        // ── 데미지 배수 (Warrior 차지 중 감소에 사용) ──────────────
+        [System.NonSerialized] private float _damageMultiplier = 1f;
+
+        /// <summary>피격 데미지 배수. 1.0 = 변화 없음, 0.5 = 50% 감소.</summary>
+        public float DamageMultiplier => _damageMultiplier;
 
         // ── 이벤트 ────────────────────────────────────────────────
         public event System.Action<float> OnHpChanged;           // 현재 HP
@@ -186,13 +202,47 @@ namespace Game.Characters
         }
 
         // ── HP ────────────────────────────────────────────────────
-        public void TakeDamage(float amount)
+        /// <summary>
+        /// 데미지를 받는다.
+        /// IsInvincible 또는 방향성 방어 판정을 통과하면 데미지가 차단된다.
+        /// 방향성 방어 패링 성립 시 onParry 콜백 1회 호출 후 방어 해제.
+        /// </summary>
+        /// <param name="amount">원래 데미지 (DamageMultiplier 적용 전).</param>
+        /// <param name="attackDir">공격이 날아오는 방향 (정규화 권장). 방향 무관이면 Vector2.zero.</param>
+        public void TakeDamage(float amount, Vector2 attackDir)
         {
-            if (!IsAlive || IsInvincible) return;
-            CurrentHp = Mathf.Max(0f, CurrentHp - MathUtils.RoundHalfUp(amount));
+            if (!IsAlive) return;
+
+            // 방향성 방어 판정 (IsInvincible 과 독립)
+            if (_directionalGuardActive && attackDir != Vector2.zero)
+            {
+                // dot(-attackDir, shieldNormal) >= cos(halfAngle) 이면 방어
+                float dot      = Vector2.Dot(-attackDir.normalized, _shieldNormal.normalized);
+                float cosAngle = Mathf.Cos(_shieldHalfAngleDeg * Mathf.Deg2Rad);
+                if (dot >= cosAngle)
+                {
+                    // 패링 성립: 방어 먼저 해제, 콜백 호출
+                    var parry = _onParryCallback;
+                    ClearDirectionalGuard();
+                    parry?.Invoke();
+                    return;
+                }
+            }
+
+            if (IsInvincible) return;
+
+            // DamageMultiplier 적용 후 사사오입
+            float actual = MathUtils.RoundHalfUp(amount * _damageMultiplier);
+            CurrentHp = Mathf.Max(0f, CurrentHp - actual);
             OnHpChanged?.Invoke(CurrentHp);
             if (!IsAlive) OnDeath?.Invoke();
         }
+
+        /// <summary>
+        /// 공격 방향 없는 데미지 (Vector2.zero 전달). 방향성 방어를 발동하지 않는다.
+        /// 하위 호환성 유지용 — 기존 호출처 중 방향 정보가 없는 경우에 사용.
+        /// </summary>
+        public void TakeDamage(float amount) => TakeDamage(amount, Vector2.zero);
 
         public void Heal(float amount)
         {
@@ -210,6 +260,42 @@ namespace Game.Characters
 
         // ── 무적 ──────────────────────────────────────────────────
         public void SetInvincible(bool value) => IsInvincible = value;
+
+        // ── 방향성 방어 ───────────────────────────────────────────
+        /// <summary>
+        /// 방향성 방어를 활성화한다.
+        /// TakeDamage 에서 dot(-attackDir, shieldNormal) &gt;= cos(halfAngleDeg) 면 데미지 무효 + onParry 1회 발동.
+        /// </summary>
+        /// <param name="shieldNormal">방패가 바라보는 방향 (정규화 권장).</param>
+        /// <param name="halfAngleDeg">방어 범위 반각 (도). 60 = 전체 120° 방어.</param>
+        /// <param name="onParry">패링 성립 시 1회 호출될 콜백.</param>
+        public void SetDirectionalGuard(Vector2 shieldNormal, float halfAngleDeg, Action onParry)
+        {
+            _shieldNormal          = shieldNormal;
+            _shieldHalfAngleDeg   = halfAngleDeg;
+            _onParryCallback       = onParry;
+            _directionalGuardActive = true;
+        }
+
+        /// <summary>방향성 방어를 해제한다.</summary>
+        public void ClearDirectionalGuard()
+        {
+            _directionalGuardActive = false;
+            _shieldNormal           = Vector2.zero;
+            _shieldHalfAngleDeg    = 0f;
+            _onParryCallback        = null;
+        }
+
+        // ── 데미지 배수 ───────────────────────────────────────────
+        /// <summary>
+        /// 피격 데미지 배수를 세팅한다. 1.0f = 기본, 0.5f = 50% 감소.
+        /// Warrior 차지 중 호출한다.
+        /// </summary>
+        /// <param name="multiplier">배수 (0보다 커야 함).</param>
+        public void SetDamageMultiplier(float multiplier)
+        {
+            _damageMultiplier = Mathf.Max(0f, multiplier);
+        }
 
         // ── 차지 ──────────────────────────────────────────────────
         public void SetChargeRatio(float ratio)

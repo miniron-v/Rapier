@@ -97,7 +97,7 @@ namespace Game.Characters
 
             if (Model.IsInvincible) return;
 
-            Model.TakeDamage(amount);
+            Model.TakeDamage(amount, knockbackDir);
             View.PlayHit();
         }
 

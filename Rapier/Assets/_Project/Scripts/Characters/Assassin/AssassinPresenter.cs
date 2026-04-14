@@ -116,7 +116,7 @@ namespace Game.Characters.Assassin
 
             if (Model.IsInvincible) return;
 
-            Model.TakeDamage(amount);
+            Model.TakeDamage(amount, knockbackDir);
             View.PlayHit();
         }
 
