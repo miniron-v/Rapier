@@ -233,8 +233,7 @@ namespace Game.UI.Lobby.Equipment
 
             if (isDismantle)
             {
-                // TODO Phase 25-C 머지 후 disableActions:true 로 변경
-                _itemDetailPresenter?.Show(instance, instance.Data.SlotType);
+                _itemDetailPresenter?.Show(instance, instance.Data.SlotType, disableActions: true);
             }
             else
             {
