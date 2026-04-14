@@ -476,3 +476,117 @@ equippedMap: List<EquippedMapEntry> (JsonUtility 는 Dictionary 미지원 → Li
 - 복원 경로는 로드 1회 전제 (러닝 중 재로드/핫리로드 고려 불필요).
 - 저장 진입점은 `Game.Data.Save.IEquipmentSaveProvider` 단일. 레거시 `Game.Data.Equipment.IEquipmentSaveProvider` 는 폐기.
 - `EquipmentDatabase` 는 런타임 SO 조회 전용. 에디터 툴/검증기 미포함 (향후 필요 시 별도).
+
+## 8. 분해 / 강화 시스템 (Phase 25)
+
+### 8-1. 재화: 강화의 가루 (Dust)
+
+- 단일 재화. `SaveData.dust : int` 추가 (기본 0). 음수 금지, 클램프.
+- 런타임 보유: `EquipmentManager.Dust` (int, 읽기) / `EquipmentManager.AddDust(int)` / `TryConsumeDust(int)`.
+- 변경 시 `OnDustChanged(int newAmount)` 이벤트 발행 (UI 구독). `TrySave()` 자동 호출.
+
+### 8-2. 분해 (Dismantle)
+
+대상: 인벤토리 보유 + **미장착** 장비 인스턴스.
+가루 산출 공식: `base + perEnhanceBonus × instance.EnhanceLevel`.
+
+| 등급 | base | perEnhance |
+|---|---|---|
+| Normal | 5 | 2 |
+| Rare | 20 | 5 |
+| Epic | 80 | 15 |
+| Unique | 250 | 40 |
+
+API:
+```csharp
+// EquipmentManager
+int CalculateDismantleYield(EquipmentInstance inst);
+int Dismantle(IEnumerable<EquipmentInstance> targets); // 총 획득 가루 반환
+```
+
+`Dismantle` 동작:
+1. `targets` 중 장착 중인 항목은 스킵 + 경고
+2. 각 인스턴스 yield 합산 → 인벤토리 제거 → `AddDust(total)` → `TrySave()`
+3. `OnEquipmentInventoryChanged` 이벤트 발행 (있다면 — 없으면 신규)
+
+### 8-3. 강화 (Enhance)
+
+대상: 보유 + 장착 무관 (장착 중에도 강화 가능). 다만 본 Phase 에서는 단순화 — 분해와 동일하게 인벤토리/상세 페이지 진입 경로로 한정. 장착 슬롯에서 직접 강화는 미지원.
+
+**최대 강화치** (등급 기준):
+| 등급 | Max |
+|---|---|
+| Normal | +6 |
+| Rare | +9 |
+| Epic | +12 |
+| Unique | +15 |
+
+`EquipmentInstance.MaxEnhanceLevel => EquipmentGradeHelper.GetMaxEnhance(Grade)`.
+
+**메인스탯 적용**: `EquipmentMetaStatProvider` 가 메인스탯 (SO `_mainStat` 또는 장신구 `RolledMainStat`) 의 flatValue/percentValue 양쪽에 `× (1 + 0.10f × inst.EnhanceLevel)` 을 곱한다. 서브스탯은 강화 시점에 누적된 인스턴스 값을 그대로 사용 (Provider 변경 없음).
+
+**서브스탯 강화** (단계 = 강화 후 목표가 3·6·9·12·15 일 때만):
+- 인스턴스의 `SubStats` 중 1개를 무작위 선택 (중복 허용 — 이미 강화된 서브 재선택 가능).
+- 해당 스탯의 등급 max 값 × 0.25 만큼 가산. 등급 max 는 `SubStatPoolData.Entries` 에서 `entry.statType == picked.statType` 의 `entry.Range(grade).max`.
+- usePercent 여부에 따라 percentValue 또는 flatValue 에 가산.
+- 서브 0개 (Normal) 면 서브스탯 강화 건너뛰고 메인만 적용.
+
+**성공률 / 가루 비용 테이블** (목표 단계 = 1~15, Normal 은 1~6 만 사용):
+| 목표 | +1 | +2 | +3 | +4 | +5 | +6 | +7 | +8 | +9 | +10 | +11 | +12 | +13 | +14 | +15 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 성공률(%) | 100 | 100 | 90 | 80 | 70 | 60 | 50 | 40 | 30 | 25 | 20 | 15 | 12 | 8 | 5 |
+| 가루 | 10 | 20 | 40 | 70 | 110 | 160 | 230 | 320 | 430 | 580 | 770 | 1000 | 1300 | 1700 | 2200 |
+
+**테이블 SO**: `EnhanceTableData` (단일 인스턴스). 위치 `Assets/_Project/Resources/EnhanceTableData.asset`. `GameBootstrap` 이 `Resources.Load` 하여 `EquipmentManager.Init` 에 주입.
+
+```csharp
+[CreateAssetMenu(menuName="Game/Data/Equipment/EnhanceTableData")]
+public class EnhanceTableData : ScriptableObject {
+  [SerializeField] private int[] _successPercent;  // index 0 = +1, length 15
+  [SerializeField] private int[] _dustCost;         // index 0 = +1, length 15
+  public int GetSuccessPercent(int targetLevel);    // 1-based
+  public int GetDustCost(int targetLevel);
+  public int GetMaxEnhance(EquipmentGrade grade);   // 6/9/12/15
+}
+```
+
+API:
+```csharp
+// EquipmentManager
+public readonly struct EnhanceResult {
+  public bool Success;
+  public int  DustSpent;
+  public int  PreviousLevel;
+  public int  NewLevel;
+  public StatType? UpgradedSubStat;     // 서브 강화 발동 시 어떤 스탯
+  public float    UpgradedSubAmount;    // 가산량
+}
+
+EnhanceResult TryEnhance(EquipmentInstance inst);
+// 실패 케이스 (예외 대신 결과로):
+//   - 최대 도달 → DustSpent=0, Success=false, NewLevel==PreviousLevel
+//   - 가루 부족 → 동일
+// 정상 흐름: Dust 차감 → 확률 굴림 → Success 시 EnhanceLevel++ → 3/6/9/12/15 라면 서브 강화 → 이벤트 발행
+```
+
+이벤트: `OnEquipmentEnhanced(EquipmentInstance, EnhanceResult)` (UI 갱신 + 연출 트리거).
+
+### 8-4. 데이터 / 저장 스키마 변경
+
+`EquipmentInstance`:
+- 추가 필드: `private int _enhanceLevel`
+- 프로퍼티: `int EnhanceLevel` (get) / `void SetEnhanceLevel(int)` (저장 복원·강화 API 전용 internal)
+- 생성자: 신규 인스턴스 = 0. 복원 인스턴스 = 저장값.
+
+`EquipmentSaveEntry`:
+- 추가: `public int enhanceLevel = 0;`
+
+`SaveData`:
+- 추가: `public int dust = 0;`
+
+마이그레이션: 기존 save.json 에 필드 없음 → 기본값 0 으로 자연 복원. 스키마 버전 승격 불필요 (필드 추가만, 의미 손실 없음).
+
+### 8-5. UI 진입점
+
+- 분해 흐름은 `UI.md §6` 참조 (분해 모드 / 결과 모달).
+- 강화 흐름은 `UI.md §7` 참조 (상세 페이지 3버튼 / 강화 모달).
