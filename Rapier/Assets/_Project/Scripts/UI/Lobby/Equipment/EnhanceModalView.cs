@@ -151,7 +151,9 @@ namespace Game.UI.Lobby.Equipment
                 _itemIcon.color  = data.Icon != null ? Color.white : EquipmentGradeHelper.GetGradeColor(instance.Grade);
             }
             if (_itemNameText != null)
-                _itemNameText.text = data.ItemName;
+                _itemNameText.text = instance.EnhanceLevel > 0
+                    ? $"{data.ItemName} +{instance.EnhanceLevel}"
+                    : data.ItemName;
 
             // 강화 단계
             if (_enhanceLevelText != null)
@@ -255,14 +257,10 @@ namespace Game.UI.Lobby.Equipment
 
         private IEnumerator SuccessEffectRoutine(Color gradeColor)
         {
-            // 플래시 (등급 색, alpha 0.5 → 0, 0.4초)
-            yield return StartCoroutine(PlayFlash(gradeColor, 0.5f, 0.4f));
-
-            // 파편 5개 (중앙에서 분산, scale 1→0 + alpha 1→0, 0.6초)
-            yield return StartCoroutine(PlayShards(0.6f));
-
-            // 토스트 "강화 성공!" 1.5초
-            yield return StartCoroutine(ShowToast("강화 성공!", Color.yellow, 1.5f));
+            // 플래시 + 파편 + 토스트 동시 시작, 총 1초
+            StartCoroutine(PlayFlash(gradeColor, 0.5f, 0.5f));
+            StartCoroutine(PlayShards(0.7f));
+            yield return StartCoroutine(ShowToast("강화 성공!", Color.yellow, 1.0f));
         }
 
         private IEnumerator FailEffectRoutine()

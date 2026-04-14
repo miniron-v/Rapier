@@ -147,8 +147,10 @@ namespace Game.UI.Lobby.Equipment
 
             var data = instance.Data;
 
-            // 이름
-            _itemNameText.text = data.ItemName;
+            // 이름 (+N 강화 단계 표시, 0 이면 생략)
+            _itemNameText.text = instance.EnhanceLevel > 0
+                ? $"{data.ItemName} +{instance.EnhanceLevel}"
+                : data.ItemName;
 
             // 아이콘
             if (data.Icon != null)

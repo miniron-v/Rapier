@@ -1369,9 +1369,14 @@ namespace Game.DevTools
         private static (EnhanceModalView view, EnhanceModalPresenter presenter)
             CreateEnhanceModal(GameObject panelParent, TMP_FontAsset font)
         {
-            // 루트 — 전체화면 darken 배경, sortingOrder 300
+            // 루트 — 전체화면 darken 배경. 독립 Canvas(sortingOrder=300)로 ItemDetailPopup(부모 Canvas 10) 위에 렌더링
             var modalGo = new GameObject("EnhanceModal", typeof(RectTransform));
             modalGo.transform.SetParent(panelParent.transform, false);
+
+            var modalCanvas             = modalGo.AddComponent<Canvas>();
+            modalCanvas.overrideSorting = true;
+            modalCanvas.sortingOrder    = 300;
+            modalGo.AddComponent<UnityEngine.UI.GraphicRaycaster>();
 
             var darken   = modalGo.AddComponent<Image>();
             darken.color = new Color(0f, 0f, 0f, 0.85f);
@@ -1717,8 +1722,10 @@ namespace Game.DevTools
             defaultRect.offsetMin = defaultRect.offsetMax = Vector2.zero;
             var defaultHLayout = defaultRoot.AddComponent<HorizontalLayoutGroup>();
             defaultHLayout.childAlignment        = TextAnchor.MiddleRight;
+            defaultHLayout.childControlWidth     = true;
+            defaultHLayout.childControlHeight    = true;
             defaultHLayout.childForceExpandWidth = false;
-            defaultHLayout.childForceExpandHeight= true;
+            defaultHLayout.childForceExpandHeight= false;
             defaultHLayout.spacing               = 8f;
             defaultHLayout.padding               = new RectOffset(4, 8, 4, 4);
 
@@ -1822,30 +1829,39 @@ namespace Game.DevTools
             // ── DismantleResultModal ────────────────────────────────────────
             // panelParent 직속 자식, LobbyCanvas と同レベル (실제로는 Panel 하위이지만
             // Canvas sortingOrder 는 루트 Canvas 단위이므로 여기서는 Panel 계층 내 최상위 배치)
+            // 전체화면 반투명 딤 레이어
             var modalGo = new GameObject("DismantleResultModal", typeof(RectTransform));
             modalGo.transform.SetParent(panelParent.transform, false);
             var modalBg   = modalGo.AddComponent<Image>();
-            modalBg.color = new Color(0f, 0f, 0f, 0.85f);
+            modalBg.color = new Color(0f, 0f, 0f, 0.55f);
             var modalRect = modalGo.GetComponent<RectTransform>();
             SetAnchors(modalRect, Vector2.zero, Vector2.one);
             modalRect.offsetMin = modalRect.offsetMax = Vector2.zero;
             modalGo.SetActive(false);
 
+            // 내용 패널 (화면 중앙 부분만)
+            var innerGo = new GameObject("InnerPanel", typeof(RectTransform));
+            innerGo.transform.SetParent(modalGo.transform, false);
+            innerGo.AddComponent<Image>().color = new Color(0.08f, 0.08f, 0.12f, 1f);
+            var innerRt = innerGo.GetComponent<RectTransform>();
+            SetAnchors(innerRt, new Vector2(0.10f, 0.35f), new Vector2(0.90f, 0.65f));
+            innerRt.offsetMin = innerRt.offsetMax = Vector2.zero;
+
             // 타이틀
-            var titleGo = CreateTmpLabel(modalGo, "Title", "분해 완료", 48f, font);
+            var titleGo = CreateTmpLabel(innerGo, "Title", "분해 완료", 44f, font);
             titleGo.GetComponent<TextMeshProUGUI>().fontStyle = FontStyles.Bold;
-            SetAnchors(titleGo.GetComponent<RectTransform>(), new Vector2(0.05f, 0.60f), new Vector2(0.95f, 0.75f));
+            SetAnchors(titleGo.GetComponent<RectTransform>(), new Vector2(0.05f, 0.60f), new Vector2(0.95f, 0.90f));
             titleGo.GetComponent<RectTransform>().offsetMin = titleGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
 
             // 본문
-            var bodyGo  = CreateTmpLabel(modalGo, "BodyText", "획득: 강화의 가루 ×0", 36f, font);
+            var bodyGo  = CreateTmpLabel(innerGo, "BodyText", "획득: 강화의 가루 ×0", 34f, font);
             bodyGo.GetComponent<TextMeshProUGUI>().color = new Color(0.9f, 0.85f, 0.5f);
-            SetAnchors(bodyGo.GetComponent<RectTransform>(), new Vector2(0.05f, 0.44f), new Vector2(0.95f, 0.59f));
+            SetAnchors(bodyGo.GetComponent<RectTransform>(), new Vector2(0.05f, 0.35f), new Vector2(0.95f, 0.58f));
             bodyGo.GetComponent<RectTransform>().offsetMin = bodyGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
 
             // 닫기 버튼
-            var closeBtn = CreateSimpleButton(modalGo, "CloseButton", "닫기",
-                new Vector2(0.25f, 0.28f), new Vector2(0.75f, 0.42f),
+            var closeBtn = CreateSimpleButton(innerGo, "CloseButton", "닫기",
+                new Vector2(0.25f, 0.08f), new Vector2(0.75f, 0.30f),
                 new Color(0.3f, 0.3f, 0.5f), font);
 
             var modalView = modalGo.AddComponent<DismantleResultModalView>();
