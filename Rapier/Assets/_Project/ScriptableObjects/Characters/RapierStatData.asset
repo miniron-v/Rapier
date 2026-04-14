@@ -12,7 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9c43aa5837e09aa4f9059dcdcd7d8592, type: 3}
   m_Name: RapierStatData
   m_EditorClassIdentifier: Assembly-CSharp::Game.Characters.RapierStatData
-  sprite: {fileID: 21300000, guid: 7b463a1fd9dd934489e547d72cb24faa, type: 3}
+  sprite: {fileID: -2413806693520163455, guid: a86470a33a6bf42c4b3595704624658b, type: 3}
+  illustSprite: {fileID: 21300000, guid: 7b463a1fd9dd934489e547d72cb24faa, type: 3}
   characterName: Rapier
   description: "\uB808\uC774\uD53C\uC5B4\uB97C \uB2E4\uB8E8\uB294 \uBBFC\uCCA9\uD55C
     \uC804\uC0AC. \uBE60\uB978 \uC5F0\uC18D \uCC4C\uACBC\uACFC \uD45C\uC2DD \uC2DC\uC2A4\uD15C\uC73C\uB85C
