@@ -54,7 +54,11 @@
       "Bash(find Rapier/Assets -name \"ProgressionManager.cs.meta\" -exec cat {} \\\\;)",
       "Bash(awk '{print $1}')",
       "Bash(mkdir:*)",
-      "Bash(xargs -I{} basename {})"
+      "Bash(xargs -I{} basename {})",
+      "Bash(cmd.exe //c 'mklink /J \"C:\\\\GitHub\\\\Rapier-wt-phase26a\\\\Rapier\\\\Assets\\\\Rapier-Private\" \"C:\\\\GitHub\\\\Rapier\\\\Rapier\\\\Assets\\\\Rapier-Private\"')",
+      "Bash(cmd.exe //c 'mklink /J \"C:\\\\GitHub\\\\Rapier-wt-bugfix1\\\\Rapier\\\\Assets\\\\Rapier-Private\" \"C:\\\\GitHub\\\\Rapier\\\\Rapier\\\\Assets\\\\Rapier-Private\"')",
+      "Bash(cmd.exe //c 'mklink /J \"C:\\\\GitHub\\\\Rapier-wt-bugfix2\\\\Rapier\\\\Assets\\\\Rapier-Private\" \"C:\\\\GitHub\\\\Rapier\\\\Rapier\\\\Assets\\\\Rapier-Private\"')",
+      "Bash(cmd.exe:*)"
     ]
   }
 }
