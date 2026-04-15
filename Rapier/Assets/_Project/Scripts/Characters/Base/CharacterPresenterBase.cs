@@ -27,12 +27,14 @@ namespace Game.Characters
     ///   "한 회피당 딱 한 번만" 저스트 회피 발동을 보장.
     ///
     /// [입력 차단 — INPUT.md §5]
-    ///   Tap은 다음 4개 상태 중 하나라도 활성이면 즉시 무시된다 (큐잉 없음):
-    ///     1) 회피 대시 중          : _isDodgeDashActive
-    ///     2) 저스트 회피 슬로우 중 : _isJustDodgeSlowActive
-    ///     3) 고유 스킬 발동~복귀   : _isSignatureSkillActive
-    ///     4) 차지 스킬 발동 중     : _isChargeSkillActive
+    ///   Tap은 다음 상태에 따라 처리된다:
+    ///     - 회피 대시 중 (_isDodgeDashActive)       : 차단
+    ///     - 고유 스킬 중 (_isSignatureSkillActive)  : 차단
+    ///     - 차지 스킬 중 (_isChargeSkillActive)     : 차단
+    ///     - 저스트 회피 슬로우 중                    : OnJustDodgeTap() 호출 (고유 스킬 발동)
+    ///     - 평상시                                   : OnNormalAttack() 호출 (일반 공격)
     ///   Swipe는 회피 쿨다운 중 차단된다.
+    ///   회피 대시 중에는 Tap이 차단된다.
     ///
     ///   네 플래그 모두 Base가 소유하며, 차단 검사(IsTapBlocked)도 Base의
     ///   HandleTap 초입에서 수행된다. 자식은 상태 진입/이탈 시 Begin*/End*
@@ -82,8 +84,7 @@ namespace Game.Characters
         );
 
         // ── 상수 ──────────────────────────────────────────────────
-        private const float ATTACK_INDICATOR_DURATION = 0.4f;
-        private const float ARRIVE_THRESHOLD          = 0.05f;
+        private const float ARRIVE_THRESHOLD = 0.05f;
 
         // ── 내부 참조 ─────────────────────────────────────────────
         protected CharacterModel    Model   { get; private set; }
@@ -122,13 +123,14 @@ namespace Game.Characters
 
         /// <summary>
         /// Tap 입력이 즉시 무시되어야 하는지 여부.
-        /// INPUT.md §5 네 가지 상태 중 하나라도 활성이면 true.
+        /// 회피 대시 중 / 고유 스킬 중 / 차지 스킬 중 / 슬로우 코루틴 진행 중(Exit 구간 포함)에는 차단.
+        /// 슬로우 Hold 구간(_isJustDodgeSlowActive=true)에서만 OnJustDodgeTap 분기로 처리.
         /// </summary>
         private bool IsTapBlocked =>
             _isDodgeDashActive      ||
-            _isJustDodgeSlowActive  ||
             _isSignatureSkillActive ||
-            _isChargeSkillActive;
+            _isChargeSkillActive    ||
+            _slowCoroutine != null;
 
         /// <summary>
         /// 일반 공격 가능 여부.
@@ -176,15 +178,33 @@ namespace Game.Characters
 
         // ── 저스트 회피 가용 플래그 ───────────────────────────────
         /// <summary>
-        /// Swipe 시작 시 true, 저스트 회피 발동 또는 DodgeDash 완료 시 false.
-        /// 한 회피당 딱 한 번만 저스트 회피 발동을 보장.
+        /// 자식이 EnableJustDodge()를 호출한 시점부터 true.
+        /// 저스트 회피 발동 또는 DodgeDash 완료 시 false.
+        /// 한 회피(또는 패링 등 자식이 정의한 트리거)당 딱 한 번만 발동을 보장.
         /// </summary>
         protected bool JustDodgeAvailable { get; private set; }
 
+        /// <summary>
+        /// 저스트 회피 발동 가능 상태로 진입한다.
+        /// 자식이 적절한 시점(예: OnSwipe, 방향성 방어 성공 등)에 직접 호출한다.
+        /// </summary>
+        protected void EnableJustDodge() => JustDodgeAvailable = true;
+
         protected void ConsumeJustDodge() => JustDodgeAvailable = false;
 
-        // ── 회피 목적지 ───────────────────────────────────────────
-        protected Vector2 DodgeDest { get; private set; }
+        /// <summary>
+        /// 저스트 회피를 코드에서 직접 발동한다.
+        /// Gesture 를 거치지 않고 Presenter 도메인 내에서 슬로우 진입 경로를 실행한다.
+        /// 사용처: ProcessTakeDamage(회피 중 피격), 자식의 패링 콜백 등.
+        /// </summary>
+        protected void TriggerJustDodge(Vector2 direction) => HandleJustDodge(direction);
+
+        // ── 회피 목적지 / 시작점 / 방향 ─────────────────────────
+        protected Vector2 DodgeDest  { get; private set; }
+        /// <summary>회피 시작 시점의 플레이어 위치. OnDodgeDashComplete 에서 참조 가능.</summary>
+        protected Vector2 DodgeStart { get; private set; }
+        /// <summary>회피 방향 (정규화). OnDodgeDashComplete 에서 참조 가능.</summary>
+        protected Vector2 DodgeDir   { get; private set; }
 
         // ── 이동 ─────────────────────────────────────────────────
         private Vector2 _moveDirection;
@@ -202,17 +222,6 @@ namespace Game.Characters
         // ── 슬로우모션 ────────────────────────────────────────────
         private Coroutine _slowCoroutine;
 
-        // ── 공격 범위 가시화 ──────────────────────────────────────
-        private GameObject     _attackRangeIndicator;
-        private SpriteRenderer _attackRangeSr;
-
-        // ── Gizmo ─────────────────────────────────────────────────
-        private Vector2     _lastAttackCenter;
-        private Vector2     _lastAttackSize;
-        private float       _lastAttackAngle;
-        private bool        _showAttackGizmo;
-        private float       _gizmoTimer;
-        private const float GizmoDuration = 0.5f;
 
         // ── 초기화 ────────────────────────────────────────────────
         /// <summary>
@@ -256,9 +265,6 @@ namespace Game.Characters
 
         protected virtual void OnDisable()
         {
-            // RunStat 구독 해제는 Gesture 유무와 독립적으로 먼저 수행.
-            // Init(Awake) 과 Gesture 초기화(Start) 사이에 OnDisable 이 발생할 경우,
-            // Gesture null early-return 이 RunStat 해제를 skip 하지 않도록.
             if (_subscribedRunStat != null)
             {
                 _subscribedRunStat.OnStatChanged -= HandleRunStatChanged;
@@ -266,13 +272,15 @@ namespace Game.Characters
             }
 
             if (Gesture == null) return;
-            Gesture.OnTap           -= HandleTap;
-            Gesture.OnSwipe         -= HandleSwipe;
-            Gesture.OnMoveDirection -= HandleMoveDirection;
-            Gesture.OnMoveEnd       -= HandleMoveEnd;
-            Gesture.OnHold          -= HandleHold;
-            Gesture.OnRelease       -= HandleRelease;
-            Gesture.OnJustDodge     -= HandleJustDodge;
+            Gesture.OnTap            -= HandleTap;
+            Gesture.OnSwipe          -= HandleSwipe;
+            Gesture.OnMoveDirection  -= HandleMoveDirection;
+            Gesture.OnMoveEnd        -= HandleMoveEnd;
+            Gesture.OnHold           -= HandleHold;
+            Gesture.OnRelease        -= HandleRelease;
+            Gesture.OnHoldSwipe      -= HandleHoldSwipe;
+            Gesture.OnHoldRelease    -= HandleHoldRelease;
+            Gesture.OnHoldDragUpdate -= HandleHoldDragUpdate;
             StopSlowMotion();
         }
 
@@ -292,66 +300,28 @@ namespace Game.Characters
         {
             if (Model == null || !Model.IsAlive) return;
 
-            // INPUT.md §5: 회피 대시 / 저스트 회피 슬로우 / 고유 스킬 / 차지 스킬
-            // 진행 중에는 Tap을 즉시 무시한다 (큐잉 없음).
-            // Base가 소유한 네 플래그로 검사하므로 자식이 우회할 수 없다.
+            // 저스트 회피 슬로우 Hold 구간에서만 고유 스킬 발동.
+            // Exit 구간(_isJustDodgeSlowActive=false, _slowCoroutine!=null)은 IsTapBlocked가 막는다.
+            if (_isJustDodgeSlowActive)
+            {
+                OnJustDodgeTap();
+                return;
+            }
+
             if (IsTapBlocked) return;
 
+            // 평상시 → 일반 공격
             if (_isAttacking || !CanAttack) return;
-
             View.PlayAttack();
             StartCoroutine(AttackRoutine());
-            OnTap(screenPos);
+            OnNormalAttack(screenPos);
         }
 
-        /// <summary>
-        /// 즉시 공격 루틴.
-        /// PerformAttack()을 인디케이터 표시 직후 즉시 실행.
-        /// 인디케이터는 ATTACK_INDICATOR_DURATION 동안 유지 후 숨김.
-        /// </summary>
         private IEnumerator AttackRoutine()
         {
             _isAttacking = true;
-            ShowAttackRangeIndicator();
-            PerformAttack();
-            yield return new WaitForSecondsRealtime(ATTACK_INDICATOR_DURATION);
-            HideAttackRangeIndicator();
+            yield return new WaitForSecondsRealtime(Model.StatData.attackCooldown);
             _isAttacking = false;
-        }
-
-        private void PerformAttack()
-        {
-            OnPerformAttack();
-
-            EnemyPresenterBase nearestEnemy = FindNearestEnemy(30f);
-
-            var stat = Model.StatData;
-            var dir  = nearestEnemy != null
-                ? ((Vector2)nearestEnemy.transform.position - (Vector2)transform.position).normalized
-                : Vector2.up;
-
-            var   boxCenter  = (Vector2)transform.position + dir * stat.attackOffset;
-            var   boxSize    = new Vector2(stat.attackWidth, stat.attackHeight);
-            float angle      = Vector2.SignedAngle(Vector2.up, dir);
-            int   enemyLayer = LayerMask.GetMask("Enemy");
-
-            _lastAttackCenter = boxCenter;
-            _lastAttackSize   = boxSize;
-            _lastAttackAngle  = angle;
-            _showAttackGizmo  = true;
-            _gizmoTimer       = GizmoDuration;
-
-            var hits     = Physics2D.OverlapBoxAll(boxCenter, boxSize, angle, enemyLayer);
-            int hitCount = 0;
-            foreach (var hit in hits)
-            {
-                var damageable = hit.GetComponent<IDamageable>();
-                if (damageable == null || !damageable.IsAlive) continue;
-                damageable.TakeDamage(Model.AttackPower * (stat.normalAttackPercent / 100f), dir);
-                OnHitDamageable(damageable);
-                hitCount++;
-            }
-            Debug.Log($"[Attack] 히트: {hitCount}명 / 범위 내 오브젝트: {hits.Length}");
         }
 
         private void HandleSwipe(Vector2 direction)
@@ -361,13 +331,14 @@ namespace Game.Characters
             if (_dodgeCooldownTimer > 0f) return;
 
             var stat  = Model.StatData;
-            DodgeDest = (Vector2)transform.position + direction * stat.dashDistance;
+            DodgeStart = (Vector2)transform.position;
+            DodgeDir   = direction;
+            DodgeDest  = DodgeStart + direction * stat.dashDistance;
 
             var stage = ServiceLocator.Get<StageBuilder>();
             if (stage != null) DodgeDest = stage.ClampToStage(DodgeDest);
 
-            JustDodgeAvailable     = true;
-            _isDodgeDashActive     = true;
+            _isDodgeDashActive = true;
             LockMovement();
             Model.SetInvincible(true);
 
@@ -470,6 +441,10 @@ namespace Game.Characters
             Model.SetDodgeCooldownRatio(1f);
         }
 
+        private void HandleHoldSwipe(Vector2 direction)   => OnHoldSwipe(direction);
+        private void HandleHoldRelease(Vector2 fromStart) => OnHoldRelease(fromStart);
+        private void HandleHoldDragUpdate(Vector2 delta)  => OnHoldDragUpdate(delta);
+
         private void HandleMoveDirection(Vector2 dir)
         {
             if (Model == null || !Model.IsAlive) return;
@@ -482,12 +457,6 @@ namespace Game.Characters
         protected virtual void Update()
         {
             if (Model == null || !Model.IsAlive) return;
-
-            if (_showAttackGizmo)
-            {
-                _gizmoTimer -= Time.deltaTime;
-                if (_gizmoTimer <= 0f) _showAttackGizmo = false;
-            }
 
             if (CurrentMoveState == MoveState.Free && _moveDirection.sqrMagnitude > 0.01f)
             {
@@ -580,10 +549,9 @@ namespace Game.Characters
             Model.SetDodgeCooldownRatio(1f);
 
             // View.PlayDeath()가 gameObject.SetActive(false)를 호출하면 코루틴이 강제 중단된다.
-            // AttackRoutine이 중단되면 _isAttacking·인디케이터가 정리되지 않아 좀비 상태가 남으므로,
+            // AttackRoutine이 중단되면 _isAttacking 이 정리되지 않아 좀비 상태가 남으므로
             // SetActive(false) 전에 먼저 정리한다.
             _isAttacking = false;
-            HideAttackRangeIndicator();
             OnBeforeDeath();          // 자식이 자신의 인디케이터/상태를 정리하는 훅
 
             StopSlowMotion();
@@ -617,7 +585,7 @@ namespace Game.Characters
         /// 이어하기 전용 부활. HP 복구 + View 재활성화 + 제스처 재구독.
         /// ProgressionManager가 인터미션 방 진입 시 호출한다.
         /// </summary>
-        public void Revive()
+        public virtual void Revive()
         {
             if (Model == null) return;
             Model.Revive(Model.MaxHp);
@@ -625,21 +593,16 @@ namespace Game.Characters
 
             if (Gesture != null)
             {
-                // 이중 구독 방지를 위해 해제 후 재구독
-                Gesture.OnTap           -= HandleTap;
-                Gesture.OnTap           += HandleTap;
-                Gesture.OnSwipe         -= HandleSwipe;
-                Gesture.OnSwipe         += HandleSwipe;
-                Gesture.OnMoveDirection -= HandleMoveDirection;
-                Gesture.OnMoveDirection += HandleMoveDirection;
-                Gesture.OnMoveEnd       -= HandleMoveEnd;
-                Gesture.OnMoveEnd       += HandleMoveEnd;
-                Gesture.OnHold          -= HandleHold;
-                Gesture.OnHold          += HandleHold;
-                Gesture.OnRelease       -= HandleRelease;
-                Gesture.OnRelease       += HandleRelease;
-                Gesture.OnJustDodge     -= HandleJustDodge;
-                Gesture.OnJustDodge     += HandleJustDodge;
+                // 이중 구독 방지: 해제 후 재구독
+                Gesture.OnTap            -= HandleTap;            Gesture.OnTap            += HandleTap;
+                Gesture.OnSwipe          -= HandleSwipe;          Gesture.OnSwipe          += HandleSwipe;
+                Gesture.OnMoveDirection  -= HandleMoveDirection;  Gesture.OnMoveDirection  += HandleMoveDirection;
+                Gesture.OnMoveEnd        -= HandleMoveEnd;        Gesture.OnMoveEnd        += HandleMoveEnd;
+                Gesture.OnHold           -= HandleHold;           Gesture.OnHold           += HandleHold;
+                Gesture.OnRelease        -= HandleRelease;        Gesture.OnRelease        += HandleRelease;
+                Gesture.OnHoldSwipe      -= HandleHoldSwipe;      Gesture.OnHoldSwipe      += HandleHoldSwipe;
+                Gesture.OnHoldRelease    -= HandleHoldRelease;    Gesture.OnHoldRelease    += HandleHoldRelease;
+                Gesture.OnHoldDragUpdate -= HandleHoldDragUpdate; Gesture.OnHoldDragUpdate += HandleHoldDragUpdate;
             }
             Debug.Log($"[{GetType().Name}] 부활 완료. HP: {Model.CurrentHp}/{Model.MaxHp}");
         }
@@ -669,9 +632,12 @@ namespace Game.Characters
                 }
             }
 
-            // Phase 2 (Exit): 스킬 발동권을 즉시 만료시키고 exitCurve로 복귀한다.
-            // 이 시점 이후에는 Hold/Release로 고유 스킬을 발동할 수 없다.
+            // Phase 2 (Exit): 스킬 발동권과 슬로우 Tap 발동권을 즉시 만료시키고 exitCurve로 복귀한다.
+            // _isJustDodgeSlowActive 를 여기서 내려 Exit 구간에서는 OnJustDodgeTap 이 발동되지 않도록 한다.
+            // (Exit 커브가 진행 중인 "슬로우 해제 중" 시점에 Tap 이 들어오면 슬로우가 끝난 후
+            //  스킬이 시작되는 것처럼 보이는 버그 방지)
             Model?.SetJustDodgeReady(false);
+            _isJustDodgeSlowActive = false;
             ServiceLocator.Get<CameraFollow>()?.TriggerZoomReturn(exitDuration);
 
             elapsed = 0f;
@@ -724,41 +690,6 @@ namespace Game.Characters
             Time.timeScale = 1f;
         }
 
-        // ── 공격 범위 가시화 ──────────────────────────────────────
-        private void ShowAttackRangeIndicator()
-        {
-            if (_attackRangeIndicator == null) CreateAttackRangeIndicator();
-
-            var stat    = Model.StatData;
-            EnemyPresenterBase nearest = FindNearestEnemy(30f);
-            var dir     = nearest != null
-                ? ((Vector2)nearest.transform.position - (Vector2)transform.position).normalized
-                : Vector2.up;
-
-            var   boxCenter = (Vector2)transform.position + dir * stat.attackOffset;
-            float angle     = Vector2.SignedAngle(Vector2.up, dir);
-
-            _attackRangeIndicator.transform.position   = new Vector3(boxCenter.x, boxCenter.y, 0f);
-            _attackRangeIndicator.transform.rotation   = Quaternion.Euler(0f, 0f, angle);
-            _attackRangeIndicator.transform.localScale = new Vector3(stat.attackWidth, stat.attackHeight, 1f);
-            _attackRangeIndicator.SetActive(true);
-        }
-
-        private void HideAttackRangeIndicator()
-        {
-            if (_attackRangeIndicator != null)
-                _attackRangeIndicator.SetActive(false);
-        }
-
-        private void CreateAttackRangeIndicator()
-        {
-            _attackRangeIndicator       = new GameObject("AttackRangeIndicator");
-            _attackRangeSr              = _attackRangeIndicator.AddComponent<SpriteRenderer>();
-            _attackRangeSr.sprite       = CreateSquareSprite();
-            _attackRangeSr.color        = new Color(1f, 1f, 0f, 0.25f);
-            _attackRangeSr.sortingOrder = 10;
-            _attackRangeIndicator.SetActive(false);
-        }
 
         protected Sprite CreateSquareSprite()
         {
@@ -840,6 +771,36 @@ namespace Game.Characters
             return nearest;
         }
 
+        // ── IDamageable 공통 구현 ─────────────────────────────────
+        /// <summary>IDamageable.IsAlive 공통 구현. 각 자식이 인터페이스 구현 시 위임.</summary>
+        protected bool CharacterIsAlive => Model != null && Model.IsAlive;
+
+        // ── TakeDamage 공통 경로 ──────────────────────────────────
+        /// <summary>
+        /// IDamageable.TakeDamage 의 표준 처리 경로.
+        /// 1) JustDodgeAvailable → TriggerJustDodge 후 리턴
+        /// 2) IsInvincible → 리턴
+        /// 3) Model.TakeDamage → View.PlayHit
+        ///
+        /// 각 자식의 TakeDamage(IDamageable 구현)에서 이 메서드를 호출한다.
+        /// </summary>
+        protected void ProcessTakeDamage(float amount, Vector2 knockbackDir)
+        {
+            if (Model == null || !Model.IsAlive) return;
+
+            if (JustDodgeAvailable)
+            {
+                ConsumeJustDodge();
+                TriggerJustDodge(knockbackDir * -1f);
+                return;
+            }
+
+            if (Model.IsInvincible) return;
+
+            Model.TakeDamage(amount, knockbackDir);
+            if (Model.IsAlive) View.PlayHit();
+        }
+
         // ── 위치 순간이동 ─────────────────────────────────────────
         /// <summary>Transform과 View를 동시에 지정 위치로 이동한다. ProgressionManager.ResetPlayerPosition에서 사용.</summary>
         public void Warp(Vector2 pos)
@@ -848,22 +809,6 @@ namespace Game.Characters
             View?.SetPosition(pos);
         }
 
-        // ── Gizmo ─────────────────────────────────────────────────
-        private void OnDrawGizmos()
-        {
-            if (!Application.isPlaying || !_showAttackGizmo) return;
-            Gizmos.color  = new Color(1f, 1f, 0f, 0.4f);
-            var rot       = Quaternion.Euler(0f, 0f, _lastAttackAngle);
-            var oldMatrix = Gizmos.matrix;
-            Gizmos.matrix = Matrix4x4.TRS(
-                new Vector3(_lastAttackCenter.x, _lastAttackCenter.y, 0f), rot, Vector3.one);
-            Gizmos.DrawCube(Vector3.zero, new Vector3(_lastAttackSize.x, _lastAttackSize.y, 0.1f));
-            Gizmos.color = Color.yellow;
-            Gizmos.DrawWireCube(Vector3.zero, new Vector3(_lastAttackSize.x, _lastAttackSize.y, 0.1f));
-            Gizmos.matrix = oldMatrix;
-            Gizmos.color  = Color.red;
-            Gizmos.DrawSphere(new Vector3(_lastAttackCenter.x, _lastAttackCenter.y, 0f), 0.1f);
-        }
 
         // ── RunStat 이벤트 핸들러 ────────────────────────────────
         private void HandleRunStatChanged()
@@ -873,7 +818,19 @@ namespace Game.Characters
         }
 
         // ── 자식 클래스 override 지점 ─────────────────────────────
-        protected virtual void OnTap(Vector2 screenPos)                                { }
+
+        /// <summary>
+        /// 평상시 Tap — 일반 공격. 근접 캐릭터는 MeleePresenterBase가 구현.
+        /// 원거리 캐릭터(Ranger)는 직접 override해 투사체 발사.
+        /// </summary>
+        protected virtual void OnNormalAttack(Vector2 screenPos)                       { }
+
+        /// <summary>
+        /// 저스트 회피 슬로우 중 Tap — 고유 스킬 발동.
+        /// 각 캐릭터가 override해 고유 스킬을 구현.
+        /// </summary>
+        protected virtual void OnJustDodgeTap()                                        { }
+
         protected virtual void OnSwipe(Vector2 direction)                              { }
         protected virtual void OnHold(float duration)                                  { }
         protected virtual void OnSkillRelease(bool fullyCharged, bool justDodgeReady)  { }
@@ -882,10 +839,26 @@ namespace Game.Characters
         protected virtual void OnHitDamageable(IDamageable target)                     { }
 
         /// <summary>
-        /// PerformAttack() 시작 시 호출되는 훅. 본체 히트 여부와 무관하게 항상 호출된다.
-        /// 잔상 독자 공격 등 공격 시도 자체에 반응해야 하는 자식 로직에 사용한다.
+        /// Hold 중 Swipe 감지 시 호출. Warrior/Ranger가 override.
         /// </summary>
-        protected virtual void OnPerformAttack()                                         { }
+        protected virtual void OnHoldSwipe(Vector2 direction)                          { }
+
+        /// <summary>
+        /// Hold 후 손가락을 뗄 때 호출. Warrior/Ranger가 override.
+        /// 차지 풀 여부는 각 자식이 자신의 로컬 플래그(_isChargedFull 등)로 판단한다.
+        /// </summary>
+        protected virtual void OnHoldRelease(Vector2 fromStart)                        { }
+
+        /// <summary>
+        /// Hold 중 매 프레임 드래그 변위 발행. Ranger가 override.
+        /// </summary>
+        protected virtual void OnHoldDragUpdate(Vector2 fromStart)                     { }
+
+        /// <summary>
+        /// AttackRoutine 시작 시 호출되는 훅. 히트 여부 무관, 항상 호출.
+        /// Assassin이 잔상 동참 공격에 사용.
+        /// </summary>
+        protected virtual void OnPerformAttack()                                       { }
 
         protected virtual void Start()
         {
@@ -896,13 +869,15 @@ namespace Game.Characters
             }
             else
             {
-                Gesture.OnTap           += HandleTap;
-                Gesture.OnSwipe         += HandleSwipe;
-                Gesture.OnMoveDirection += HandleMoveDirection;
-                Gesture.OnMoveEnd       += HandleMoveEnd;
-                Gesture.OnHold          += HandleHold;
-                Gesture.OnRelease       += HandleRelease;
-                Gesture.OnJustDodge     += HandleJustDodge;
+                Gesture.OnTap            += HandleTap;
+                Gesture.OnSwipe          += HandleSwipe;
+                Gesture.OnMoveDirection  += HandleMoveDirection;
+                Gesture.OnMoveEnd        += HandleMoveEnd;
+                Gesture.OnHold           += HandleHold;
+                Gesture.OnRelease        += HandleRelease;
+                Gesture.OnHoldSwipe      += HandleHoldSwipe;
+                Gesture.OnHoldRelease    += HandleHoldRelease;
+                Gesture.OnHoldDragUpdate += HandleHoldDragUpdate;
             }
 
             // RunStat 지연 주입 — StageManager 는 MonoBehaviour 라 Awake 순서가 비결정적.

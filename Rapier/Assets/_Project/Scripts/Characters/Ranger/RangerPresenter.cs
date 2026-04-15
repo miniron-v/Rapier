@@ -110,72 +110,31 @@ namespace Game.Characters.Ranger
 
         // ── 이벤트 구독 / 해제 ────────────────────────────────────────────
 
-        protected override void OnEnable()
-        {
-            base.OnEnable();
-            // Hold 확장 이벤트는 Start 이후 Gesture 가 확정되므로 Start 에서 구독
-        }
-
-        protected override void Start()
-        {
-            base.Start(); // Gesture 구독 포함
-
-            // Hold 확장 이벤트 추가 구독
-            if (Gesture != null)
-            {
-                Gesture.OnHoldDragUpdate += HandleHoldDragUpdate;
-                Gesture.OnHoldRelease    += HandleHoldRelease;
-            }
-        }
-
         protected override void OnDisable()
         {
-            // 차지 경직 해제 (씬 전환 / 비활성화 시)
+            // 차지 경직 해제
             if (_isChargeLocked)
             {
                 _isChargeLocked = false;
                 FreeMovement();
             }
 
-            // AimIndicator 비활성
-            _aimIndicator?.Hide();
+            // AimIndicator 비활성 (OnDestroy 이후 gameObject 가 파괴된 상태일 수 있으므로 명시적 체크)
+            if (_aimIndicator != null && _aimIndicator.gameObject != null)
+                _aimIndicator.Hide();
 
-            // Hold 확장 이벤트 구독 해제
-            if (Gesture != null)
-            {
-                Gesture.OnHoldDragUpdate -= HandleHoldDragUpdate;
-                Gesture.OnHoldRelease    -= HandleHoldRelease;
-            }
+            base.OnDisable();
 
-            base.OnDisable(); // 기본 이벤트 해제
-
-            // 지뢰 전부 정리
             CleanupAllMines();
         }
 
         // ── IDamageable / IPlayerCharacter ────────────────────────────────
 
         /// <inheritdoc/>
-        public bool IsAlive => Model != null && Model.IsAlive;
+        public bool IsAlive => CharacterIsAlive;
 
         /// <inheritdoc/>
-        public void TakeDamage(float amount, Vector2 knockbackDir)
-        {
-            if (!IsAlive) return;
-
-            if (JustDodgeAvailable)
-            {
-                ConsumeJustDodge();
-                Debug.Log("[RangerPresenter] 회피 중 피격 → 저스트 회피 발동!");
-                Gesture?.TriggerJustDodge(knockbackDir * -1f);
-                return;
-            }
-
-            if (Model.IsInvincible) return;
-
-            Model.TakeDamage(amount);
-            View.PlayHit();
-        }
+        public void TakeDamage(float amount, Vector2 knockbackDir) => ProcessTakeDamage(amount, knockbackDir);
 
         /// <inheritdoc/>
         public CharacterModel PublicModel => Model;
@@ -194,6 +153,7 @@ namespace Game.Characters.Ranger
         /// </summary>
         protected override bool CanDodge => !_isChargeLocked;
 
+
         // ── 사망 전처리 훅 ────────────────────────────────────────────────
 
         protected override void OnBeforeDeath()
@@ -205,8 +165,9 @@ namespace Game.Characters.Ranger
                 FreeMovement();
             }
 
-            // AimIndicator 비활성
-            _aimIndicator?.Hide();
+            // AimIndicator 비활성 (OnDestroy 이후 호출 시 gameObject 가 파괴된 상태일 수 있으므로 명시적 체크)
+            if (_aimIndicator != null && _aimIndicator.gameObject != null)
+                _aimIndicator.Hide();
 
             // 지뢰 전부 정리
             CleanupAllMines();
@@ -231,10 +192,44 @@ namespace Game.Characters.Ranger
             ConsumeJustDodge();
 
             if (_statData != null && _statData.MinePlaceOnDodge)
-                PlaceMine(DodgeDest);
+                ThrowMines();
+        }
+
+        /// <summary>
+        /// 회피 반대 방향 기준 0°/+45°/-45° 세 방향으로 지뢰를 던진다.
+        /// 출발점: 회피 완료 시점 플레이어 위치.
+        /// 도착점: 각 방향으로 dashDistance 거리.
+        /// </summary>
+        private void ThrowMines()
+        {
+            Vector2 origin   = (Vector2)transform.position;
+            Vector2 throwDir = -DodgeDir; // 회피 반대 방향
+            float   dist     = _statData.dashDistance;
+
+            float[] angles = { 0f, 45f, -45f };
+            foreach (float angleDeg in angles)
+            {
+                Vector2 dir  = RotateVector(throwDir, angleDeg);
+                PlaceMine(origin + dir * dist);
+            }
+        }
+
+        private static Vector2 RotateVector(Vector2 v, float degrees)
+        {
+            float rad = degrees * Mathf.Deg2Rad;
+            float cos = Mathf.Cos(rad), sin = Mathf.Sin(rad);
+            return new Vector2(v.x * cos - v.y * sin, v.x * sin + v.y * cos);
         }
 
         // ── 저스트 회피 훅 ────────────────────────────────────────────────
+
+        /// <summary>
+        /// Swipe 발생 시 저스트 회피 발동 가능 상태로 진입.
+        /// </summary>
+        protected override void OnSwipe(Vector2 direction)
+        {
+            EnableJustDodge();
+        }
 
         /// <summary>
         /// 저스트 회피 발동 시 강화 화살 발사 준비 플래그 세팅.
@@ -258,37 +253,20 @@ namespace Game.Characters.Ranger
         // ── Tap override — 원거리 사격 ────────────────────────────────────
 
         /// <summary>
-        /// Tap: 전방으로 RangerArrow 발사.
-        /// Base 의 PerformAttack() (근접 광역) 은 실행되지 않는다.
-        /// NOTE: Base.HandleTap → View.PlayAttack() + AttackRoutine(PerformAttack) 이 먼저 실행됨.
-        ///       PerformAttack() 은 근접 광역이므로 레인저에게는 불필요하나,
-        ///       OnTap 에서 화살을 추가 발사하면 "근접 광역 + 원거리" 이중 발사가 된다.
-        ///
-        ///       해결: normalAttackPercent=0 (SO 에서) 으로 설정하면 Base 근접 광역 데미지=0.
-        ///       또는 CanAttack 플래그를 경우에 따라 조절 (현재 구현에선 SO 값으로 제어).
-        ///
-        ///       Phase 26-D 에서 RangerStatData SO 의 normalAttackPercent 를 0 으로 설정할 것.
-        ///       (현재는 코드상 화살 발사와 Base 근접 광역이 모두 실행되나,
-        ///        normalAttackPercent=0 으로 설정하면 Base 근접 광역 데미지가 0 이 되어 무해함.)
+        /// 일반 Tap → 최인접 적 방향으로 화살 발사.
         /// </summary>
-        protected override void OnTap(Vector2 screenPos)
+        protected override void OnNormalAttack(Vector2 screenPos)
         {
-            // 최인접 적 방향 또는 기본 전방 (Vector2.up)
             var nearest = FindNearestEnemy(30f);
             var dir = nearest != null
                 ? ((Vector2)nearest.transform.position - (Vector2)transform.position).normalized
                 : Vector2.up;
 
             float damage = Model.AttackPower * (_statData.TapDamagePercent / 100f);
-            SpawnArrow(
-                (Vector2)transform.position,
-                dir,
-                damage,
-                _statData.TapProjectileSpeed,
-                _statData.TapProjectileRange,
-                _statData.TapProjectileWidth);
+            SpawnArrow((Vector2)transform.position, dir, damage,
+                       _statData.TapProjectileSpeed, _statData.TapProjectileRange, _statData.TapProjectileWidth);
 
-            Debug.Log($"[RangerPresenter] Tap 사격 → 방향: {dir}, 데미지: {damage:F0}");
+            Debug.Log($"[RangerPresenter] 일반 사격 → 방향: {dir}, 데미지: {damage:F0}");
         }
 
         // ── OnHold override — 차지 진행률 추적 + 경직 진입 ──────────────
@@ -314,16 +292,13 @@ namespace Game.Characters.Ranger
             float aimLength = Mathf.Lerp(_statData.ChargeArrowMinRange, _statData.ChargeArrowMaxRange, _chargeProgress);
             _aimIndicator?.UpdateAim(transform.position, _aimDirection, aimLength);
 
-            // SetChargedFull 갱신
-            bool isFull = _chargeProgress >= 1f;
-            Gesture?.SetChargedFull(isFull);
         }
 
         // ── OnSkillRelease override — 차지 화살 발사 (Base Release 경로) ─
 
         /// <summary>
         /// Base.HandleRelease 에서 OnSkillRelease 는 fullyCharged 또는 JustDodgeReady 일 때만 호출됨.
-        /// 레인저는 OnHoldRelease(GestureRecognizer 직접 구독)를 사용하므로 이 훅은 사용하지 않음.
+        /// 레인저는 OnHoldRelease(Base 확장 훅)를 사용하므로 이 훅은 사용하지 않음.
         /// </summary>
         protected override void OnSkillRelease(bool fullyCharged, bool justDodgeReady)
         {
@@ -336,44 +311,34 @@ namespace Game.Characters.Ranger
         /// OnHoldDragUpdate: 조준 방향 갱신.
         /// fromStart 가 zero 이면 마지막 유효 _aimDirection 유지.
         /// </summary>
-        private void HandleHoldDragUpdate(Vector2 fromStart)
+        protected override void OnHoldDragUpdate(Vector2 fromStart)
         {
             if (fromStart.sqrMagnitude > 0.01f)
                 _aimDirection = fromStart.normalized;
 
-            // AimIndicator 실시간 갱신
             float aimLength = Mathf.Lerp(_statData.ChargeArrowMinRange, _statData.ChargeArrowMaxRange, _chargeProgress);
             _aimIndicator?.UpdateAim(transform.position, _aimDirection, aimLength);
         }
 
-        /// <summary>
-        /// OnHoldRelease: 차지량 + 조준 방향으로 화살 발사.
-        /// 저스트 회피 준비 상태면 강화 화살.
-        /// </summary>
-        private void HandleHoldRelease(Vector2 fromStart, bool chargedFull)
+        protected override void OnHoldRelease(Vector2 fromStart)
         {
             if (Model == null || !Model.IsAlive) return;
 
-            // fromStart 가 유효하면 최종 조준 방향 갱신
             if (fromStart.sqrMagnitude > 0.01f)
                 _aimDirection = fromStart.normalized;
 
-            float t = _chargeProgress;
-
-            if (_isJustDodgeReady && Model.IsJustDodgeReady)
-            {
-                // 저스트 회피 강화 화살
-                FireJustDodgeArrow();
-                _isJustDodgeReady = false;
-            }
-            else
-            {
-                // 일반 차지 화살
-                FireChargeArrow(t);
-            }
-
-            // 경직 해제
+            FireChargeArrow(_chargeProgress);
             ReleaseLock();
+        }
+
+        /// <summary>
+        /// 저스트 회피 슬로우 중 Tap → 강화 화살 발사.
+        /// </summary>
+        protected override void OnJustDodgeTap()
+        {
+            if (Model == null || !Model.IsAlive) return;
+            FireJustDodgeArrow();
+            _isJustDodgeReady = false;
         }
 
         // ── 화살 발사 로직 ────────────────────────────────────────────────
@@ -441,7 +406,10 @@ namespace Game.Characters.Ranger
 
         // ── 지뢰 설치 로직 ────────────────────────────────────────────────
 
-        private void PlaceMine(Vector2 position)
+        /// <summary>
+        /// 현재 위치에서 destination 으로 지뢰를 투척한다.
+        /// </summary>
+        private void PlaceMine(Vector2 destination)
         {
             // 최대 수 초과 시 최고참 제거
             if (_activeMines.Count >= _statData.MaxActiveMines)
@@ -455,17 +423,19 @@ namespace Game.Characters.Ranger
                 }
             }
 
+            // 투척 시작 위치 = 현재 플레이어 위치
+            Vector2 origin = (Vector2)transform.position;
+
             GameObject go;
             if (_minePrefab != null)
             {
-                go = Instantiate(_minePrefab, new Vector3(position.x, position.y, 0f), Quaternion.identity);
+                go = Instantiate(_minePrefab, new Vector3(origin.x, origin.y, 0f), Quaternion.identity);
             }
             else
             {
                 go = new GameObject("RangerMine");
-                go.transform.position = new Vector3(position.x, position.y, 0f);
+                go.transform.position = new Vector3(origin.x, origin.y, 0f);
 
-                // 폴백 시각 (원)
                 var sr = go.AddComponent<SpriteRenderer>();
                 sr.sprite       = CreateSquareSprite();
                 sr.color        = new Color(1f, 0.4f, 0f, 0.8f);
@@ -477,20 +447,21 @@ namespace Game.Characters.Ranger
             if (mine == null)
                 mine = go.AddComponent<RangerMine>();
 
-            // Trigger Collider (없으면 추가)
+            // Trigger Collider (없으면 추가) — Init 에서 비활성화되므로 크기만 설정
             if (go.GetComponent<Collider2D>() == null)
             {
-                var circle = go.AddComponent<CircleCollider2D>();
-                circle.radius    = _statData.MineExplosionRadius * 0.5f; // 접근 감지 반경
+                var circle       = go.AddComponent<CircleCollider2D>();
+                circle.radius    = _statData.MineExplosionRadius * 0.5f;
                 circle.isTrigger = true;
             }
 
             float damage = Model.AttackPower * (_statData.MineDamagePercent / 100f);
-            mine.Init(damage, _statData.MineExplosionRadius, _statData.MineLifetime);
+            mine.Init(damage, _statData.MineExplosionRadius, _statData.MineLifetime,
+                      destination, _statData.MineThrowSpeed);
             mine.OnMineDestroyed += HandleMineDestroyed;
             _activeMines.Enqueue(mine);
 
-            Debug.Log($"[RangerPresenter] 지뢰 설치 @ {position}, 활성 지뢰: {_activeMines.Count}");
+            Debug.Log($"[RangerPresenter] 지뢰 투척 → {origin} → {destination}, 활성 지뢰: {_activeMines.Count}");
         }
 
         // ── 이벤트 핸들러 ────────────────────────────────────────────────
@@ -511,7 +482,6 @@ namespace Game.Characters.Ranger
             _chargeProgress = 0f;
             FreeMovement();
             _aimIndicator?.Hide();
-            Gesture?.SetChargedFull(false);
             Debug.Log("[RangerPresenter] 차지 경직 해제");
         }
 

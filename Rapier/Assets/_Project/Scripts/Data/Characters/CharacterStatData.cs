@@ -46,6 +46,10 @@ namespace Game.Characters
         [Header("스킬 차지")]
         [Min(0)] public float chargeRequiredTime = 0.3f;
 
+        [Header("공격 속도")]
+        [Tooltip("일반 공격 후 다음 공격까지의 대기 시간 (초). 0 = 제한 없음.")]
+        [Min(0)] public float attackCooldown = 0.4f;
+
         [Header("데미지 배율")]
         [Tooltip("일반 공격 데미지 배율 (%). 100 = ×1.0, 150 = ×1.5")]
         public int normalAttackPercent = 100;

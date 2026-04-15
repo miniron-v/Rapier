@@ -19,14 +19,11 @@ namespace Game.Input
     ///                   → Hold 확정
     ///   FingerUp    → 최종 판별
     ///                 - Move 중 → MoveEnd
-    ///                 - dist >= SWIPE_MIN_DISTANCE AND duration < SWIPE_MAX_DURATION
-    ///                   → Swipe 또는 JustDodge (AttackWindow 열려있을 때)
-    ///                 - dist < TAP_MAX_DISTANCE AND duration < TAP_MAX_DURATION
-    ///                   → Tap
+    ///                 - dist >= SWIPE_MIN_DISTANCE AND duration < SWIPE_MAX_DURATION → Swipe
+    ///                 - dist < TAP_MAX_DISTANCE AND duration < TAP_MAX_DURATION → Tap
     ///
-    /// [JustDodge 트리거]
-    ///   TriggerJustDodge(direction) : 게임 로직에서 직접 호출하는 정식 API.
-    ///   회피 중 피격 판정 등 코드에서 직접 발동할 때 사용.
+    /// 전투 도메인 판단(JustDodge 발동 여부, 차지 풀 여부 등)은 Presenter가 담당한다.
+    /// GestureRecognizer 는 입력 인식과 이벤트 발행만 수행한다.
     /// </summary>
     public class GestureRecognizer : MonoBehaviour
     {
@@ -45,23 +42,22 @@ namespace Game.Input
         public event Action             OnMoveEnd;
         public event Action<float>      OnHold;
         public event Action<InputState> OnRelease;
-        public event Action<Vector2>    OnJustDodge;
 
         /// <summary>
         /// Hold 성립 후 매 프레임 발행. 시작점 대비 손가락 변위(raw, 정규화 안 함).
         /// </summary>
-        public event Action<Vector2>        OnHoldDragUpdate;
+        public event Action<Vector2> OnHoldDragUpdate;
 
         /// <summary>
         /// Hold 중 SWIPE_MIN_DISTANCE 이상 이동 + SWIPE_MAX_DURATION 이내 완료 시 단발 발행.
         /// 발행 후 해당 터치는 소비됨(OnHoldRelease 차단).
         /// </summary>
-        public event Action<Vector2>        OnHoldSwipe;
+        public event Action<Vector2> OnHoldSwipe;
 
         /// <summary>
         /// Hold 중 손가락을 뗄 때 발행. OnHoldSwipe 가 이미 발행된 경우에는 발행하지 않음.
         /// </summary>
-        public event Action<Vector2, bool>  OnHoldRelease;
+        public event Action<Vector2> OnHoldRelease;
 
         // 조이스틱 상태 공개 (UI 표시용)
         public Vector2    JoystickOrigin  { get; private set; }
@@ -75,11 +71,9 @@ namespace Game.Input
         private Vector2 _currentPos;
         private float   _touchDuration;
         private bool    _gestureCommitted;
-        private int     _attackWindowCount;
 
         // Hold 확장 이벤트용 내부 상태
         private bool    _holdConsumed;       // OnHoldSwipe 발행 시 true → OnHoldRelease 차단
-        private bool    _holdChargedFull;    // Presenter 가 SetChargedFull 로 세팅
         private Vector2 _holdSwipeStartPos;  // Swipe 윈도우 시작 위치
         private float   _holdSwipeStartTime; // Swipe 윈도우 시작 시각
 
@@ -140,26 +134,21 @@ namespace Game.Input
                 // Hold 확장 이벤트: 매 프레임 변위 발행
                 OnHoldDragUpdate?.Invoke(_currentPos - _startPos);
 
-                // Hold 확장 이벤트: Swipe 판정 (아직 소비되지 않은 경우에만)
+                // Hold 중 Swipe 윈도우 갱신: 빠른 이동이 너무 느려진 경우 윈도우 리셋만 수행.
+                // 실제 OnHoldSwipe 발행은 손가락을 뗄 때(HandleFingerUp) 수행한다.
                 if (!_holdConsumed)
                 {
                     float holdSwipeDist = Vector2.Distance(_currentPos, _holdSwipeStartPos);
                     if (holdSwipeDist >= SWIPE_MIN_DISTANCE)
                     {
                         float elapsed = _touchDuration - _holdSwipeStartTime;
-                        if (elapsed <= SWIPE_MAX_DURATION)
-                        {
-                            // 기준 통과: OnHoldSwipe 발행 + 소비 플래그
-                            var swipeDir = (_currentPos - _holdSwipeStartPos).normalized;
-                            _holdConsumed = true;
-                            OnHoldSwipe?.Invoke(swipeDir);
-                        }
-                        else
+                        if (elapsed > SWIPE_MAX_DURATION)
                         {
                             // 너무 느리게 이동: 윈도우 리셋
                             _holdSwipeStartPos  = _currentPos;
                             _holdSwipeStartTime = _touchDuration;
                         }
+                        // elapsed <= SWIPE_MAX_DURATION 인 경우는 FingerUp 때 발행
                     }
                 }
             }
@@ -209,22 +198,28 @@ private void HandleFingerDown(Finger finger)
                 // Hold 상태에서 손가락을 뗀 경우
                 if (!_holdConsumed)
                 {
-                    OnHoldRelease?.Invoke(_currentPos - _startPos, _holdChargedFull);
+                    // FingerUp 시점에 Swipe 윈도우 조건 재검사
+                    float holdSwipeDist = Vector2.Distance(endPos, _holdSwipeStartPos);
+                    float holdSwipeElapsed = _touchDuration - _holdSwipeStartTime;
+                    if (holdSwipeDist >= SWIPE_MIN_DISTANCE && holdSwipeElapsed <= SWIPE_MAX_DURATION)
+                    {
+                        // Swipe 성립: OnHoldSwipe 발행 + OnHoldRelease 차단
+                        var swipeDir = (endPos - _holdSwipeStartPos).normalized;
+                        _holdConsumed = true;
+                        OnHoldSwipe?.Invoke(swipeDir);
+                    }
+                    else
+                    {
+                        // Swipe 없음: Release 발행
+                        OnHoldRelease?.Invoke(_currentPos - _startPos);
+                    }
                 }
-                // _holdConsumed == true 면 OnHoldSwipe 이미 발행 → OnHoldRelease 차단
+                // _holdConsumed == true 면 이미 처리됨 → 양쪽 모두 차단
             }
             else if (dist >= SWIPE_MIN_DISTANCE && _touchDuration < SWIPE_MAX_DURATION)
             {
-                if (_attackWindowCount > 0)
-                {
-                    CurrentState = InputState.JustDodge;
-                    OnJustDodge?.Invoke(dir);
-                }
-                else
-                {
-                    CurrentState = InputState.Swipe;
-                    OnSwipe?.Invoke(dir);
-                }
+                CurrentState = InputState.Swipe;
+                OnSwipe?.Invoke(dir);
             }
             else if (dist < TAP_MAX_DISTANCE && _touchDuration < TAP_MAX_DURATION)
             {
@@ -236,26 +231,6 @@ private void HandleFingerDown(Finger finger)
             ResetState();
         }
 
-        // ── 외부 API ─────────────────────────────────────────────
-
-        /// <summary>
-        /// 게임 로직에서 저스트 회피를 직접 발동할 때 호출하는 정식 API.
-        /// 회피 중 피격 등 코드 기반 트리거에서 사용.
-        /// </summary>
-        public void TriggerJustDodge(Vector2 direction)
-        {
-            CurrentState = InputState.JustDodge;
-            OnJustDodge?.Invoke(direction);
-        }
-
-        public void OpenAttackWindow()  => _attackWindowCount++;
-        public void CloseAttackWindow() => _attackWindowCount = Mathf.Max(0, _attackWindowCount - 1);
-        public bool IsAttackWindowOpen  => _attackWindowCount > 0;
-
-        /// <summary>
-        /// Presenter 가 차지 풀 여부를 세팅. OnHoldRelease 페이로드의 chargedFull 에 포함된다.
-        /// </summary>
-        public void SetChargedFull(bool value) => _holdChargedFull = value;
 
         // ── 내부 초기화 ──────────────────────────────────────────
         // ── UI 필터링 ──────────────────────────────────────────
@@ -280,17 +255,16 @@ private void HandleFingerDown(Finger finger)
 
         private void ResetState()
         {
-            _isTouching          = false;
-            _touchDuration       = 0f;
-            _gestureCommitted    = false;
-            JoystickOrigin       = Vector2.zero;
-            JoystickCurrent      = Vector2.zero;
-            CurrentState         = InputState.None;
+            _isTouching         = false;
+            _touchDuration      = 0f;
+            _gestureCommitted   = false;
+            JoystickOrigin      = Vector2.zero;
+            JoystickCurrent     = Vector2.zero;
+            CurrentState        = InputState.None;
             // Hold 확장 상태 초기화
-            _holdConsumed        = false;
-            _holdChargedFull     = false;
-            _holdSwipeStartPos   = Vector2.zero;
-            _holdSwipeStartTime  = 0f;
+            _holdConsumed       = false;
+            _holdSwipeStartPos  = Vector2.zero;
+            _holdSwipeStartTime = 0f;
         }
     }
 }

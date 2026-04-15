@@ -89,6 +89,10 @@ namespace Game.Characters.Ranger
         [Min(1)]
         [SerializeField] private int _maxActiveMines = 6;
 
+        [Tooltip("지뢰 투척 속도 (unit/s). 높을수록 빠르게 날아감")]
+        [Min(1f)]
+        [SerializeField] private float _mineThrowSpeed = 12f;
+
         // ── 읽기 전용 프로퍼티 ───────────────────────────────────────────────
 
         /// <summary>Tap 사격 데미지 배율 (%)</summary>
@@ -141,5 +145,8 @@ namespace Game.Characters.Ranger
 
         /// <summary>동시 최대 지뢰 수</summary>
         public int MaxActiveMines => _maxActiveMines;
+
+        /// <summary>지뢰 투척 속도 (unit/s)</summary>
+        public float MineThrowSpeed => _mineThrowSpeed;
     }
 }

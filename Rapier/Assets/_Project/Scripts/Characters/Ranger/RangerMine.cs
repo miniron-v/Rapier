@@ -8,12 +8,12 @@ namespace Game.Characters.Ranger
     /// 레인저 지뢰.
     ///
     /// [배치 / 수명]
-    ///   RangerPresenter.OnDodgeComplete 에서 현재 위치에 Instantiate.
-    ///   Init() 으로 damage / radius / lifetime 을 주입받는다.
-    ///   lifetime 경과 시 자폭 (LifetimeExplode).
+    ///   RangerPresenter.OnDodgeComplete 에서 Instantiate 후 Init() 으로 목적지 주입.
+    ///   throwSpeed unit/s 로 목적지까지 직선 이동 후 착지.
+    ///   착지 후 lifetime 경과 시 자폭 (LifetimeExplode).
     ///
     /// [폭발 트리거]
-    ///   OnTriggerEnter2D(enemy Collider2D) → 즉시 폭발.
+    ///   착지 후 OnTriggerEnter2D(enemy Collider2D) → 즉시 폭발.
     ///   폭발: 반경 radius 내 Physics2D.OverlapCircleAll → 각 적에게 데미지 → Destroy(self).
     ///
     /// [큐 관리]
@@ -27,34 +27,48 @@ namespace Game.Characters.Ranger
         public event Action<RangerMine> OnMineDestroyed;
 
         // ── 파라미터 ──────────────────────────────────────────────────────
-        [NonSerialized] private float _damage;
-        [NonSerialized] private float _radius;
-        [NonSerialized] private float _lifetime;
+        [NonSerialized] private float   _damage;
+        [NonSerialized] private float   _radius;
+        [NonSerialized] private float   _lifetime;
+        [NonSerialized] private Vector2 _destination;
+        [NonSerialized] private float   _throwSpeed;
 
         // ── 내부 상태 ─────────────────────────────────────────────────────
         [NonSerialized] private float _timer;
         [NonSerialized] private bool  _exploded;
+        [NonSerialized] private bool  _landed;
+
+        private const float LAND_EPSILON = 0.05f;
 
         // ── 초기화 ────────────────────────────────────────────────────────
 
         /// <summary>
-        /// 지뢰 파라미터를 주입한다.
+        /// 지뢰 파라미터를 주입하고 목적지로 이동을 시작한다.
         /// </summary>
         /// <param name="damage">폭발 데미지 (최종값)</param>
         /// <param name="radius">폭발 반경 (unit)</param>
-        /// <param name="lifetime">수명 (초)</param>
-        public void Init(float damage, float radius, float lifetime)
+        /// <param name="lifetime">착지 후 수명 (초)</param>
+        /// <param name="destination">착지 목적지 (월드 좌표)</param>
+        /// <param name="throwSpeed">이동 속도 (unit/s)</param>
+        public void Init(float damage, float radius, float lifetime,
+                         Vector2 destination, float throwSpeed)
         {
-            _damage   = damage;
-            _radius   = radius;
-            _lifetime = lifetime;
-            _timer    = 0f;
-            _exploded = false;
+            _damage      = damage;
+            _radius      = radius;
+            _lifetime    = lifetime;
+            _destination = destination;
+            _throwSpeed  = throwSpeed;
+            _timer       = 0f;
+            _exploded    = false;
+            _landed      = false;
 
-            // Trigger Collider 확인 — 없으면 CircleCollider2D 추가
+            // 착지 전 Collider 비활성 — 이동 중 적과 충돌하지 않도록
             var col = GetComponent<Collider2D>();
             if (col != null)
+            {
                 col.isTrigger = true;
+                col.enabled   = false;
+            }
         }
 
         // ── Unity 라이프사이클 ────────────────────────────────────────────
@@ -63,17 +77,35 @@ namespace Game.Characters.Ranger
         {
             if (_exploded) return;
 
+            if (!_landed)
+            {
+                // 목적지로 이동
+                Vector2 current = transform.position;
+                Vector2 next    = Vector2.MoveTowards(current, _destination, _throwSpeed * Time.deltaTime);
+                transform.position = new Vector3(next.x, next.y, transform.position.z);
+
+                if (Vector2.Distance(next, _destination) <= LAND_EPSILON)
+                {
+                    // 착지
+                    transform.position = new Vector3(_destination.x, _destination.y, transform.position.z);
+                    _landed = true;
+
+                    // 착지 후 Collider 활성
+                    var col = GetComponent<Collider2D>();
+                    if (col != null) col.enabled = true;
+                }
+                return;
+            }
+
+            // 착지 후 수명 카운트
             _timer += Time.deltaTime;
             if (_timer >= _lifetime)
-            {
-                // 수명 만료 자폭
                 LifetimeExplode();
-            }
         }
 
         private void OnTriggerEnter2D(Collider2D other)
         {
-            if (_exploded) return;
+            if (_exploded || !_landed) return;
 
             // Enemy 레이어만 반응
             if (other.gameObject.layer != LayerMask.NameToLayer("Enemy")) return;

@@ -32,7 +32,7 @@ namespace Game.Characters
     ///   OnSkillRelease(fullyCharged=true): 차지 스킬은 동기 실행이며 Base 가 _isChargeSkillActive
     ///     로 실행 구간을 자동 차단한다.
     /// </summary>
-    public class RapierPresenter : CharacterPresenterBase, IDamageable, IPlayerCharacter
+    public class RapierPresenter : MeleePresenterBase, IDamageable, IPlayerCharacter
     {
         [Header("데이터")]
         [SerializeField] private RapierStatData _statData;
@@ -81,27 +81,22 @@ namespace Game.Characters
         }
 
         // ── IDamageable / IPlayerCharacter ────────────────────────
-        public bool IsAlive => Model != null && Model.IsAlive;
+        public bool IsAlive => CharacterIsAlive;
 
-        public void TakeDamage(float amount, Vector2 knockbackDir)
-        {
-            if (!IsAlive) return;
-
-            if (JustDodgeAvailable)
-            {
-                ConsumeJustDodge();
-                Debug.Log("[RapierPresenter] 회피 중 피격 → 저스트 회피 발동!");
-                Gesture?.TriggerJustDodge(knockbackDir * -1f);
-                return;
-            }
-
-            if (Model.IsInvincible) return;
-
-            Model.TakeDamage(amount, knockbackDir);
-            View.PlayHit();
-        }
+        public void TakeDamage(float amount, Vector2 knockbackDir) => ProcessTakeDamage(amount, knockbackDir);
 
         public CharacterModel PublicModel => Model;
+
+        // ── Swipe 훅 — 저스트 회피 활성화 ───────────────────────
+        /// <summary>
+        /// 회피 시작 시 저스트 회피 발동 가능 상태로 진입한다.
+        /// 회피 중 피격이 발생하면 ProcessTakeDamage 가 JustDodgeAvailable 을 소비하고
+        /// TriggerJustDodge 를 호출해 슬로우 진입 경로를 실행한다.
+        /// </summary>
+        protected override void OnSwipe(Vector2 direction)
+        {
+            EnableJustDodge();
+        }
 
         // ── DodgeDash 완료 콜백 ───────────────────────────────────
         protected override void OnDodgeDashComplete()
@@ -160,22 +155,31 @@ namespace Game.Characters
         /// 이렇게 하면 BeginSignatureSkill 호출 시점과 DashSkillRoutine 실행이 1:1 로 묶여
         /// cleanup 누락에 의한 영구 잠금이 구조적으로 불가능하다.
         /// </summary>
-        protected override void OnSkillRelease(bool fullyCharged, bool justDodgeReady)
+        /// <summary>
+        /// 저스트 회피 슬로우 중 Tap → 표식 대시 스킬 발동.
+        /// </summary>
+        protected override void OnJustDodgeTap()
         {
-            if (justDodgeReady && _skillTarget != null && _skillTarget.IsAlive)
+            if (_skillTarget != null && _skillTarget.IsAlive)
             {
-                // 표식 대시 스킬 시퀀스 시작. BeginSignatureSkill / LockMovement 는 여기서만 호출된다.
                 BeginSignatureSkill();
                 LockMovement();
                 StartCoroutine(DashSkillRoutine(_skillTarget));
             }
-            else if (fullyCharged)
+            _skillTarget = null;
+        }
+
+        protected override void OnSkillRelease(bool fullyCharged, bool justDodgeReady)
+        {
+            if (fullyCharged)
             {
-                // 순수 차지 스킬. Base 가 _isChargeSkillActive 로 실행 구간을 자동 차단한다.
                 ExecuteChargeSkill();
             }
-
-            _skillTarget = null;
+            // justDodgeReady 분기: 슬로우 구간 내 Hold/Release 는 대시 스킬 발동 경로가 아님.
+            // 스킬 발동은 OnJustDodgeTap(슬로우 중 Tap) 에서만 처리된다.
+            // _skillTarget 은 OnJustDodgeTap 또는 OnSlowMotionEnd 에서 정리한다.
+            if (!justDodgeReady)
+                _skillTarget = null;
         }
 
         /// <summary>

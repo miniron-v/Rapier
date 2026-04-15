@@ -5,20 +5,30 @@
 ## 1. 클래스 계층
 
 ```
-CharacterPresenterBase (abstract)   ← 공통 로직 (이동, 공격, 회피, 차지)
-├── RapierPresenter                 ← 표식 시스템 + 대시 스킬 (구현 완료)
-├── AssassinPresenter               ← 잔상 스태킹 (구현 완료)
-├── WarriorPresenter                ← 방패 방어 + 패링 (Phase 26 예정)
-└── RangerPresenter                 ← 원거리 사격 + 지뢰 + 차지 조준 (Phase 26 예정)
+CharacterPresenterBase (abstract)   ← 공통 로직 (이동, 회피, 차지, Hold 확장 이벤트, TakeDamage)
+├── MeleePresenterBase (abstract)   ← 근접 공통: 박스 히트 + 인디케이터 + Gizmo
+│   ├── RapierPresenter             ← 표식 시스템 + 대시 스킬
+│   ├── AssassinPresenter           ← 잔상 스태킹 + 360도 광역
+│   └── WarriorPresenter            ← 방패 방어 + 패링
+└── RangerPresenter                 ← 원거리 사격 + 지뢰 + 차지 조준
 ```
 
-> **현재 구현 상태 (2026-04-14): Rapier, Assassin 2종 구현 완료. Warrior, Ranger 는 Phase 26 에서 병렬 작업 예정.**
+> **현재 구현 상태 (2026-04-15): 4종 전부 구현 완료 + Base 리팩터링 완료. Unity 플레이 테스트 진행 중 (세션 17 버그 수정 중).**
 > 신규 캐릭터 추가는 OCP를 만족해야 하며, 기존 코드 수정 없이 확장 가능해야 한다.
 
 - `CharacterModel`: 순수 데이터 (HP, 상태 등). MonoBehaviour 아님.
 - `CharacterView`: 시각 표현만. MonoBehaviour.
 - `CharacterStatData`: SO. 캐릭터 공통 스탯.
 - 각 캐릭터별 SO (예: `RapierStatData`)는 고유 수치 추가.
+
+### MeleePresenterBase
+
+`CharacterPresenterBase`를 상속하는 근접 캐릭터 전용 중간 클래스.
+
+- `OnNormalAttack` 구현 → 박스 히트 + 공격 범위 인디케이터 (0.4초 표시)
+- `PerformMeleeAttack()` protected 메서드 제공 → `OnPerformAttack` 훅 후 박스 히트 실행
+- 공격 범위 Gizmo (에디터 전용)
+- Rapier, Warrior, Assassin 이 상속
 
 ---
 
@@ -48,7 +58,7 @@ CharacterPresenterBase (abstract)   ← 공통 로직 (이동, 공격, 회피, �
 - **차지 Full 후 `OnHoldSwipe` (Swipe 임계 통과)**: **방패 휘두르기** — Swipe 방향으로 근접 히트박스, `ATK × 150%` 데미지 + 넉백. 휘두르는 동안(=`dodgeDashDuration` 재활용) 해당 방향 ±60° 각도에서 오는 공격에 대해 무적.
 - **방패 휘두르기 무적 중 해당 각도 공격 피격 → 패링 성립**: 슬로우 모션 + 즉시 대지 분쇄 발동 (Rapier 의 저스트 회피 후 고유 스킬 포지션).
 - **방패 휘두르기 중 비방어 각 피격**: 정상 피격 (무적 아님).
-- **일반 저스트 회피 (회피 대시 중 피격)**: **미발동**. Warrior 는 `GestureRecognizer.OpenAttackWindow` 를 호출하지 않는다.
+- **일반 저스트 회피 (회피 대시 중 피격)**: **미발동**. `OnBeforeTakeDamage`에서 `JustDodgeAvailable`을 소비 후 true 반환하여 `ProcessTakeDamage`의 저스트 회피 트리거를 차단한다. (단순 `ConsumeJustDodge()`만으로는 대시 도중 피격 시 차단 불가 — 세션 17 확인)
 
 #### 구현 구조
 
@@ -158,28 +168,39 @@ CharacterPresenterBase (abstract)   ← 공통 로직 (이동, 공격, 회피, �
 
 - 발동: 회피 대시 중 적 공격 피격 시. 한 회피당 1회.
 - 효과: 슬로우 모션 + 카메라 줌 + 무적 유지.
-- 슬로우 중 Hold → 캐릭터 고유 스킬 즉시 발동.
+- **슬로우 중 Tap → `OnJustDodgeTap()` 훅 호출** → 캐릭터별 고유 스킬 발동.
 - `GestureRecognizer.TriggerJustDodge(Vector2 direction)`가 유일한 발동 API. `JustDodgeAvailable` / `ConsumeJustDodge()`는 `CharacterPresenterBase` 소유.
-- **Warrior 예외**: 일반 저스트 회피 미발동. 고유 스킬 트리거는 "차지 Full + 방패 휘두르기 중 방어 각도 피격" 으로 대체됨 (§3 참조).
+
+| 캐릭터 | 저스트 회피 발동 조건 | OnJustDodgeTap 결과 |
+|--------|---------------------|-------------------|
+| Rapier | 회피 대시 중 피격 | 표식 대시 스킬 |
+| Assassin | 회피 대시 중 피격 | (없음, 슬로우 중 Tap 만료) |
+| Warrior | **패링 성립** (방패 방향 피격) | 대지 분쇄 |
+| Ranger | 회피 대시 중 피격 | 강화 화살 발사 |
+
+- Warrior는 패링 성립 시 `HandleParry` → `TriggerJustDodge()` 를 호출하여 Base 슬로우모션 시스템으로 진입한다. 슬로우 중 Tap으로 대지 분쇄를 발동한다.
 
 ---
 
 ## 5. 구현 시 주의사항
 
-- 새 캐릭터 추가 시 `CharacterPresenterBase`를 상속하고, 기존 코드 수정 없이 확장할 것 (OCP).
+- 근접 캐릭터 추가 시 `MeleePresenterBase`를 상속할 것. 원거리 캐릭터는 `CharacterPresenterBase` 직접 상속.
 - 자식 고유 상태(`_isDashSkillActive` 등)는 자식 안에서만 처리. Base에 노출 금지.
 - 속도 배율로 사용되는 AnimationCurve(`dodgeDashCurve` 등)의 끝값은 0.50f 이상 유지 — 0이면 while 루프 무한 반복 위험. 슬로우모션 커브(`holdCurve`)는 시간 기반이므로 0.10f 등 낮은 값 가능.
+- Hold 확장 이벤트(`OnHoldSwipe` / `OnHoldRelease` / `OnHoldDragUpdate`)는 Base가 자동 구독/해제 관리. 자식은 virtual override만 구현.
+- `TakeDamage`(IDamageable)는 `ProcessTakeDamage` 한 줄로 위임. 특수 처리가 필요하면 `OnBeforeTakeDamage(float, Vector2) → bool` 훅을 override.
 
 ---
 
 ## 6. 입력 차단 (공통 규칙)
 
-회피 / 저스트 회피 / 고유 스킬 / 차지 스킬 진행 중 Tap 입력은 **즉시 무시**된다 (큐잉 없음).
-회피 쿨다운 중 Swipe 입력도 마찬가지로 무시된다.
+회피 대시 중 / 고유 스킬 중 / 차지 스킬 중 Tap 입력은 **즉시 무시**된다 (큐잉 없음).
+저스트 회피 슬로우 중 Tap은 차단이 아닌 **`OnJustDodgeTap()` 분기**로 처리된다.
+회피 쿨다운 중 Swipe 입력은 무시된다.
 
 자세한 차단 규칙과 책임 위치는 `INPUT.md §5` 참조.
 
-캐릭터별 고유 메커니즘이 추가되어도 위 차단 규칙은 일관되게 유지되어야 하며, 자식 클래스에서 우회하면 안 된다.
+캐릭터별 고유 메커니즘이 추가되어도 위 규칙은 일관되게 적용되어야 하며, 자식 클래스에서 우회하면 안 된다.
 
 ---
 

@@ -36,7 +36,7 @@ namespace Game.Characters.Assassin
     ///     · 위와 동일 경로
     /// </summary>
     [RequireComponent(typeof(CharacterView))]
-    public class AssassinPresenter : CharacterPresenterBase, IDamageable, IPlayerCharacter
+    public class AssassinPresenter : MeleePresenterBase, IDamageable, IPlayerCharacter
     {
         // ── 직렬화 필드 ───────────────────────────────────────────
         [Header("데이터")]
@@ -99,29 +99,22 @@ namespace Game.Characters.Assassin
 
         // ── IDamageable / IPlayerCharacter ────────────────────────
         /// <inheritdoc/>
-        public bool IsAlive => Model != null && Model.IsAlive;
+        public bool IsAlive => CharacterIsAlive;
 
         /// <inheritdoc/>
-        public void TakeDamage(float amount, Vector2 knockbackDir)
-        {
-            if (!IsAlive) return;
-
-            if (JustDodgeAvailable)
-            {
-                ConsumeJustDodge();
-                Debug.Log("[AssassinPresenter] 회피 중 피격 → 저스트 회피 발동!");
-                Gesture?.TriggerJustDodge(knockbackDir * -1f);
-                return;
-            }
-
-            if (Model.IsInvincible) return;
-
-            Model.TakeDamage(amount, knockbackDir);
-            View.PlayHit();
-        }
+        public void TakeDamage(float amount, Vector2 knockbackDir) => ProcessTakeDamage(amount, knockbackDir);
 
         /// <inheritdoc/>
         public CharacterModel PublicModel => Model;
+
+        // ── Swipe 훅 — 저스트 회피 활성화 ───────────────────────
+        /// <summary>
+        /// 회피 시작 시 저스트 회피 발동 가능 상태로 진입한다.
+        /// </summary>
+        protected override void OnSwipe(Vector2 direction)
+        {
+            EnableJustDodge();
+        }
 
         // ── DodgeDash 완료 콜백 ───────────────────────────────────
         protected override void OnDodgeDashComplete()
@@ -227,13 +220,10 @@ namespace Game.Characters.Assassin
         {
             if (fullyCharged)
             {
-                // 차지 스킬: 360도 광역 베기. Base가 _isChargeSkillActive 플래그를 자동 해제하므로
-                // 코루틴에서 추가 Tap 차단을 원하면 BeginSignatureSkill을 사용한다.
                 BeginSignatureSkill();
                 LockMovement();
                 _aoeSkillCoroutine = StartCoroutine(AoeSkillRoutine());
             }
-            // justDodgeReady 분기: Assassin은 별도 고유 스킬 없음 — 아무 것도 하지 않음.
         }
 
         // ── 360도 광역 베기 코루틴 ────────────────────────────────
