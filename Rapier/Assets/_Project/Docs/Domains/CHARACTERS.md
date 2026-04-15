@@ -93,10 +93,10 @@ CharacterPresenterBase (abstract)   ← 공통 로직 (이동, 회피, 차지, H
   - Hold 성립 이후 손가락 위치를 매 프레임 추적하여, 캐릭터 본체 → "Hold 시작점 → 현재 손가락 위치" 방향을 조준 방향으로 사용 (`OnHoldDragUpdate` 의 `fromStart` 벡터).
   - 차지량에 따라 **사거리/데미지/너비 모두 선형 보간**:
     - 차지 0 (Hold 성립 직후 즉시 뗌): 사거리 4 unit, `ATK × 100%`, 너비 = Tap 투사체와 동일
-    - 차지 Full: 사거리 14 unit, `ATK × 300%`, 너비 Tap × 3 (= 저스트 회피 화살과 동일 스펙)
+    - 차지 Full: 사거리 10 unit, `ATK × 300%`, 너비 Tap × 3 (= 저스트 회피 화살과 동일 스펙)
   - 조준 방향으로 사거리 표시기 렌더링 (차지량 비례 길이).
-  - `OnHoldRelease` 발행 시 그 순간 조준 방향·차지량으로 발사. Hold 성립 직후 떼도 발사 (최소 차지 시간 없음). `fromStart == Vector2.zero` 이면 기본 전방 방향.
-  - 관통 무제한, 감쇠 없음.
+  - 손을 떼는 순간(Swipe/Release 무관) `OnRelease`에서 그 시점의 조준 방향·차지량으로 발사. Hold 성립 직후 떼도 발사 (최소 차지 시간 없음).
+  - 차지 화살은 관통 무제한. 일반 Tap 화살은 첫 번째 적 타격 후 소멸 (비관통).
 
 #### 구현 구조
 
@@ -122,7 +122,7 @@ CharacterPresenterBase (abstract)   ← 공통 로직 (이동, 회피, 차지, H
 | `chargeArrowMinDamagePercent` | 100 | 차지 0 시점 ATK % |
 | `chargeArrowMaxDamagePercent` | 300 | 차지 Full 시점 ATK % |
 | `chargeArrowMinRange` | 4.0f | 차지 0 사거리 |
-| `chargeArrowMaxRange` | 14.0f | 차지 Full 사거리 |
+| `chargeArrowMaxRange` | 10.0f | 차지 Full 사거리 |
 | `chargeArrowMaxWidthMult` | 3.0f | 차지 Full 너비 = Tap 너비 × 배수. 차지 0 시점 배수는 1.0f |
 | `minePlaceOnDodge` | true | 회피 시 지뢰 자동 설치 |
 | `mineDamagePercent` | 80 | 지뢰 폭발 ATK % |

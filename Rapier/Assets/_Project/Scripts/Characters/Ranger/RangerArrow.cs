@@ -29,6 +29,7 @@ namespace Game.Characters.Ranger
         [NonSerialized] private float   _range;
         [NonSerialized] private float   _width;
         [NonSerialized] private Vector2 _direction;
+        [NonSerialized] private bool    _piercing;
 
         // ── 내부 상태 ─────────────────────────────────────────────────────
         [NonSerialized] private float                    _traveled;
@@ -50,15 +51,17 @@ namespace Game.Characters.Ranger
         /// <param name="damage">타격 시 입힐 데미지 (최종값, 배율 적용 후)</param>
         /// <param name="speed">이동 속도 (unit/s)</param>
         /// <param name="range">최대 사거리 (unit)</param>
-        /// <param name="width">히트박스 폭 (unit)</param>
+        /// <param name="width">히트박스 폭 및 시각적 x/y 스케일 (unit). 공격 범위와 크기를 동일하게 유지.</param>
         /// <param name="direction">발사 방향 (정규화)</param>
-        public void Init(float damage, float speed, float range, float width, Vector2 direction)
+        /// <param name="piercing">true = 관통 무제한, false = 첫 번째 적 타격 후 소멸.</param>
+        public void Init(float damage, float speed, float range, float width, Vector2 direction, bool piercing = true)
         {
             _damage    = damage;
             _speed     = speed;
             _range     = range;
             _width     = width;
             _direction = direction.sqrMagnitude > ARRIVE_EPSILON ? direction.normalized : Vector2.up;
+            _piercing  = piercing;
             _traveled  = 0f;
             _hitColliders.Clear();
 
@@ -69,6 +72,10 @@ namespace Game.Characters.Ranger
                 _halfStageW = stage.stageWidth  * 0.5f;
                 _halfStageH = stage.stageHeight * 0.5f;
             }
+
+            // 시각적 스케일: 프리팹 기본 scale 에 width 배수를 곱해 크기 조절
+            var baseScale = transform.localScale;
+            transform.localScale = new Vector3(baseScale.x * width, baseScale.y * width, baseScale.z);
 
             // 화살 방향으로 회전 표시 (시각적)
             float angle = Vector2.SignedAngle(Vector2.up, _direction);
@@ -114,7 +121,7 @@ namespace Game.Characters.Ranger
             var hits = Physics2D.OverlapBoxAll(transform.position, boxSize, angle, enemyLayer);
             foreach (var hit in hits)
             {
-                if (_hitColliders.Contains(hit)) continue; // 관통 중복 방지
+                if (_hitColliders.Contains(hit)) continue;
 
                 var enemy = hit.GetComponent<EnemyPresenterBase>();
                 if (enemy == null || !enemy.IsAlive) continue;
@@ -123,6 +130,12 @@ namespace Game.Characters.Ranger
                 var dir = ((Vector2)enemy.transform.position - (Vector2)transform.position).normalized;
                 enemy.TakeDamage(_damage, dir);
                 Debug.Log($"[RangerArrow] 적 타격: {enemy.name}, 데미지: {_damage:F0}");
+
+                if (!_piercing)
+                {
+                    Destroy(gameObject);
+                    return;
+                }
             }
         }
 

@@ -28,9 +28,9 @@ namespace Game.Characters.Ranger
         [Min(1f)]
         [SerializeField] private float _tapProjectileRange = 8f;
 
-        [Tooltip("Tap 투사체 히트박스 폭 (unit). 기준값, 에셋 맞춰 조정.")]
+        [Tooltip("Tap 투사체 히트박스 폭 (unit). 1.0 = 프리팹 기본 scale 유지.")]
         [Min(0.1f)]
-        [SerializeField] private float _tapProjectileWidth = 0.4f;
+        [SerializeField] private float _tapProjectileWidth = 1.0f;
 
         // ── 저스트 회피 후 강화 화살 ─────────────────────────────────────────
         [Header("저스트 회피 강화 화살")]

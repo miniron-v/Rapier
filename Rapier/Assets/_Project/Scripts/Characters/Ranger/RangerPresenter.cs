@@ -58,8 +58,11 @@ namespace Game.Characters.Ranger
         /// <summary>차지 경직 플래그. true 동안 CanAttack=false + LockMovement 유지.</summary>
         [System.NonSerialized] private bool _isChargeLocked;
 
-        /// <summary>저스트 회피 발동 여부. OnJustDodge 에서 set, HandleHoldRelease 에서 소비.</summary>
-        [System.NonSerialized] private bool _isJustDodgeReady;
+        /// <summary>강화 화살 1회 제한 플래그. OnJustDodge 에서 false 리셋, OnJustDodgeTap 에서 true 세팅.</summary>
+        [System.NonSerialized] private bool _justDodgeArrowUsed;
+
+        /// <summary>강화 화살 타겟. OnJustDodge 에서 캐싱, OnJustDodgeTap/OnSlowMotionEnd/OnBeforeDeath/OnDisable 에서 정리.</summary>
+        [System.NonSerialized] private EnemyPresenterBase _justDodgeTarget;
 
         /// <summary>현재 차지 진행률 (0~1). OnHold 에서 갱신.</summary>
         [System.NonSerialized] private float _chargeProgress;
@@ -123,6 +126,9 @@ namespace Game.Characters.Ranger
             if (_aimIndicator != null && _aimIndicator.gameObject != null)
                 _aimIndicator.Hide();
 
+            _justDodgeTarget   = null;
+            _justDodgeArrowUsed = false;
+
             base.OnDisable();
 
             CleanupAllMines();
@@ -168,6 +174,9 @@ namespace Game.Characters.Ranger
             // AimIndicator 비활성 (OnDestroy 이후 호출 시 gameObject 가 파괴된 상태일 수 있으므로 명시적 체크)
             if (_aimIndicator != null && _aimIndicator.gameObject != null)
                 _aimIndicator.Hide();
+
+            _justDodgeTarget   = null;
+            _justDodgeArrowUsed = false;
 
             // 지뢰 전부 정리
             CleanupAllMines();
@@ -234,12 +243,13 @@ namespace Game.Characters.Ranger
         }
 
         /// <summary>
-        /// 저스트 회피 발동 시 강화 화살 발사 준비 플래그 세팅.
+        /// 저스트 회피 발동 시 강화 화살 준비: 타겟 캐싱 + 1회 제한 플래그 리셋.
         /// </summary>
         protected override void OnJustDodge(Vector2 direction)
         {
-            _isJustDodgeReady = true;
-            Debug.Log("[RangerPresenter] 저스트 회피 발동 → 강화 화살 준비");
+            _justDodgeArrowUsed = false;
+            _justDodgeTarget    = FindNearestEnemy(30f);
+            Debug.Log($"[RangerPresenter] 저스트 회피 발동 → 강화 화살 준비, 타겟: {(_justDodgeTarget != null ? _justDodgeTarget.name : "없음")}");
         }
 
         // ── 슬로우모션 종료 훅 ────────────────────────────────────────────
@@ -247,9 +257,8 @@ namespace Game.Characters.Ranger
         protected override void OnSlowMotionEnd()
         {
             base.OnSlowMotionEnd();
-            // 저스트 회피 발동권이 만료되면 강화 화살 준비도 소멸
-            if (!Model.IsJustDodgeReady)
-                _isJustDodgeReady = false;
+            _justDodgeTarget    = null;
+            _justDodgeArrowUsed = false;
         }
 
         // ── Tap override — 원거리 사격 ────────────────────────────────────
@@ -266,7 +275,7 @@ namespace Game.Characters.Ranger
 
             float damage = Model.AttackPower * (_statData.TapDamagePercent / 100f);
             SpawnArrow((Vector2)transform.position, dir, damage,
-                       _statData.TapProjectileSpeed, _statData.TapProjectileRange, _statData.TapProjectileWidth);
+                       _statData.TapProjectileSpeed, _statData.TapProjectileRange, _statData.TapProjectileWidth, piercing: false);
 
             Debug.Log($"[RangerPresenter] 일반 사격 → 방향: {dir}, 데미지: {damage:F0}");
         }
@@ -296,17 +305,6 @@ namespace Game.Characters.Ranger
 
         }
 
-        // ── OnSkillRelease override — 차지 화살 발사 (Base Release 경로) ─
-
-        /// <summary>
-        /// Base.HandleRelease 에서 OnSkillRelease 는 fullyCharged 또는 JustDodgeReady 일 때만 호출됨.
-        /// 레인저는 OnHoldRelease(Base 확장 훅)를 사용하므로 이 훅은 사용하지 않음.
-        /// </summary>
-        protected override void OnSkillRelease(bool fullyCharged, bool justDodgeReady)
-        {
-            // OnHoldRelease 에서 처리. 여기서는 아무것도 하지 않음.
-        }
-
         // ── Hold 확장 이벤트 핸들러 ───────────────────────────────────────
 
         /// <summary>
@@ -322,25 +320,36 @@ namespace Game.Characters.Ranger
             _aimIndicator?.UpdateAim(transform.position, _aimDirection, aimLength);
         }
 
-        protected override void OnHoldRelease(Vector2 fromStart)
+        /// <summary>
+        /// 차지 중 손을 뗄 때(Swipe/Release 무관) 화살 발사.
+        /// _isChargeLocked 가 true인 동안은 반드시 발사 후 경직 해제.
+        /// </summary>
+        protected override void OnRelease(InputState lastState)
         {
+            if (!_isChargeLocked) return;
             if (Model == null || !Model.IsAlive) return;
-
-            if (fromStart.sqrMagnitude > 0.01f)
-                _aimDirection = fromStart.normalized;
 
             FireChargeArrow(_chargeProgress);
             ReleaseLock();
         }
 
         /// <summary>
-        /// 저스트 회피 슬로우 중 Tap → 강화 화살 발사.
+        /// 저스트 회피 슬로우 중 Tap → 강화 화살 1회 발사.
+        /// _justDodgeArrowUsed 로 슬로우 구간 내 재진입 차단.
         /// </summary>
         protected override void OnJustDodgeTap()
         {
+            if (_justDodgeArrowUsed) return;
             if (Model == null || !Model.IsAlive) return;
-            FireJustDodgeArrow();
-            _isJustDodgeReady = false;
+
+            _justDodgeArrowUsed = true;
+
+            Vector2 dir = (_justDodgeTarget != null && _justDodgeTarget.IsAlive)
+                ? ((Vector2)_justDodgeTarget.transform.position - (Vector2)transform.position).normalized
+                : _aimDirection;
+
+            FireJustDodgeArrow(dir);
+            _justDodgeTarget = null;
         }
 
         // ── 화살 발사 로직 ────────────────────────────────────────────────
@@ -359,19 +368,19 @@ namespace Game.Characters.Ranger
             Debug.Log($"[RangerPresenter] 차지 화살 발사 — t:{t:F2}, 데미지:{damage:F0}, 사거리:{range:F1}, 너비:{width:F2}");
         }
 
-        private void FireJustDodgeArrow()
+        private void FireJustDodgeArrow(Vector2 dir)
         {
             float damage = Model.AttackPower * (_statData.JustDodgeArrowDamagePercent / 100f) * Model.SkillDamageMultiplier;
             float width  = _statData.TapProjectileWidth * _statData.JustDodgeArrowWidthMult;
 
-            SpawnArrow((Vector2)transform.position, _aimDirection, damage,
+            SpawnArrow((Vector2)transform.position, dir, damage,
                        _statData.TapProjectileSpeed, _statData.JustDodgeArrowRange, width);
 
-            Debug.Log($"[RangerPresenter] 저스트 회피 강화 화살 발사 — 데미지:{damage:F0}, 사거리:{_statData.JustDodgeArrowRange}, 너비:{width:F2}");
+            Debug.Log($"[RangerPresenter] 저스트 회피 강화 화살 발사 — 방향:{dir}, 데미지:{damage:F0}, 사거리:{_statData.JustDodgeArrowRange}, 너비:{width:F2}");
         }
 
         private void SpawnArrow(Vector2 origin, Vector2 direction, float damage,
-                                 float speed, float range, float width)
+                                 float speed, float range, float width, bool piercing = true)
         {
             GameObject go;
             if (_arrowPrefab != null)
@@ -403,7 +412,7 @@ namespace Game.Characters.Ranger
                 box.isTrigger = true;
             }
 
-            arrow.Init(damage, speed, range, width, direction);
+            arrow.Init(damage, speed, range, width, direction, piercing);
         }
 
         // ── 지뢰 설치 로직 ────────────────────────────────────────────────
