@@ -795,7 +795,10 @@ namespace Game.Characters
                 return;
             }
 
-            if (Model.IsInvincible) return;
+            // 방향성 방어(DirectionalGuard) 활성 중에는 IsInvincible 을 건너뛰고
+            // Model.TakeDamage 에 도달해야 패링 판정이 이루어진다.
+            // (Model.TakeDamage 내부에서 DirectionalGuard 판정 → HandleParry 콜백)
+            if (Model.IsInvincible && !Model.IsDirectionalGuardActive) return;
 
             Model.TakeDamage(amount, knockbackDir);
             if (Model.IsAlive) View.PlayHit();

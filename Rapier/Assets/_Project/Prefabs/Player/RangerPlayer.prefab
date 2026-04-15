@@ -507,6 +507,8 @@ MonoBehaviour:
     m_PostInfinity: 2
     m_RotationOrder: 4
   _statData: {fileID: 11400000, guid: 70ea7f85f1d847a7a85b9a919293f19d, type: 2}
+  _arrowPrefab: {fileID: 2635093356238276776, guid: 46583dea50187134db3275d9c2cf7ded, type: 3}
+  _minePrefab: {fileID: 7607098274827954998, guid: 2eae1d221ee485940a1c0ef236f2c8ff, type: 3}
 --- !u!1 &4484335044478966843
 GameObject:
   m_ObjectHideFlags: 0
