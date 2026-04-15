@@ -13,7 +13,7 @@ CharacterPresenterBase (abstract)   ← 공통 로직 (이동, 회피, 차지, H
 └── RangerPresenter                 ← 원거리 사격 + 지뢰 + 차지 조준
 ```
 
-> **현재 구현 상태 (2026-04-15): 4종 전부 구현 완료 + Base 리팩터링 완료. Unity 플레이 테스트 진행 중 (세션 17 버그 수정 중).**
+> **현재 구현 상태 (2026-04-15): 4종 전부 구현 완료 + GestureRecognizer 순수 입력 분리 리팩터링 완료. Unity 플레이 테스트 완료.**
 > 신규 캐릭터 추가는 OCP를 만족해야 하며, 기존 코드 수정 없이 확장 가능해야 한다.
 
 - `CharacterModel`: 순수 데이터 (HP, 상태 등). MonoBehaviour 아님.
@@ -54,11 +54,11 @@ CharacterPresenterBase (abstract)   ← 공통 로직 (이동, 회피, 차지, H
 - **Hold 시작**: 차지 게이지 충전 시작. 충전 중 피격 데미지 **50% 감소**.
 - **차지 게이지 Full 전**: Release/Swipe/Drag 등 모든 Hold 후 입력 **무시** (차지만 유지).
 - **차지 중 Hold 취소 (손가락 뗌)**: 게이지·데미지 감소 즉시 소멸. 쿨다운 없음 (차지 중엔 공격 불가이므로 악용 불가).
-- **차지 Full 후 Release (`OnHoldRelease` chargedFull=true)**: **대지 분쇄** — 전방 광역 `ATK × 350% × SkillDmgMult`.
+- **차지 Full 후 Release (`OnHoldRelease`)**: **대지 분쇄** — 전방 광역 `ATK × 350% × SkillDmgMult`. 차지 풀 여부는 로컬 `_isChargedFull` 플래그로 판단.
 - **차지 Full 후 `OnHoldSwipe` (Swipe 임계 통과)**: **방패 휘두르기** — Swipe 방향으로 근접 히트박스, `ATK × 150%` 데미지 + 넉백. 휘두르는 동안(=`dodgeDashDuration` 재활용) 해당 방향 ±60° 각도에서 오는 공격에 대해 무적.
 - **방패 휘두르기 무적 중 해당 각도 공격 피격 → 패링 성립**: 슬로우 모션 + 즉시 대지 분쇄 발동 (Rapier 의 저스트 회피 후 고유 스킬 포지션).
 - **방패 휘두르기 중 비방어 각 피격**: 정상 피격 (무적 아님).
-- **일반 저스트 회피 (회피 대시 중 피격)**: **미발동**. `OnBeforeTakeDamage`에서 `JustDodgeAvailable`을 소비 후 true 반환하여 `ProcessTakeDamage`의 저스트 회피 트리거를 차단한다. (단순 `ConsumeJustDodge()`만으로는 대시 도중 피격 시 차단 불가 — 세션 17 확인)
+- **일반 저스트 회피 (회피 대시 중 피격)**: **미발동**. Warrior는 `OnSwipe`에서 `EnableJustDodge()`를 호출하지 않으므로 `JustDodgeAvailable`이 항상 false — `ProcessTakeDamage`의 저스트 회피 경로에 진입하지 않는다.
 
 #### 구현 구조
 
@@ -169,7 +169,7 @@ CharacterPresenterBase (abstract)   ← 공통 로직 (이동, 회피, 차지, H
 - 발동: 회피 대시 중 적 공격 피격 시. 한 회피당 1회.
 - 효과: 슬로우 모션 + 카메라 줌 + 무적 유지.
 - **슬로우 중 Tap → `OnJustDodgeTap()` 훅 호출** → 캐릭터별 고유 스킬 발동.
-- `GestureRecognizer.TriggerJustDodge(Vector2 direction)`가 유일한 발동 API. `JustDodgeAvailable` / `ConsumeJustDodge()`는 `CharacterPresenterBase` 소유.
+- `CharacterPresenterBase.TriggerJustDodge(Vector2)`가 코드 기반 발동 API (protected). `EnableJustDodge()` / `ConsumeJustDodge()`도 Base 소유. GestureRecognizer는 JustDodge를 판단하거나 발행하지 않는다.
 
 | 캐릭터 | 저스트 회피 발동 조건 | OnJustDodgeTap 결과 |
 |--------|---------------------|-------------------|
@@ -188,7 +188,7 @@ CharacterPresenterBase (abstract)   ← 공통 로직 (이동, 회피, 차지, H
 - 자식 고유 상태(`_isDashSkillActive` 등)는 자식 안에서만 처리. Base에 노출 금지.
 - 속도 배율로 사용되는 AnimationCurve(`dodgeDashCurve` 등)의 끝값은 0.50f 이상 유지 — 0이면 while 루프 무한 반복 위험. 슬로우모션 커브(`holdCurve`)는 시간 기반이므로 0.10f 등 낮은 값 가능.
 - Hold 확장 이벤트(`OnHoldSwipe` / `OnHoldRelease` / `OnHoldDragUpdate`)는 Base가 자동 구독/해제 관리. 자식은 virtual override만 구현.
-- `TakeDamage`(IDamageable)는 `ProcessTakeDamage` 한 줄로 위임. 특수 처리가 필요하면 `OnBeforeTakeDamage(float, Vector2) → bool` 훅을 override.
+- `TakeDamage`(IDamageable)는 `ProcessTakeDamage` 한 줄로 위임. 특수 처리가 필요하면 자식 로컬 플래그로 분기하거나 `EnableJustDodge()` / `TriggerJustDodge()` API를 활용한다.
 
 ---
 

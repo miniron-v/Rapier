@@ -76,6 +76,17 @@ Hold 가 성립된 시점(=차지 시작, `_gestureCommitted && CurrentState == 
 - 한 트리거당 1회만 발동. `ConsumeJustDodge()` 로 소비, `OnDodgeDashComplete` 에서도 만료.
 - `GestureRecognizer` 는 JustDodge 를 판단하거나 발행하지 않는다.
 
+### DirectionalGuard 와 IsInvincible 관계
+
+`ProcessTakeDamage` 에서 `IsInvincible` 은 `Model.IsDirectionalGuardActive` 가 false 일 때만 차단한다:
+
+```
+IsInvincible && !IsDirectionalGuardActive → return (데미지 무시)
+IsInvincible && IsDirectionalGuardActive  → Model.TakeDamage 호출 (방향성 방어 판정 실행)
+```
+
+이유: 방향성 방어(패링) 판정은 `Model.TakeDamage` 내부에서 이루어진다. Swipe 발동 시 무적이 켜지므로, 방패 휘두르기(Hold+Swipe) 구간 동안 IsInvincible 만 체크하면 Model.TakeDamage 에 도달하지 못해 패링 판정이 원천 차단된다.
+
 ---
 
 ## 5. 입력 차단 규칙
