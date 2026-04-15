@@ -66,6 +66,7 @@ EnemyPresenterBase (abstract)       ← Chase/Windup/Hit/PostAttack + 시퀀서
 2. **스폰 흐름**: 보스 스폰 시 `spawnCount` 만큼 반복 인스턴스화, 각 `spawnOffsets[i]` 배치. `IMultiBossSibling` 구현체면 스폰 직후 전체 리스트를 `SetSiblings()` 로 주입. 클리어 판정: 모든 인스턴스 HP 0.
 3. **`IMultiBossSibling`** (`namespace Game.Enemies`): `void SetSiblings(IReadOnlyList<BossPresenterBase>)`. 형제 인식 필요 시만 구현 (ISP). `TwinPhantomsBossPresenter` 는 자신 제외 나머지를 `_partner` 로 보관.
 4. **TwinPhantoms**: `spawnCount=2`, `spawnOffsets=[(-2,0),(2,0)]`. 둘 다 사망 시 클리어. "partner 사망 시 생존자 ATK/Speed 강화" 로직은 `SetSiblings()` 의 partner 참조로 구동.
+5. **TwinPhantoms 분산**: 둘이 동일 지점으로 수렴하지 않도록 `TwinPhantomsBossPresenter.UpdateChase()` 를 오버라이드. 기본 추적 방향에 파트너로부터 멀어지는 반발 벡터를 합성한다. 파라미터: `desiredSeparation`(유지 거리, 기본 2.5) / `separationWeight`(가중치, 기본 0.8). `partner == null || !partner.IsAlive` 면 base 로 폴백.
 
 ### 패턴 예시
 
@@ -76,6 +77,16 @@ EnemyPresenterBase (abstract)       ← Chase/Windup/Hit/PostAttack + 시퀀서
 ## 5. 일반 적
 
 분산 접근 AI (뭉치기 방지). 공격 주기 1.5s / Windup 0.5s. WaveManager 오브젝트 풀.
+
+## 5-1. EnemyRoot — transient 적 오브젝트 컨테이너
+
+`Enemies/Managers/EnemyRoot.cs`. 방 단위로 스폰되는 **보스 / 보스가 소환한 미니언** 의 공통 부모. 하이어라키 루트 오염과 방 전환 시 잔존물 누수를 방지한다.
+
+- **포함 대상**: `ProgressionManager` / `BossRushManager` 가 Instantiate 하는 보스, `SummonAttackAction` 이 Instantiate 하는 미니언.
+- **포함하지 않음**: `WaveManager` 풀의 일반 적. 풀 재사용(재활성화) 구조라 수명 규칙이 다름 → 자기 `transform` 하위 유지.
+- **API**: `EnemyRoot.Container` (Transform, 없으면 자동 생성) / `EnemyRoot.ClearAll()` (자식 전부 Destroy).
+- **호출 시점**: `ProgressionManager.HandleRoomEntered` 에서 `CleanupCurrentBoss()` 직후 `EnemyRoot.ClearAll()` — 방 전환 안전망. Gravekeeper 미니언의 `CleanupMinions()` (보스 사망 시점) 는 여전히 남아 이중 안전망으로 동작.
+- **확장 시 주의**: 서브 컨테이너(Boss/Minion 분류) 는 현재 불필요. "보스는 남기고 미니언만" 같은 부분 정리가 필요해지면 그때 분리.
 
 ## 6. 에디터 유틸
 

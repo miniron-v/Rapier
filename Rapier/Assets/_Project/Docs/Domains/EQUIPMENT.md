@@ -79,6 +79,13 @@ EquipmentManager ─OnEquipped/Unequipped→ EquipmentMetaStatProvider
 - **룬 처리**: 룬 `StatEffect` (StatEntry) 를 장비와 동일 파이프라인. 감소형은 룬 하나가 하나의 독립 소스. 캐릭터 전용 룬 (`_targetCharacterId` 불일치) 은 Provider 단계에서 필터링.
 - **저장 트리거**: `EquipmentManager.Equip/Unequip` 내부에서 `TrySave()` 호출 → `SaveManager.Save()` 로 체이닝 (`SaveManager` 는 `EquipmentManager.Init` 시 주입). 매 장착 변경 시 `save.json` 갱신. 레거시 `IEquipmentSaveProvider` 경로는 사용하지 않는다.
 
+### 스탯 표기 규칙 (ItemDetailPopupView)
+
+- 저장값(`percentValue`) 은 항상 0~100 **양수** (STATS.md 와 동일 단위).
+- 표시 단계에서 **감소형(`DodgeCDR`, `ChargeTimeReduction`)** 만 `-` 부호로 반전. 그 외 가산형은 `+`. 내부 계산에는 영향 없음.
+- 라벨: `DodgeCDR` → "회피 쿨타임", `ChargeTimeReduction` → "차지 시간". "감소/단축" 을 라벨에 넣지 않는다 (부호와 중복).
+- 예: `DodgeCDR percentValue=5` → "회피 쿨타임 -5.0%".
+
 ## 5. 보스 드롭 시스템
 
 보스 처치 시 사망 연출 → 드롭 흩뿌림 → 플레이어 접촉 획득. 스테이지 클리어 후 획득 아이템 목록 표시.
