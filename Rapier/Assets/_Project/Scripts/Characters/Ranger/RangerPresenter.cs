@@ -14,7 +14,7 @@ namespace Game.Characters.Ranger
     ///
     /// [고유 메커니즘]
     ///   Tap    : 전방으로 RangerArrow 발사 (ATK×100%, 사거리 8, 속도 25, 기본 너비).
-    ///   Swipe  : 일반 회피 대시 + 회피 종료 지점에 RangerMine 설치 (OnDodgeDashComplete override).
+    ///   Swipe  : 회피 대시 시작 순간 RangerMine 투척 (OnSwipe override) → 회피 반대 방향 3갈래.
     ///   Hold   : 차지 경직 진입 (_isChargeLocked=true). 이동 잠금 + Tap 차단.
     ///   Hold Drag Update : _aimDirection 갱신 + AimIndicatorView 업데이트.
     ///   Hold Release : 차지량(t) 비례 화살 발사 → 경직 해제.
@@ -183,21 +183,19 @@ namespace Game.Characters.Ranger
         // ── DodgeDash 완료 훅 ─────────────────────────────────────────────
 
         /// <summary>
-        /// 회피 종료 지점에 RangerMine 을 설치한다.
-        /// Base 호출 후 Mine 설치.
+        /// 회피 완료 시 저스트 회피 소비 처리.
+        /// 지뢰 투척은 OnSwipe(회피 시작)에서 수행한다.
         /// </summary>
         protected override void OnDodgeDashComplete()
         {
             base.OnDodgeDashComplete();
             ConsumeJustDodge();
-
-            if (_statData != null && _statData.MinePlaceOnDodge)
-                ThrowMines();
         }
 
         /// <summary>
-        /// 회피 반대 방향 기준 0°/+45°/-45° 세 방향으로 지뢰를 던진다.
-        /// 출발점: 회피 완료 시점 플레이어 위치.
+        /// 회피 시작 순간 지뢰를 투척한다.
+        /// 회피 반대 방향 기준 0°/+45°/-45° 세 방향으로.
+        /// 출발점: 회피 시작 시점 플레이어 위치.
         /// 도착점: 각 방향으로 dashDistance 거리.
         /// </summary>
         private void ThrowMines()
@@ -224,11 +222,15 @@ namespace Game.Characters.Ranger
         // ── 저스트 회피 훅 ────────────────────────────────────────────────
 
         /// <summary>
-        /// Swipe 발생 시 저스트 회피 발동 가능 상태로 진입.
+        /// Swipe 발생 시: 저스트 회피 활성 + 지뢰 투척(회피 시작 순간).
+        /// DodgeDir 은 Base.HandleSwipe 에서 이미 설정됨.
         /// </summary>
         protected override void OnSwipe(Vector2 direction)
         {
             EnableJustDodge();
+
+            if (_statData != null && _statData.MinePlaceOnDodge)
+                ThrowMines();
         }
 
         /// <summary>
@@ -447,13 +449,8 @@ namespace Game.Characters.Ranger
             if (mine == null)
                 mine = go.AddComponent<RangerMine>();
 
-            // Trigger Collider (없으면 추가) — Init 에서 비활성화되므로 크기만 설정
-            if (go.GetComponent<Collider2D>() == null)
-            {
-                var circle       = go.AddComponent<CircleCollider2D>();
-                circle.radius    = _statData.MineExplosionRadius * 0.5f;
-                circle.isTrigger = true;
-            }
+            // 충돌 감지는 RangerMine.Update 에서 Physics2D.OverlapCircleAll 폴링으로 처리.
+            // (적 프리팹에 Rigidbody2D 없음 → OnTriggerEnter2D 미사용)
 
             float damage = Model.AttackPower * (_statData.MineDamagePercent / 100f);
             mine.Init(damage, _statData.MineExplosionRadius, _statData.MineLifetime,
