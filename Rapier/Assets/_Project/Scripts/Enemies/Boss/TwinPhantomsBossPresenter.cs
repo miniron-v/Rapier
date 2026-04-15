@@ -44,6 +44,12 @@ namespace Game.Enemies
         [Tooltip("파트너 사망 시 공격력 배율")]
         [Min(1f)] public float survivorAttackMultiplier = 1.5f;
 
+        [Header("파트너 분산 (겹침 방지)")]
+        [Tooltip("파트너와 유지하고 싶은 최소 거리. 이 거리 이내면 밀어내는 힘이 강해진다.")]
+        [Min(0f)] public float desiredSeparation = 2.5f;
+        [Tooltip("추적 방향 대비 밀어내기 가중치. 0이면 비활성, 1 이상이면 추적보다 분산 우선.")]
+        [Min(0f)] public float separationWeight  = 0.8f;
+
         // 생존자 강화 활성 여부
         [System.NonSerialized]
         private bool _isSurvivorEnhanced = false;
@@ -63,6 +69,46 @@ namespace Game.Enemies
         {
             if (partner != null)
                 partner.OnDeath -= HandlePartnerDeath;
+        }
+
+        // ── Chase override: 파트너와 겹치지 않도록 분산 ───────────
+        /// <summary>
+        /// 기본 추적 방향 + 파트너로부터 멀어지는 separation 벡터를 합성한다.
+        /// 파트너가 없거나 죽었으면 base 동작과 동일.
+        /// </summary>
+        protected override void UpdateChase()
+        {
+            if (partner == null || !partner.IsAlive || separationWeight <= 0f || desiredSeparation <= 0f)
+            {
+                base.UpdateChase();
+                return;
+            }
+
+            float dist = Vector2.Distance(transform.position, _playerTransform.position);
+            if (dist <= GetAttackRange())
+            {
+                EnterWindupPhase();
+                return;
+            }
+
+            Vector2 toPlayer    = GetDirectionToPlayer();
+            Vector2 awayFromPal = (Vector2)(transform.position - partner.transform.position);
+            float   palDist     = awayFromPal.magnitude;
+
+            if (palDist > desiredSeparation || palDist <= 0.0001f)
+            {
+                // 충분히 떨어짐 or 완전 동일 지점 (후자는 이동 방향 무의미) → 기본 추적
+                base.UpdateChase();
+                return;
+            }
+
+            // 가까울수록(= palDist 작을수록) 분산 가중치 강화
+            float t = 1f - (palDist / desiredSeparation);   // 1=완전겹침, 0=경계
+            Vector2 sepDir = awayFromPal.normalized * (separationWeight * t);
+            Vector2 finalDir = (toPlayer + sepDir + _approachOffset).normalized;
+
+            transform.position = (Vector2)transform.position
+                                 + finalDir * (GetMoveSpeed() * Time.deltaTime);
         }
 
         // ── 스탯 override: 생존자 강화 적용 ──────────────────────

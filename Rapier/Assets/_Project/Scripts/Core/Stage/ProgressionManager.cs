@@ -114,6 +114,9 @@ namespace Game.Core.Stage
             UnsubscribeBoss();
             CleanupCurrentBoss();
 
+            // EnemyRoot 자식 일괄 Destroy — CleanupCurrentBoss 가 놓친 미니언/연출 잔존물도 확실히 제거
+            EnemyRoot.ClearAll();
+
             _playerDeathHandled = false;
 
             // 모든 방 진입 시 플레이어를 고정 시작 위치로 리셋
@@ -172,7 +175,7 @@ namespace Game.Core.Stage
                     : Vector2.zero;
                 Vector2 spawnPos = _bossSpawnPosition + offset;
 
-                var go   = Instantiate(room.bossPrefab, spawnPos, Quaternion.identity);
+                var go   = Instantiate(room.bossPrefab, spawnPos, Quaternion.identity, EnemyRoot.Container);
                 var boss = go.GetComponent<EnemyPresenterBase>();
 
                 if (boss == null)

@@ -46,7 +46,7 @@ namespace Game.Enemies
                     var   offset = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * spawnRadius;
                     var   pos    = (Vector2)ctx.SelfTransform.position + offset;
 
-                    var minion = UnityEngine.Object.Instantiate(MinionPrefab);
+                    var minion = UnityEngine.Object.Instantiate(MinionPrefab, EnemyRoot.Container);
                     minion.Spawn(MinionData, pos);
                     OnMinionSpawned?.Invoke(minion);
                 }

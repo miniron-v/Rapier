@@ -181,7 +181,7 @@ namespace Game.Enemies
                     : Vector2.zero;
                 Vector2 spawnPos = _spawnPosition + offset;
 
-                var go   = Instantiate(prefab, spawnPos, Quaternion.identity);
+                var go   = Instantiate(prefab, spawnPos, Quaternion.identity, EnemyRoot.Container);
                 var boss = go.GetComponent<BossPresenterBase>();
 
                 if (boss == null)

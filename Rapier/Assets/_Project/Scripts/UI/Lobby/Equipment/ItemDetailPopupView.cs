@@ -323,11 +323,19 @@ namespace Game.UI.Lobby.Equipment
         private static string FormatStatEntry(StatEntry entry)
         {
             string label = GetStatLabel(entry.statType);
+            // 쿨타임/차지 시간 "감소" 계열은 표시만 -부호로 반전. 내부 저장값(percentValue)은 양수 유지.
+            string sign = IsReductionStat(entry.statType) ? "-" : "+";
             if (entry.flatValue != 0f)
-                return $"{label} +{entry.flatValue:F0}";
+                return $"{label} {sign}{entry.flatValue:F0}";
             if (entry.percentValue != 0f)
-                return $"{label} +{entry.percentValue:F1}%";  // percentValue 단위: 0~100, 직접 표시
+                return $"{label} {sign}{entry.percentValue:F1}%";  // percentValue 단위: 0~100, 직접 표시
             return label;
+        }
+
+        private static bool IsReductionStat(StatType type)
+        {
+            return type == StatType.DodgeCDR
+                || type == StatType.ChargeTimeReduction;
         }
 
         /// <summary>강화 배율이 적용된 StatEntry를 포맷한다.</summary>
@@ -349,8 +357,8 @@ namespace Game.UI.Lobby.Equipment
                 StatType.HP                  => "HP",
                 StatType.ATK                 => "공격력",
                 StatType.MoveSpeed           => "이동속도",
-                StatType.DodgeCDR            => "회피 쿨다운",
-                StatType.ChargeTimeReduction => "차지 시간 단축",
+                StatType.DodgeCDR            => "회피 쿨타임",
+                StatType.ChargeTimeReduction => "차지 시간",
                 StatType.InvincibilityBonus  => "무적 시간",
                 StatType.CritChance          => "치명타 확률",
                 StatType.CritDamage          => "치명타 피해",
