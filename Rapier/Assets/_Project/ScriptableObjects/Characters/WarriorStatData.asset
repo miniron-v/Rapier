@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a9d6f034c12e87b5de90714ca3f852e1, type: 3}
   m_Name: WarriorStatData
   m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Characters.WarriorStatData
-  sprite: {fileID: -2413806693520163455, guid: a86470a33a6bf42c4b3595704624658b, type: 3}
-  illustSprite: {fileID: 0}
+  sprite: {fileID: 21300000, guid: 556563d31c0e70c46a14504af05f79ff, type: 3}
+  illustSprite: {fileID: 21300000, guid: dea8143bf6cbe2542b7ad31fa6578ff3, type: 3}
   characterName: Warrior
   description: "\uBC29\uD328\uC640 \uAC80\uC73C\uB85C \uC804\uC7A5\uC744 \uC9C0\uBC30\uD558\uB294
     \uC8FC\uC778\uACF5. \uD328\uB9B0\uC73C\uB85C \uC0AC\uAE30\uB97C \uBC18\uC804\uC2DC\uCF1C
@@ -26,6 +26,7 @@ MonoBehaviour:
   dashDistance: 3
   dashSpeed: 14
   chargeRequiredTime: 1.5
+  attackCooldown: 0.4
   normalAttackPercent: 100
   attackWidth: 1.5
   attackHeight: 2

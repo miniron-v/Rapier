@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d980c78084604dc5934d2a114b1c9a3f, type: 3}
   m_Name: RangerStatData
   m_EditorClassIdentifier: Assembly-CSharp::Game.Characters.Ranger.RangerStatData
-  sprite: {fileID: -2413806693520163455, guid: a86470a33a6bf42c4b3595704624658b, type: 3}
-  illustSprite: {fileID: 0}
+  sprite: {fileID: 21300000, guid: 552c1530e1ebcbf4d80a34c3c3b6720e, type: 3}
+  illustSprite: {fileID: 21300000, guid: 52830c330cb41be4aafeedf3be8e35fe, type: 3}
   characterName: Ranger
   description: "\uC790\uC720\uB85C\uC6B4 \uC870\uC900\uC73C\uB85C \uC801\uC744 \uC7A1\uB294
     \uAC15\uD1B5\uC758 \uACC4\uC2B9\uC790. \uD654\uC0B4\uACFC \uC9C0\uB8C8\uB85C
@@ -26,6 +26,7 @@ MonoBehaviour:
   dashDistance: 4
   dashSpeed: 18
   chargeRequiredTime: 1
+  attackCooldown: 0.4
   normalAttackPercent: 100
   attackWidth: 1
   attackHeight: 2
@@ -33,17 +34,18 @@ MonoBehaviour:
   _tapDamagePercent: 100
   _tapProjectileSpeed: 25
   _tapProjectileRange: 8
-  _tapProjectileWidth: 0.4
+  _tapProjectileWidth: 1
   _justDodgeArrowDamagePercent: 300
   _justDodgeArrowRange: 10
   _justDodgeArrowWidthMult: 3
   _chargeArrowMinDamagePercent: 100
   _chargeArrowMaxDamagePercent: 300
   _chargeArrowMinRange: 4
-  _chargeArrowMaxRange: 14
+  _chargeArrowMaxRange: 10
   _chargeArrowMaxWidthMult: 3
   _minePlaceOnDodge: 1
   _mineDamagePercent: 80
   _mineExplosionRadius: 1.5
   _mineLifetime: 5
   _maxActiveMines: 6
+  _mineThrowSpeed: 12

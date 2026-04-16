@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9c43aa5837e09aa4f9059dcdcd7d8592, type: 3}
   m_Name: RapierStatData
   m_EditorClassIdentifier: Assembly-CSharp::Game.Characters.RapierStatData
-  sprite: {fileID: -2413806693520163455, guid: a86470a33a6bf42c4b3595704624658b, type: 3}
+  sprite: {fileID: 21300000, guid: c7f71d1295a8b3540a5bbfa5fbf0fe77, type: 3}
   illustSprite: {fileID: 21300000, guid: 7b463a1fd9dd934489e547d72cb24faa, type: 3}
   characterName: Rapier
   description: "\uB808\uC774\uD53C\uC5B4\uB97C \uB2E4\uB8E8\uB294 \uBBFC\uCCA9\uD55C
@@ -26,6 +26,7 @@ MonoBehaviour:
   dashDistance: 4
   dashSpeed: 18
   chargeRequiredTime: 1
+  attackCooldown: 0.4
   normalAttackPercent: 100
   attackWidth: 1
   attackHeight: 2
