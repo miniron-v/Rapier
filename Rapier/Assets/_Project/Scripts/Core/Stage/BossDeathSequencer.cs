@@ -172,10 +172,17 @@ namespace Game.Core.Stage
             {
                 // 스테이지 공통 드롭률 오버라이드 취득
                 var stageMgr = ServiceLocator.TryGet<StageManager>();
-                GradeDropRate[] stageDropRates = stageMgr?.CurrentStageData?.GradeDropRates;
+                var currentStageData = stageMgr?.CurrentStageData;
+                GradeDropRate[] stageDropRates = currentStageData?.GradeDropRates;
+
+                // 드롭테이블 참조: StageComposer 가 BossVariantEntry.dropTable 을 ComposedDropTable 에 캐싱.
+                // 런타임 합성 StageData 에는 ComposedDropTable 이 있으므로 그것을 우선 사용.
+                // 디스크 SO 기반(레거시) 시에는 BossStatData.dropTable 폴백.
+                DropTableData dropTable = currentStageData?.ComposedDropTable
+                    ?? statData?.dropTable;
 
                 var lootManager = new LootManager();
-                var drops = lootManager.RollDrop(statData?.dropTable, stageDropRates);
+                var drops = lootManager.RollDrop(dropTable, stageDropRates);
 
                 if (_droppedItemPrefab == null)
                 {
