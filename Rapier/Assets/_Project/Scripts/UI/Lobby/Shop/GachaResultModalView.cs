@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -52,6 +53,9 @@ namespace Game.UI.Lobby.Shop
         {
             if (items == null) return;
 
+            bool hasHighGrade = false;
+            Color highGradeColor = Color.white;
+
             // 기존 뷰 비활성화
             foreach (var view in _itemViews)
             {
@@ -80,9 +84,38 @@ namespace Game.UI.Lobby.Shop
                 if (items[i] != null &&
                     (items[i].Grade == EquipmentGrade.Epic || items[i].Grade == EquipmentGrade.Unique))
                 {
+                    hasHighGrade = true;
+                    highGradeColor = EquipmentGradeHelper.GetGradeColor(items[i].Grade);
                     itemView.PlayHighlightEffect();
                 }
             }
+
+            // Epic/Unique 포함 시 전체 플래시 연출
+            if (hasHighGrade && _flashImage != null)
+                StartCoroutine(PlayFlash(highGradeColor, 0.4f, 0.3f));
+        }
+
+        // ── 내부 연출 ─────────────────────────────────────────────────────
+
+        private IEnumerator PlayFlash(Color color, float startAlpha, float duration)
+        {
+            _flashImage.gameObject.SetActive(true);
+            color.a = startAlpha;
+            _flashImage.color = color;
+
+            float elapsed = 0f;
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float t = elapsed / duration;
+                color.a = Mathf.Lerp(startAlpha, 0f, t);
+                _flashImage.color = color;
+                yield return null;
+            }
+
+            color.a = 0f;
+            _flashImage.color = color;
+            _flashImage.gameObject.SetActive(false);
         }
 
         // ── 내부 헬퍼 ─────────────────────────────────────────────────────

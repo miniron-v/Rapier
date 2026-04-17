@@ -48,21 +48,16 @@ namespace Game.Core.Services
             // ── 비용 계산 ─────────────────────────────────────────────────────
             var (ticketCost, crystalCost) = CalcCost(banner, count);
 
-            // Crystal 잔고 체크
+            // 잔고 체크
             if (_currencyService.Crystal < crystalCost)
                 return GachaResult.Fail("재화 부족");
 
-            // 티켓 보유 수 재확인 (CalcCost와 동일 로직, Race condition 방지)
-            int currentTicket = GetCurrentTicket(banner.TicketType);
-            int usableTickets = Mathf.Min(currentTicket, ticketCost);
-            int actualCrystal = crystalCost; // CalcCost가 이미 usable 고려해서 계산
-
             // ── 소비 ──────────────────────────────────────────────────────────
-            if (usableTickets > 0)
-                ConsumeTicket(banner.TicketType, usableTickets);
-            if (actualCrystal > 0)
+            if (ticketCost > 0)
+                ConsumeTicket(banner.TicketType, ticketCost);
+            if (crystalCost > 0)
             {
-                if (!_currencyService.TryConsumeCrystal(actualCrystal))
+                if (!_currencyService.TryConsumeCrystal(crystalCost))
                     return GachaResult.Fail("재화 부족");
             }
 
@@ -110,7 +105,7 @@ namespace Game.Core.Services
             // ── 저장 ──────────────────────────────────────────────────────────
             _saveManager.Save();
 
-            var gachaResult = new GachaResult(true, results, usableTickets, actualCrystal, null);
+            var gachaResult = new GachaResult(true, results, ticketCost, crystalCost, null);
             OnGachaCompleted?.Invoke(gachaResult);
             return gachaResult;
         }
@@ -130,9 +125,7 @@ namespace Game.Core.Services
             if (count == 10)
                 rawCrystal *= banner.TenPullDiscount;
 
-            int crystalCost = MathUtils.RoundHalfUp(rawCrystal) >= 0
-                ? (int)MathUtils.RoundHalfUp(rawCrystal)
-                : Mathf.CeilToInt(rawCrystal);
+            int crystalCost = (int)MathUtils.RoundHalfUp(rawCrystal);
 
             return (usableTickets, crystalCost);
         }

@@ -68,8 +68,8 @@ namespace Game.UI.Lobby.Shop
             RefreshAllBannerCosts();
 
             // 이벤트 구독
-            _currencyService.OnGachaTicketChanged += HandleTicketChanged;
-            _currencyService.OnCrystalChanged     += HandleCrystalChanged;
+            _currencyService.OnGachaTicketChanged += HandleCurrencyChanged;
+            _currencyService.OnCrystalChanged     += HandleCurrencyChanged;
             _gachaService.OnGachaCompleted        += HandleGachaCompleted;
 
             // 배너 카드 이벤트 구독
@@ -83,8 +83,8 @@ namespace Game.UI.Lobby.Shop
         {
             if (!_initialized) return;
 
-            _currencyService.OnGachaTicketChanged -= HandleTicketChanged;
-            _currencyService.OnCrystalChanged     -= HandleCrystalChanged;
+            _currencyService.OnGachaTicketChanged -= HandleCurrencyChanged;
+            _currencyService.OnCrystalChanged     -= HandleCurrencyChanged;
             _gachaService.OnGachaCompleted        -= HandleGachaCompleted;
 
             foreach (var card in _view.BannerCards)
@@ -133,13 +133,7 @@ namespace Game.UI.Lobby.Shop
             RefreshAllBannerCosts();
         }
 
-        private void HandleTicketChanged(int _)
-        {
-            RefreshCurrencyDisplay();
-            RefreshAllBannerCosts();
-        }
-
-        private void HandleCrystalChanged(int _)
+        private void HandleCurrencyChanged(int _)
         {
             RefreshCurrencyDisplay();
             RefreshAllBannerCosts();
