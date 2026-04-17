@@ -21,12 +21,14 @@ namespace Game.Data.Equipment
         /// <summary>등급에 대응하는 서브 스탯 슬롯 수를 반환한다.</summary>
         public static int GetSubStatSlotCount(EquipmentGrade grade)
         {
+            // BALANCE §2-1 / EQUIPMENT.md §2 : Normal=0 / Rare=1 / Epic=2 / Unique=3
+            // 실제 드랍 롤 로직(EquipmentInstance)도 (int)grade 로 0/1/2/3 사용.
             return grade switch
             {
-                EquipmentGrade.Normal => 1,
-                EquipmentGrade.Rare   => 2,
-                EquipmentGrade.Epic   => 3,
-                EquipmentGrade.Unique => 4,
+                EquipmentGrade.Normal => 0,
+                EquipmentGrade.Rare   => 1,
+                EquipmentGrade.Epic   => 2,
+                EquipmentGrade.Unique => 3,
                 _                    => 0
             };
         }
