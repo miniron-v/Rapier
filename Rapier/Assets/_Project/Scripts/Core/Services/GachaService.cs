@@ -128,11 +128,11 @@ namespace Game.Core.Services
 
         private EquipmentInstance RollOne(GachaBannerData banner, SaveData saveData)
         {
-            // 천장 체크
+            // 천장 체크 (임계값은 배너 SO에서 읽어 디자인 유연성 확보)
             EquipmentGrade? forcedGrade = null;
-            if (saveData.uniquePityCounter >= 90)
+            if (saveData.uniquePityCounter >= banner.UniquePityThreshold)
                 forcedGrade = EquipmentGrade.Unique;
-            else if (saveData.epicPityCounter >= 40)
+            else if (saveData.epicPityCounter >= banner.EpicPityThreshold)
                 forcedGrade = EquipmentGrade.Epic;
 
             EquipmentGrade rolledGrade;

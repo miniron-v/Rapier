@@ -19,6 +19,8 @@ namespace Game.Data.Gacha
         [SerializeField] private int _crystalCostPerPull = 300;
         [SerializeField] private GachaTicketType _ticketType;
         [SerializeField] private List<GachaGradeEntry> _gradeEntries = new();
+        [SerializeField] private int _epicPityThreshold  = 40;
+        [SerializeField] private int _uniquePityThreshold = 80;
 
         /// <summary>배너 고유 키 (예: "standard_equipment")</summary>
         public string BannerId          => _bannerId;
@@ -36,5 +38,9 @@ namespace Game.Data.Gacha
         public GachaTicketType TicketType => _ticketType;
         /// <summary>등급별 풀+가중치 목록</summary>
         public IReadOnlyList<GachaGradeEntry> GradeEntries => _gradeEntries;
+        /// <summary>Epic 천장 횟수 (기본 40). SO에서 배너별 조정 가능.</summary>
+        public int EpicPityThreshold    => _epicPityThreshold;
+        /// <summary>Unique 천장 횟수 (기본 80). SO에서 배너별 조정 가능.</summary>
+        public int UniquePityThreshold  => _uniquePityThreshold;
     }
 }
