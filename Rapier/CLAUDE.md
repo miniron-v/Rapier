@@ -142,6 +142,7 @@ Assets/
 ## 10. 역할 분기
 
 - **특정 기능 구현 지시**: 해당 작업만 집중, 프롬프트 명시 도메인 문서(`Assets/_Project/Docs/Domains/*.md`) 참조
+- **밸런싱 / 수치 조정 지시**: `Assets/_Project/Docs/Domains/BALANCE.md` 를 **단일 진실원**으로 참조. 수치 변경은 BALANCE 에만 반영. 도메인 문서는 구조·스키마만 보유.
 - **그 외**: `Assets/_Project/Docs/TEAM_LEAD.md` 읽고 팀장 역할 수행
 
 ## 11. Bash / 터미널 운영 규칙

@@ -1,21 +1,23 @@
 # 진행 시스템 (Progression)
 
-스테이지, 인터미션, 사망/이어하기, 저장 시스템.
+스테이지, 사망/이어하기, 저장 시스템.
+
+> **수치는 이 문서에 없다.** 스테이지 스케일링 곡선, 보스 배치, 병목 지점 등 밸런스 수치는 `BALANCE.md` 참조. 인터미션은 `INTERMISSION.md` 참조.
 
 ## 1. 스테이지 구조
 
-`[인터미션] → [보스1] → [인터미션] → [보스2] → [인터미션] → [보스3] → [인터미션] → [보스4] → [클리어]`
+`[보스 1방]` — 1 스테이지 = 1 보스. 한 판 = 약 3분.
 
-1 스테이지 = 보스 4방 + 인터미션 4방 (매 보스 앞). 스테이지 내 같은 보스 재출현 금지. 다른 스테이지에서 강화 버전 재활용 가능.
+같은 보스는 다른 스테이지에서 차수 진화 형태로 재등장한다 (배치·진화 수치는 `BALANCE.md §3`).
 
 | 객체 | 책임 |
 |---|---|
-| `RoomNode` (`[Serializable]`) | 방 종류(BossRoom/IntermissionRoom), 표시명, 보스 프리팹/SO 참조 |
-| `StageData` (SO) | 스테이지 정의 — `stageName`, `stageIndex`, `RoomNode[] rooms`, `hpMultiplier`, `atkMultiplier` |
+| `RoomNode` (`[Serializable]`) | 방 종류(BossRoom/IntermissionRoom), 표시명, 보스 프리팹/SO 참조. IntermissionRoom enum 은 `INTERMISSION.md` 컨텐츠용으로 유지 (메인 스테이지 경로에서는 미사용). |
+| `StageData` (SO) | 스테이지 정의 — `stageName`, `stageIndex`, `RoomNode[] rooms` (BossRoom 1개), `hpMultiplier`, `atkMultiplier` |
 | `StageDatabase` (SO) | `StageData[]` 레지스트리, Resources 로드 |
 | `StageBuilder` (MonoBehaviour) | `StageDatabase`에서 현재 스테이지 SO 로드 → `StageManager.Init(stageData)` 전달 |
 | `StageManager` (런타임) | 현재 방 인덱스, 보스 처치 수, RunStatContainer 소유, 포탈/이어하기 제어, `CurrentStageIndex` 보유 |
-| `ProgressionManager` | 방 전환 오케스트레이션 (보스 스폰 시 스케일링 적용, 인터미션 UI, 사망 처리) |
+| `ProgressionManager` | 방 전환 오케스트레이션 (보스 스폰 시 스케일링 적용, 사망 처리) |
 
 ### 스테이지 스케일링
 
@@ -24,30 +26,7 @@
 - 보스 런타임 HP = `bossStatData.maxHp × stageData.hpMultiplier`
 - 보스 런타임 ATK = `bossStatData.attackDamage × stageData.atkMultiplier`
 
-| Stage | HP/ATK 배율 | Stage | HP/ATK 배율 |
-|-------|-------------|-------|-------------|
-| 1 | ×1.0 | 6 | ×2.4 |
-| 2 | ×1.2 | 7 | ×2.8 |
-| 3 | ×1.4 | 8 | ×3.3 |
-| 4 | ×1.7 | 9 | ×3.9 |
-| 5 | ×2.0 | 10 | ×4.5 |
-
-### 10 스테이지 보스 배치
-
-보스 7종을 10×4=40 슬롯에 고정 배치. 같은 스테이지 내 동일 보스 중복 금지.
-
-| Stage | Boss 1 | Boss 2 | Boss 3 | Boss 4 |
-|-------|--------|--------|--------|--------|
-| 1 | Specter | Berserker | Gravekeeper | Titan |
-| 2 | Pyromancer | Stormcaller | TwinPhantoms | Specter |
-| 3 | Berserker | Gravekeeper | Pyromancer | Stormcaller |
-| 4 | TwinPhantoms | Titan | Specter | Berserker |
-| 5 | Stormcaller | Pyromancer | Titan | Gravekeeper |
-| 6 | Specter | TwinPhantoms | Berserker | Stormcaller |
-| 7 | Gravekeeper | Titan | Pyromancer | TwinPhantoms |
-| 8 | Berserker | Stormcaller | Specter | Titan |
-| 9 | Pyromancer | TwinPhantoms | Gravekeeper | Stormcaller |
-| 10 | Titan | Berserker | TwinPhantoms | Gravekeeper |
+스테이지별 구체 배율 및 보스 매핑은 `BALANCE.md §3` 참조.
 
 ### 스테이지 진행 / 선택
 
@@ -55,32 +34,21 @@
 - **재도전**: 로비에서 해금된 스테이지 중 원하는 것을 선택해 재입장 가능 (드롭 파밍 등).
 - **스테이지 선택 흐름**: 로비 "출격" 버튼 → 스테이지 선택 패널 (최고 도달+1 까지 표시) → `SceneController.LoadGame(stageIndex)`.
 - **스테이지 클리어 후**: "다음 스테이지" / "로비 복귀" 선택. 다음 스테이지 선택 시 `SceneController.LoadGame(stageIndex + 1)`.
+- **클리어 보상**: Crystal 고정 보상 (수급량은 `BALANCE.md §7-2`).
 
 ---
 
-## 2. 인터미션 방
-
-두 효과 동시: (1) **HP 100% 회복** (자동, 강제), (2) **스탯 선택** (능동, 2개 후보 중 1개).
-
-**규칙**: 풀에서 매번 2개 랜덤 추출 (서로 다른 2개 보장, 같은 종류 동시 금지). 누적 가능 (같은 스탯 재등장 시 누적 적용). 풀 7종 + 강도는 `Rapier_Prototype_DesignDoc.md §8-2`.
-
-| 객체 | 책임 |
-|---|---|
-| `IntermissionManager` (MonoBehaviour) | 회복 트리거, 후보 추출, 선택 UI 처리 |
-| `StatPickPool` (static class) | 후보 풀 (스탯 종류 + 강도) — 하드코딩, SO 아님 |
-| `RunStatContainer.Apply()` | 선택 누적/적용 (§STATS.md 참조) |
-
-## 3. 사망 / 이어하기
+## 2. 사망 / 이어하기
 
 | 상황 | 결과 |
 |---|---|
-| 보스 사망 | **그 보스부터 이어하기** 가능. RunStat + 진행도 유지. 보스/플레이어 HP 풀 복원. |
-| 능동 로비 복귀 | **진행도 + RunStat 초기화.** 다음 진입 시 1번 보스부터. |
-| 스테이지 클리어 | 보상 → 로비/다음 스테이지 선택. RunStat 초기화. |
+| 보스 사망 | **해당 스테이지 재도전** 가능. RunStat 초기화. |
+| 능동 로비 복귀 | 진행도 초기화. 재진입 시 스테이지 입장점부터. |
+| 스테이지 클리어 | 보상 (Crystal + 드랍 장비) → 로비/다음 스테이지 선택. RunStat 초기화. |
 
-## 4. 진행 표시
+## 3. 진행 표시
 
-HUD 에 현재 위치 `N / 4` 표시. 다음 방 미리보기 없음 (긴장감 유지). 인터미션 방은 카운트 제외.
+HUD 에 현재 스테이지 번호 표시. 1 스테이지 = 1보스.
 
 ### BossHudView 통합
 
@@ -88,15 +56,15 @@ HUD 에 현재 위치 `N / 4` 표시. 다음 방 미리보기 없음 (긴장감 
 
 | 시점 | 호출 |
 |---|---|
-| 보스 스폰 | `SetupBoss(bossName, bp, stageIndex, totalBossRooms)` |
+| 보스 스폰 | `SetupBoss(bossName, bp, stageIndex, totalBossRooms)` — 1보스 체제에서 `totalBossRooms=1` 고정 |
 | 페이즈 변경 | `UpdatePhase(phase)` |
-| 마지막 보스 처치 | `ShowResult(true)` |
+| 보스 처치 | `ShowResult(true)` |
 | 플레이어 사망 | `ShowResult(false)` |
 | 이어하기 진입 | `HideVictoryPanel()` + `HideResultPanel()` |
 
 `BossHudView` 는 씬 직접 연결 또는 `BossHudSetup` (`Rapier/Boss HUD/Rebuild Boss HUD`) 자동 와이어링.
 
-## 5. 저장 시스템 (JSON)
+## 4. 저장 시스템 (JSON)
 
 PlayerPrefs 금지. `Application.persistentDataPath/save.json`. 구현: `Game.Data.Save.SaveManager`.
 

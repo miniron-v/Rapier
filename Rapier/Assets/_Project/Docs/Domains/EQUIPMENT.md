@@ -2,6 +2,8 @@
 
 장비, 등급, 룬, 인벤토리, 캐릭터별 장착 관리.
 
+> **수치는 이 문서에 없다.** 등급별 확률, 메인스탯 커브, 서브스탯 롤 범위, 강화 테이블, 분해 수익 등 밸런스 수치는 `BALANCE.md` 참조. 본 문서는 구조·스키마·규칙 정의.
+
 ## 1. 장비 슬롯 (8 슬롯)
 
 | 카테고리 | 슬롯 | 메인 능력치 |
@@ -142,23 +144,15 @@ ProgressionManager.onComplete():
 
 ### 드롭 판정 로직
 
-```
-foreach (DropEntry entry in dropTable.entries)  // 등급별 독립 판정 (높은 등급 먼저)
-    if (Random.value <= entry.dropRate)
-        pool에서 랜덤 1개 선택 → new EquipmentInstance(data)
-최대 N개 제한 (DropTableData.MaxDrops, 기본 5) — 상위 등급 우선, 초과분 버림
-```
+구조:
+- 드랍 개수를 먼저 가중 롤로 결정 (1~3개).
+- 각 드랍 슬롯마다 등급을 독립 롤.
+- 확정된 등급의 보스 전담 풀에서 1개 랜덤 선택.
+- **공용 장비는 보스 드랍 풀에 포함되지 않는다.** 공용은 가챠 전용.
 
-기본 확률 (SO에서 조정): 노말 80% / 레어 30% / 에픽 10% / 유니크 2%.
+구체 수치 (개수 가중, 차수별 등급 확률) 는 `BALANCE.md §4` 참조.
 
-**스테이지별 등급 드롭률 오버라이드**: `StageData._gradeDropRates` (GradeDropRate[]) 가 설정된 스테이지에서는 DropEntry.dropRate 대신 등급별 오버라이드 값을 사용. BossDeathSequencer → LootManager.RollDrop(dropTable, stageDropRates) 경로로 전달. Rate=0 이면 해당 등급 차단. 저스테이지 상위 등급 봉쇄 + 고스테이지 유니크 해금에 사용.
-
-| 스테이지 | Normal | Rare | Epic | Unique |
-|---|---|---|---|---|
-| 1~2 | 90~95% | 0 | 0 | 0 |
-| 3~4 | 95% | 50~70% | 0 | 0 |
-| 5~7 | 95% | 80~90% | 30~60% | 0 |
-| 8~10 | 95% | 80~90% | 50~60% | 3~8% |
+**스테이지별 등급 드롭률 오버라이드**: `StageData._gradeDropRates` (GradeDropRate[]) 가 설정된 스테이지에서는 DropEntry.dropRate 대신 등급별 오버라이드 값을 사용. BossDeathSequencer → LootManager.RollDrop(dropTable, stageDropRates) 경로로 전달. Rate=0 이면 해당 등급 차단. 스테이지별 차수 진화 적용 경로.
 
 ### DroppedItemView 비주얼 및 감지
 
@@ -229,31 +223,15 @@ public DropTableData dropTable; // null = 드롭 없음
 | Gravekeeper | Necklace | 망자의 목걸이 | 묘지기의 목걸이 | 영혼 수확자의 목걸이 | 평안한 안식 |
 | TwinPhantoms | Ring | 영혼의 반지 | 쌍둥이 반지 | 쌍둥이 서약 | 영원한 우정 |
 
-**메인스탯 커브** (Normal/Rare/Epic/Unique) — Phase 22-B 재조정:
-- ATK flat: 60 / 120 / 200 / 300 (Weapon)
-- HP flat (Top, Bottom): 120 / 220 / 360 / 500
-- HP flat (Hat, Shoes 보조 HP 풀 사용 시 70%): 85 / 155 / 250 / 350
-- ATK %: 3 / 6 / 10 / 15 (Gloves 등 %형 메인)
-- MoveSpeed %: 2 / 4 / 7 / 10 (Shoes)
-- DodgeCDR %: 3 / 6 / 10 / 15
-- ChargeTimeReduction %: 3 / 6 / 10 / 15 (Hat)
-- InvincibilityBonus %: 3 / 6 / 10 / 15
-- CritChance %: 2 / 4 / 7 / 10
-- CritDamage %: 5 / 12 / 22 / 35 (Ring)
-- SkillDamage %: 3 / 7 / 13 / 20 (Necklace)
+**메인스탯 커브** (카테고리별 등급별 수치): `BALANCE.md §5-2`.
 
-**서브스탯 개수**: Normal 0 / Rare 1 / Epic 2 / Unique 3 (§2). 드롭 순간 풀에서 1회 랜덤 롤 (Phase 22-B §8).
+**서브스탯 개수**: Normal 0 / Rare 1 / Epic 2 / Unique 3 (§2). 드롭 순간 풀에서 1회 랜덤 롤 (§5-B).
+
+**보스 장비 배율**: 모든 등급에서 공용 대비 메인스탯 × 1.2, 고유 효과는 Unique 한정 (`BALANCE.md §2-2`).
 
 **에셋명 규칙**: `{Slot}_{Grade}_{Name}.asset` (PascalCase).
 
-**드롭 테이블 구성**: 보스별 테이블의 각 등급 엔트리 pool 에 (1) 해당 보스 전담 아이템 + (2) 그 등급의 공용 장비를 모두 포함. 드롭률은 기존 0.8 / 0.4 / 0.15 / 0.05 유지.
-
-| 등급 | 공용 장비 |
-|---|---|
-| Normal | Weapon_Normal_Rapier, Hat_Normal_Cap, Bottom_Normal_Trouser, Shoes_Normal_Boots, Ring_Normal_Band |
-| Rare | Top_Rare_IronArmor |
-| Epic | Gloves_Epic_CritGauntlet |
-| Unique | Necklace_Unique_VoidChain |
+**드롭 테이블 구성**: 보스별 테이블의 각 등급 엔트리 pool 에 **해당 보스 전담 아이템만** 포함. 공용 장비는 보스 드랍 풀에 포함되지 않으며, 가챠 배너에서만 등장한다. 드랍률·개수 가중은 `BALANCE.md §4`.
 
 **아이콘**: 모든 장비 SO (신규 28 + 기존 8) 의 `_icon` 필드에 공용 Circle 스프라이트 연결. 런타임 안전 경로 (`Assets/_Project/Art/UI/Circle.png` 등) 에 단일 에셋으로 배치. 등급 색은 UI 측에서 tint 적용.
 
@@ -366,27 +344,14 @@ rolledMain    : StatEntry?         // nullable — JsonUtility 호환 위해 has
 
 Deserialize 시 `SubStats`/`RolledMainStat` 를 저장값으로 복원. 풀 SO 가 바뀌어도 기존 인스턴스는 저장된 롤 값 유지.
 
-### 5-B-6. 서브 롤 범위 테이블
+### 5-B-6. 서브 롤 범위
 
-| 스탯 | Normal | Rare | Epic | Unique |
-|---|---|---|---|---|
-| ATK flat | 10~25 | 25~50 | 50~90 | 90~150 |
-| HP flat (Top/Bottom 풀) | 20~50 | 50~100 | 100~190 | 190~300 |
-| HP flat (기타 슬롯 70%) | 15~35 | 35~70 | 70~135 | 135~210 |
-| ATK % | 1~2 | 2~3 | 3~5 | 5~7 |
-| MoveSpeed % | 1~2 | 2~3 | 3~5 | 5~7 |
-| DodgeCDR % | 1~2 | 2~3 | 3~5 | 5~7 |
-| ChargeTimeReduction % | 1~2 | 2~3 | 3~5 | 5~7 |
-| InvincibilityBonus % | 1~2 | 2~3 | 3~5 | 5~7 |
-| CritChance % | 1~1 | 1~2 | 2~3 | 3~5 |
-| CritDamage % | 2~3 | 4~7 | 8~12 | 13~18 |
-| SkillDamage % | 1~2 | 3~5 | 5~8 | 8~12 |
+스탯별 등급 구간 [min,max] 수치는 `BALANCE.md §5-3` 참조.
 
 ### 5-B-7. 장신구 메인 풀
 
-- 구성: **HP/ATK 를 제외한 모든 스탯** — MoveSpeed%, DodgeCDR%, ChargeTimeReduction%, InvincibilityBonus%, CritChance%, CritDamage%, SkillDamage%.
-- 등급 범위는 §5 메인 커브 %형 수치와 동일 (Unique 기준: CritDmg 35, CritChance 10, SkillDmg 20 등).
-- 가중치 초기값 전부 1.0 (균등).
+- 구성: **HP/ATK 를 제외한 % 형 스탯** — MoveSpeed%, DodgeCDR%, ChargeTimeReduction%, InvincibilityBonus%, CritChance%, CritDamage%, SkillDamage%.
+- 등급 범위 수치 및 가중치는 `BALANCE.md §5-4` 참조.
 
 ### 5-B-8. 풀 SO 생성 목록
 
@@ -505,12 +470,7 @@ equippedMap: List<EquippedMapEntry> (JsonUtility 는 Dictionary 미지원 → Li
 대상: 인벤토리 보유 + **미장착** 장비 인스턴스.
 가루 산출 공식: `base + perEnhanceBonus × instance.EnhanceLevel`.
 
-| 등급 | base | perEnhance |
-|---|---|---|
-| Normal | 5 | 2 |
-| Rare | 20 | 5 |
-| Epic | 80 | 15 |
-| Unique | 250 | 40 |
+등급별 base/perEnhance 수치는 `BALANCE.md §6-5` 참조. 공용/보스 장비 구분 없이 등급에만 의존.
 
 API:
 ```csharp
@@ -538,7 +498,7 @@ int Dismantle(IEnumerable<EquipmentInstance> targets); // 총 획득 가루 반�
 
 `EquipmentInstance.MaxEnhanceLevel => EquipmentGradeHelper.GetMaxEnhance(Grade)`.
 
-**메인스탯 적용**: `EquipmentMetaStatProvider` 가 메인스탯 (SO `_mainStat` 또는 장신구 `RolledMainStat`) 의 flatValue/percentValue 양쪽에 `× (1 + 0.10f × inst.EnhanceLevel)` 을 곱한다. 서브스탯은 강화 시점에 누적된 인스턴스 값을 그대로 사용 (Provider 변경 없음).
+**메인스탯 적용**: `EquipmentMetaStatProvider` 가 메인스탯 (SO `_mainStat` 또는 장신구 `RolledMainStat`) 의 flatValue/percentValue 양쪽에 **구간별 가속 곡선 배율**을 곱한다. 곡선 수치 (+1~+15 단계별 배율/증가폭) 는 `BALANCE.md §6-1, §6-2` 참조. 서브스탯은 강화 시점에 누적된 인스턴스 값을 그대로 사용 (Provider 변경 없음).
 
 **서브스탯 강화** (단계 = 강화 후 목표가 3·6·9·12·15 일 때만):
 - 인스턴스의 `SubStats` 중 1개를 무작위 선택 (중복 허용 — 이미 강화된 서브 재선택 가능).
@@ -546,11 +506,7 @@ int Dismantle(IEnumerable<EquipmentInstance> targets); // 총 획득 가루 반�
 - usePercent 여부에 따라 percentValue 또는 flatValue 에 가산.
 - 서브 0개 (Normal) 면 서브스탯 강화 건너뛰고 메인만 적용.
 
-**성공률 / 가루 비용 테이블** (목표 단계 = 1~15, Normal 은 1~6 만 사용):
-| 목표 | +1 | +2 | +3 | +4 | +5 | +6 | +7 | +8 | +9 | +10 | +11 | +12 | +13 | +14 | +15 |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 성공률(%) | 100 | 100 | 90 | 80 | 70 | 60 | 50 | 40 | 30 | 25 | 20 | 15 | 12 | 8 | 5 |
-| 가루 | 10 | 20 | 40 | 70 | 110 | 160 | 230 | 320 | 430 | 580 | 770 | 1000 | 1300 | 1700 | 2200 |
+**성공률 / 가루 비용 테이블**: `BALANCE.md §6-2` 참조. 등급별 상한은 §8-3 의 최대 강화치 표에 의해 자동 차단 (Normal +6 / Rare +9 / Epic +12 / Unique +15).
 
 **테이블 SO**: `EnhanceTableData` (단일 인스턴스). 위치 `Assets/_Project/Resources/EnhanceTableData.asset`. `GameBootstrap` 이 `Resources.Load` 하여 `EquipmentManager.Init` 에 주입.
 
@@ -582,6 +538,7 @@ EnhanceResult TryEnhance(EquipmentInstance inst);
 //   - 최대 도달 → DustSpent=0, Success=false, NewLevel==PreviousLevel
 //   - 가루 부족 → 동일
 // 정상 흐름: Dust 차감 → 확률 굴림 → Success 시 EnhanceLevel++ → 3/6/9/12/15 라면 서브 강화 → 이벤트 발행
+// 확률 실패: Dust 만 소모, 단계 유지 (파괴/하향 없음). 상세는 BALANCE.md §6-4.
 ```
 
 이벤트: `OnEquipmentEnhanced(EquipmentInstance, EnhanceResult)` (UI 갱신 + 연출 트리거).
