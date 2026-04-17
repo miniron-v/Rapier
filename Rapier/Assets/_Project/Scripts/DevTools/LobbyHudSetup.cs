@@ -254,6 +254,8 @@ namespace Game.DevTools
             vlg.spacing             = 20;
             vlg.padding             = new RectOffset(20, 20, 20, 20);
             vlg.childAlignment      = TextAnchor.UpperCenter;
+            vlg.childControlWidth      = true;
+            vlg.childControlHeight     = true;
             vlg.childForceExpandWidth  = true;
             vlg.childForceExpandHeight = false;
             var fitter = containerGo.AddComponent<ContentSizeFitter>();
@@ -306,73 +308,70 @@ namespace Game.DevTools
         }
 
         /// <summary>
-        /// 배너 카드 1장 생성. 부모 VLG 가 가로를 stretch.
-        /// 세로는 LayoutElement.preferredHeight 로 지정 (1080 기준 약 2:1).
-        /// 내부 자식은 anchor 비율 배분.
+        /// 배너 카드 1장 생성.
+        /// 부모 VLG(childControlWidth/Height) 가 가로·세로를 제어.
+        /// LayoutElement.preferredHeight 로 세로 힌트. 내부 자식은 anchor 배분.
+        /// BannerArt 가 카드 전체 배경, 그 위에 텍스트·버튼 오버레이.
         /// </summary>
         private static BannerCardView CreateBannerCard(GameObject container, GachaBannerData bannerData, TMP_FontAsset font)
         {
-            // ── 카드 루트 ─────────────────────────────────────────────────────
             var cardGo = new GameObject($"BannerCard_{bannerData.BannerId}", typeof(RectTransform));
             cardGo.transform.SetParent(container.transform, false);
-            // VLG(childForceExpandWidth) 가 가로를 부모 폭으로 확장.
-            // 세로만 LayoutElement 로 지정. 1080 기준 패딩 제외 ~1040 가로, 500 세로 ≈ 2:1.
             var cardLE = cardGo.AddComponent<LayoutElement>();
             cardLE.preferredHeight = 500;
 
-            // 배경
-            var cardBg = cardGo.AddComponent<Image>();
-            cardBg.color = new Color(0.16f, 0.16f, 0.20f, 0.95f);
-
-            // ── 자식 배치 (anchor 비율 배분) ──────────────────────────────────
-            // 카드 내부 영역을 anchor 비율로 분할. 패딩은 offset 으로 처리.
-            // 상→하 배분 (정규화 0~1):
-            //   BannerArt :  0.30 ~ 1.00  (상단 70%)
-            //   BannerName:  0.22 ~ 0.30  (8%)
-            //   Description: 0.12 ~ 0.22  (10%)
-            //   Divider:     0.115~ 0.12  (0.5%)
-            //   ButtonRow:   0.00 ~ 0.115 (11.5%)
-            const float pad = 20f; // 좌우/상하 여백 (offset)
-
-            // ── BannerArt (상단 70%) ──────────────────────────────────────────
+            // ── BannerArt — 카드 전체 배경 (anchor full stretch) ──────────────
             var artGo = new GameObject("BannerArt", typeof(RectTransform));
             artGo.transform.SetParent(cardGo.transform, false);
             var artRect = artGo.GetComponent<RectTransform>();
-            SetAnchors(artRect, new Vector2(0, 0.30f), Vector2.one);
-            artRect.offsetMin = new Vector2(pad, 5);
-            artRect.offsetMax = new Vector2(-pad, -pad);
+            SetAnchors(artRect, Vector2.zero, Vector2.one);
+            artRect.offsetMin = artRect.offsetMax = Vector2.zero;
             var artImg = artGo.AddComponent<Image>();
 
             if (bannerData.BannerArt != null)
             {
                 artImg.sprite = bannerData.BannerArt;
-                artImg.preserveAspect = true;
-                artImg.color = Color.white;
+                artImg.type   = Image.Type.Sliced;
+                artImg.color  = Color.white;
             }
             else
             {
-                // placeholder — 등급 확률 안내
                 artImg.color = new Color(0.12f, 0.12f, 0.16f);
+            }
 
+            // ── 하단 오버레이 (반투명 검정, 하단 35%) — 텍스트 가독성 ─────────
+            var dimmerGo = new GameObject("OverlayDimmer", typeof(RectTransform));
+            dimmerGo.transform.SetParent(cardGo.transform, false);
+            var dimmerRect = dimmerGo.GetComponent<RectTransform>();
+            SetAnchors(dimmerRect, Vector2.zero, new Vector2(1, 0.35f));
+            dimmerRect.offsetMin = dimmerRect.offsetMax = Vector2.zero;
+            var dimmerImg = dimmerGo.AddComponent<Image>();
+            dimmerImg.color = new Color(0, 0, 0, 0.55f);
+            dimmerImg.raycastTarget = false;
+
+            // ── BannerArt 없을 때 중앙 확률 표기 ─────────────────────────────
+            if (bannerData.BannerArt == null)
+            {
                 var rateGo = new GameObject("RateInfo", typeof(RectTransform));
-                rateGo.transform.SetParent(artGo.transform, false);
+                rateGo.transform.SetParent(cardGo.transform, false);
                 var rateRect = rateGo.GetComponent<RectTransform>();
-                SetAnchors(rateRect, Vector2.zero, Vector2.one);
-                rateRect.offsetMin = new Vector2(20, 20);
-                rateRect.offsetMax = new Vector2(-20, -20);
+                SetAnchors(rateRect, new Vector2(0, 0.35f), Vector2.one);
+                rateRect.offsetMin = new Vector2(30, 10);
+                rateRect.offsetMax = new Vector2(-30, -10);
 
                 var rateTmp = rateGo.AddComponent<TextMeshProUGUI>();
                 rateTmp.font      = font;
-                rateTmp.fontSize  = 28;
+                rateTmp.fontSize  = 30;
                 rateTmp.alignment = TextAlignmentOptions.Center;
                 rateTmp.color     = new Color(0.85f, 0.85f, 0.85f);
+                rateTmp.raycastTarget = false;
 
                 float totalWeight = 0f;
                 foreach (var entry in bannerData.GradeEntries)
                     totalWeight += entry.Weight;
 
                 var sb = new System.Text.StringBuilder();
-                sb.AppendLine("<size=36><b>장비 가챠</b></size>\n");
+                sb.AppendLine("<size=40><b>장비 가챠</b></size>\n");
                 foreach (var entry in bannerData.GradeEntries)
                 {
                     float pct = totalWeight > 0 ? entry.Weight / totalWeight * 100f : 0f;
@@ -389,54 +388,49 @@ namespace Game.DevTools
                 rateTmp.text = sb.ToString();
             }
 
-            // ── BannerName (8%) ───────────────────────────────────────────────
+            // ── 오버레이 영역 (하단 35% 내부) 텍스트·버튼 배치 ──────────────
+            // anchor 기준: 카드 전체. 하단 35% = 0.00 ~ 0.35
+            const float pad = 24f;
+
+            // BannerName — 하단 영역 상단 (0.22 ~ 0.33)
             var nameGo = new GameObject("BannerName", typeof(RectTransform));
             nameGo.transform.SetParent(cardGo.transform, false);
             var nameRect = nameGo.GetComponent<RectTransform>();
-            SetAnchors(nameRect, new Vector2(0, 0.22f), new Vector2(1, 0.30f));
+            SetAnchors(nameRect, new Vector2(0, 0.22f), new Vector2(1, 0.33f));
             nameRect.offsetMin = new Vector2(pad, 0);
             nameRect.offsetMax = new Vector2(-pad, 0);
             var nameText = nameGo.AddComponent<TextMeshProUGUI>();
             nameText.font      = font;
-            nameText.fontSize  = 40;
+            nameText.fontSize  = 36;
             nameText.fontStyle = FontStyles.Bold;
             nameText.alignment = TextAlignmentOptions.MidlineLeft;
             nameText.color     = Color.white;
             nameText.text      = bannerData.BannerName;
+            nameText.raycastTarget = false;
 
-            // ── Description (10%) ─────────────────────────────────────────────
+            // Description — (0.13 ~ 0.22)
             var descGo = new GameObject("Description", typeof(RectTransform));
             descGo.transform.SetParent(cardGo.transform, false);
             var descRect = descGo.GetComponent<RectTransform>();
-            SetAnchors(descRect, new Vector2(0, 0.12f), new Vector2(1, 0.22f));
+            SetAnchors(descRect, new Vector2(0, 0.13f), new Vector2(1, 0.22f));
             descRect.offsetMin = new Vector2(pad, 0);
             descRect.offsetMax = new Vector2(-pad, 0);
             var descText = descGo.AddComponent<TextMeshProUGUI>();
             descText.font      = font;
-            descText.fontSize  = 26;
+            descText.fontSize  = 22;
             descText.alignment = TextAlignmentOptions.TopLeft;
-            descText.color     = new Color(0.75f, 0.75f, 0.75f);
+            descText.color     = new Color(0.85f, 0.85f, 0.85f);
             descText.text      = bannerData.Description;
+            descText.raycastTarget = false;
 
-            // ── Divider (0.5%) ────────────────────────────────────────────────
-            var divGo = new GameObject("Divider", typeof(RectTransform));
-            divGo.transform.SetParent(cardGo.transform, false);
-            var divRect = divGo.GetComponent<RectTransform>();
-            SetAnchors(divRect, new Vector2(0, 0.115f), new Vector2(1, 0.12f));
-            divRect.offsetMin = new Vector2(pad, 0);
-            divRect.offsetMax = new Vector2(-pad, 0);
-            var divImg = divGo.AddComponent<Image>();
-            divImg.color = new Color(0.4f, 0.4f, 0.45f, 0.5f);
-
-            // ── ButtonRow (하단 11.5%) ────────────────────────────────────────
+            // ButtonRow — (0.00 ~ 0.13)
             var btnRowGo = new GameObject("ButtonRow", typeof(RectTransform));
             btnRowGo.transform.SetParent(cardGo.transform, false);
             var btnRowRect = btnRowGo.GetComponent<RectTransform>();
-            SetAnchors(btnRowRect, Vector2.zero, new Vector2(1, 0.115f));
-            btnRowRect.offsetMin = new Vector2(pad, pad * 0.5f);
-            btnRowRect.offsetMax = new Vector2(-pad, 0);
+            SetAnchors(btnRowRect, Vector2.zero, new Vector2(1, 0.13f));
+            btnRowRect.offsetMin = new Vector2(pad, 8);
+            btnRowRect.offsetMax = new Vector2(-pad, -4);
 
-            // 버튼 2개를 좌우 반반 배치 (anchor 비율)
             var (singleBtn, singleCostText) = CreatePullButton(btnRowGo, "SinglePullBtn", "1회 뽑기",
                 new Vector2(0f, 0f), new Vector2(0.48f, 1f), font);
             var (tenBtn, tenCostText)       = CreatePullButton(btnRowGo, "TenPullBtn",    "10회 뽑기",
