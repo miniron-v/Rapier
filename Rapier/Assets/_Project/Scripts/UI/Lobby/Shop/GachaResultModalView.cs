@@ -25,13 +25,19 @@ namespace Game.UI.Lobby.Shop
         /// <summary>닫기 버튼 클릭 시 발화.</summary>
         public event Action OnCloseClicked;
 
+        private void Awake()
+        {
+            if (_closeButton != null)
+                _closeButton.onClick.AddListener(HandleCloseClicked);
+        }
+
         private void OnDestroy()
         {
             if (_closeButton != null)
                 _closeButton.onClick.RemoveListener(HandleCloseClicked);
         }
 
-        /// <summary>참조 주입. Awake 이전에 호출됨 — 여기서 리스너 등록.</summary>
+        /// <summary>참조 주입 (LobbyHudSetup에서 호출).</summary>
         public void InitReferences(Transform itemContainer, Button closeButton, Image flashImage, TMP_FontAsset font)
         {
             _itemContainer = itemContainer;

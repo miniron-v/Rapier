@@ -25,6 +25,13 @@ namespace Game.UI.Lobby.Shop
         /// <summary>뽑기 버튼 클릭 시 발화. (배너 데이터, 뽑기 횟수)</summary>
         public event Action<GachaBannerData, int> OnPullClicked;
 
+        private void Awake()
+        {
+            // onClick 리스너는 직렬화되지 않으므로 런타임에 등록
+            _singlePullButton?.onClick.AddListener(HandleSinglePullClicked);
+            _tenPullButton?.onClick.AddListener(HandleTenPullClicked);
+        }
+
         private void OnDestroy()
         {
             if (_singlePullButton != null)
@@ -33,7 +40,7 @@ namespace Game.UI.Lobby.Shop
                 _tenPullButton.onClick.RemoveListener(HandleTenPullClicked);
         }
 
-        /// <summary>참조 주입 (LobbyHudSetup에서 호출). Awake 이전에 호출됨 — 여기서 리스너 등록.</summary>
+        /// <summary>참조 주입 (LobbyHudSetup에서 호출).</summary>
         public void InitReferences(
             Image bannerArt,
             TextMeshProUGUI bannerNameText,
