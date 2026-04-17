@@ -26,6 +26,8 @@ namespace Game.Enemies
         public int tickDamagePercent = 30;
         [Tooltip("장판 반경 (히트 판정)")]
         public float hazardRadius   = 1.5f;
+        [Tooltip("장판 시각화 스프라이트 (Circle.png 할당)")]
+        public Sprite sprite;
 
         // 현재 활성 장판 참조 — PyromancerBossPresenter 에서 CleanupHazards() 시 사용
         [NonSerialized]
@@ -44,6 +46,7 @@ namespace Game.Enemies
             ActiveHazard = hazard;
 
             var sr    = hazard.AddComponent<SpriteRenderer>();
+            sr.sprite = sprite;
             sr.color  = new Color(1f, 0.3f, 0f, 0.5f);
             hazard.transform.localScale = Vector3.one * hazardRadius * 2f;
             hazard.transform.position   = ctx.PlayerTransform.position;

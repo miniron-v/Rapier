@@ -74,6 +74,7 @@ MonoBehaviour:
         tickInterval: 0.5
         tickDamage: 0.3
         hazardRadius: 3
+        sprite: {fileID: -2413806693520163455, guid: bd8b5b5a2d5ffe042a4330b044065860, type: 3}
     - rid: 2897679572369932390
       type: {class: ProjectileAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
       data:
@@ -103,6 +104,7 @@ MonoBehaviour:
         tickInterval: 0.4
         tickDamage: 0.35
         hazardRadius: 3.5
+        sprite: {fileID: -2413806693520163455, guid: bd8b5b5a2d5ffe042a4330b044065860, type: 3}
     - rid: 2897679572369932392
       type: {class: MultiDirectionalAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
       data:
