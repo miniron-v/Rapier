@@ -339,29 +339,61 @@ namespace Game.DevTools
                 artImg.color = new Color(0.12f, 0.12f, 0.16f);
             }
 
-            // ── 하단 오버레이 (반투명 검정, 하단 35%) — 텍스트 가독성 ─────────
-            var dimmerGo = new GameObject("OverlayDimmer", typeof(RectTransform));
+            // ── 좌측 상단 dimmer (좌 60%, 상단 40%) — 배너명/설명 가독성 ─────
+            const float pad = 24f;
+            var dimmerGo = new GameObject("TopLeftDimmer", typeof(RectTransform));
             dimmerGo.transform.SetParent(cardGo.transform, false);
             var dimmerRect = dimmerGo.GetComponent<RectTransform>();
-            SetAnchors(dimmerRect, Vector2.zero, new Vector2(1, 0.35f));
+            SetAnchors(dimmerRect, new Vector2(0, 0.60f), new Vector2(0.60f, 1));
             dimmerRect.offsetMin = dimmerRect.offsetMax = Vector2.zero;
             var dimmerImg = dimmerGo.AddComponent<Image>();
-            dimmerImg.color = new Color(0, 0, 0, 0.55f);
+            dimmerImg.color = new Color(0, 0, 0, 0.50f);
             dimmerImg.raycastTarget = false;
 
-            // ── BannerArt 없을 때 중앙 확률 표기 ─────────────────────────────
+            // BannerName — 좌측 상단 (0.78 ~ 0.95, 좌 60%)
+            var nameGo = new GameObject("BannerName", typeof(RectTransform));
+            nameGo.transform.SetParent(cardGo.transform, false);
+            var nameRect = nameGo.GetComponent<RectTransform>();
+            SetAnchors(nameRect, new Vector2(0, 0.78f), new Vector2(0.58f, 0.95f));
+            nameRect.offsetMin = new Vector2(pad, 0);
+            nameRect.offsetMax = new Vector2(0, -pad * 0.5f);
+            var nameText = nameGo.AddComponent<TextMeshProUGUI>();
+            nameText.font      = font;
+            nameText.fontSize  = 36;
+            nameText.fontStyle = FontStyles.Bold;
+            nameText.alignment = TextAlignmentOptions.BottomLeft;
+            nameText.color     = Color.white;
+            nameText.text      = bannerData.BannerName;
+            nameText.raycastTarget = false;
+
+            // Description — 좌측 상단 아래 (0.62 ~ 0.78, 좌 60%)
+            var descGo = new GameObject("Description", typeof(RectTransform));
+            descGo.transform.SetParent(cardGo.transform, false);
+            var descRect = descGo.GetComponent<RectTransform>();
+            SetAnchors(descRect, new Vector2(0, 0.62f), new Vector2(0.58f, 0.78f));
+            descRect.offsetMin = new Vector2(pad, 0);
+            descRect.offsetMax = new Vector2(0, 0);
+            var descText = descGo.AddComponent<TextMeshProUGUI>();
+            descText.font      = font;
+            descText.fontSize  = 22;
+            descText.alignment = TextAlignmentOptions.TopLeft;
+            descText.color     = new Color(0.90f, 0.90f, 0.90f);
+            descText.text      = bannerData.Description;
+            descText.raycastTarget = false;
+
+            // ── BannerArt 없을 때 우측 확률 표기 ─────────────────────────────
             if (bannerData.BannerArt == null)
             {
                 var rateGo = new GameObject("RateInfo", typeof(RectTransform));
                 rateGo.transform.SetParent(cardGo.transform, false);
                 var rateRect = rateGo.GetComponent<RectTransform>();
-                SetAnchors(rateRect, new Vector2(0, 0.35f), Vector2.one);
-                rateRect.offsetMin = new Vector2(30, 10);
-                rateRect.offsetMax = new Vector2(-30, -10);
+                SetAnchors(rateRect, new Vector2(0.50f, 0.30f), Vector2.one);
+                rateRect.offsetMin = new Vector2(10, 10);
+                rateRect.offsetMax = new Vector2(-pad, -pad);
 
                 var rateTmp = rateGo.AddComponent<TextMeshProUGUI>();
                 rateTmp.font      = font;
-                rateTmp.fontSize  = 30;
+                rateTmp.fontSize  = 28;
                 rateTmp.alignment = TextAlignmentOptions.Center;
                 rateTmp.color     = new Color(0.85f, 0.85f, 0.85f);
                 rateTmp.raycastTarget = false;
@@ -371,7 +403,6 @@ namespace Game.DevTools
                     totalWeight += entry.Weight;
 
                 var sb = new System.Text.StringBuilder();
-                sb.AppendLine("<size=40><b>장비 가챠</b></size>\n");
                 foreach (var entry in bannerData.GradeEntries)
                 {
                     float pct = totalWeight > 0 ? entry.Weight / totalWeight * 100f : 0f;
@@ -383,53 +414,28 @@ namespace Game.DevTools
                         EquipmentGrade.Unique => "#FFB830",
                         _                     => "#FFFFFF"
                     };
-                    sb.AppendLine($"<color={gradeColor}>★ {entry.Grade}  —  {pct:F1}%</color>");
+                    sb.AppendLine($"<color={gradeColor}>★ {entry.Grade}  {pct:F1}%</color>");
                 }
                 rateTmp.text = sb.ToString();
             }
 
-            // ── 오버레이 영역 (하단 35% 내부) 텍스트·버튼 배치 ──────────────
-            // anchor 기준: 카드 전체. 하단 35% = 0.00 ~ 0.35
-            const float pad = 24f;
+            // ── 하단 버튼 dimmer (하단 30%) ──────────────────────────────────
+            var btnDimmerGo = new GameObject("BottomDimmer", typeof(RectTransform));
+            btnDimmerGo.transform.SetParent(cardGo.transform, false);
+            var btnDimmerRect = btnDimmerGo.GetComponent<RectTransform>();
+            SetAnchors(btnDimmerRect, Vector2.zero, new Vector2(1, 0.30f));
+            btnDimmerRect.offsetMin = btnDimmerRect.offsetMax = Vector2.zero;
+            var btnDimmerImg = btnDimmerGo.AddComponent<Image>();
+            btnDimmerImg.color = new Color(0, 0, 0, 0.45f);
+            btnDimmerImg.raycastTarget = false;
 
-            // BannerName — 하단 영역 상단 (0.22 ~ 0.33)
-            var nameGo = new GameObject("BannerName", typeof(RectTransform));
-            nameGo.transform.SetParent(cardGo.transform, false);
-            var nameRect = nameGo.GetComponent<RectTransform>();
-            SetAnchors(nameRect, new Vector2(0, 0.22f), new Vector2(1, 0.33f));
-            nameRect.offsetMin = new Vector2(pad, 0);
-            nameRect.offsetMax = new Vector2(-pad, 0);
-            var nameText = nameGo.AddComponent<TextMeshProUGUI>();
-            nameText.font      = font;
-            nameText.fontSize  = 36;
-            nameText.fontStyle = FontStyles.Bold;
-            nameText.alignment = TextAlignmentOptions.MidlineLeft;
-            nameText.color     = Color.white;
-            nameText.text      = bannerData.BannerName;
-            nameText.raycastTarget = false;
-
-            // Description — (0.13 ~ 0.22)
-            var descGo = new GameObject("Description", typeof(RectTransform));
-            descGo.transform.SetParent(cardGo.transform, false);
-            var descRect = descGo.GetComponent<RectTransform>();
-            SetAnchors(descRect, new Vector2(0, 0.13f), new Vector2(1, 0.22f));
-            descRect.offsetMin = new Vector2(pad, 0);
-            descRect.offsetMax = new Vector2(-pad, 0);
-            var descText = descGo.AddComponent<TextMeshProUGUI>();
-            descText.font      = font;
-            descText.fontSize  = 22;
-            descText.alignment = TextAlignmentOptions.TopLeft;
-            descText.color     = new Color(0.85f, 0.85f, 0.85f);
-            descText.text      = bannerData.Description;
-            descText.raycastTarget = false;
-
-            // ButtonRow — (0.00 ~ 0.13)
+            // ButtonRow — 하단 30% (0.00 ~ 0.30)
             var btnRowGo = new GameObject("ButtonRow", typeof(RectTransform));
             btnRowGo.transform.SetParent(cardGo.transform, false);
             var btnRowRect = btnRowGo.GetComponent<RectTransform>();
-            SetAnchors(btnRowRect, Vector2.zero, new Vector2(1, 0.13f));
-            btnRowRect.offsetMin = new Vector2(pad, 8);
-            btnRowRect.offsetMax = new Vector2(-pad, -4);
+            SetAnchors(btnRowRect, Vector2.zero, new Vector2(1, 0.30f));
+            btnRowRect.offsetMin = new Vector2(pad, pad * 0.5f);
+            btnRowRect.offsetMax = new Vector2(-pad, -pad * 0.5f);
 
             var (singleBtn, singleCostText) = CreatePullButton(btnRowGo, "SinglePullBtn", "1회 뽑기",
                 new Vector2(0f, 0f), new Vector2(0.48f, 1f), font);
