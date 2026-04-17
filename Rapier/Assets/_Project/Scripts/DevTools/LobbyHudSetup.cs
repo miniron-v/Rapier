@@ -361,7 +361,7 @@ namespace Game.DevTools
             nameText.font      = font;
             nameText.fontSize  = 36;
             nameText.fontStyle = FontStyles.Bold;
-            nameText.alignment = TextAlignmentOptions.BottomLeft;
+            nameText.alignment = TextAlignmentOptions.MidlineLeft;
             nameText.color     = Color.white;
             nameText.text      = bannerData.BannerName;
             nameText.raycastTarget = false;
@@ -448,13 +448,6 @@ namespace Game.DevTools
             cardView.Refresh(bannerData);
             EditorUtility.SetDirty(cardView);
 
-            // 에디터 Setup 시점 기본 비용 표시 (Play 모드 진입 전에도 보이도록)
-            int t1 = bannerData.TicketCostPerPull;
-            int c1 = bannerData.CrystalCostPerPull;
-            int c10 = (int)Game.Core.Utils.MathUtils.RoundHalfUp(
-                bannerData.CrystalCostPerPull * 10 * bannerData.TenPullDiscount);
-            cardView.RefreshCost(t1, c1, t1 * 10, c10);
-
             return cardView;
         }
 
@@ -499,7 +492,7 @@ namespace Game.DevTools
             costTmp.font      = font;
             costTmp.fontSize  = 26;
             costTmp.alignment = TextAlignmentOptions.Center;
-            costTmp.color     = new Color(1f, 0.9f, 0.3f);
+            costTmp.color     = Color.white;
 
             return (btn, costTmp);
         }

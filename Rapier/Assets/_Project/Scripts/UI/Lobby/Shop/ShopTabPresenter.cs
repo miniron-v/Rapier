@@ -104,6 +104,9 @@ namespace Game.UI.Lobby.Shop
         {
             if (_shopData == null) return;
 
+            int ownedTickets  = _currencyService.GachaTicket;
+            int ownedCrystals = _currencyService.Crystal;
+
             var cards = _view.BannerCards;
             for (int i = 0; i < _shopData.Banners.Count && i < cards.Count; i++)
             {
@@ -113,7 +116,7 @@ namespace Game.UI.Lobby.Shop
 
                 var (s1t, s1c)   = _gachaService.CalcCost(banner, 1);
                 var (s10t, s10c) = _gachaService.CalcCost(banner, 10);
-                card.RefreshCost(s1t, s1c, s10t, s10c);
+                card.RefreshCost(s1t, s1c, s10t, s10c, ownedTickets, ownedCrystals);
             }
         }
 

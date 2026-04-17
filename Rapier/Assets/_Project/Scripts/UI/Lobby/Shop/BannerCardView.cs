@@ -79,26 +79,43 @@ namespace Game.UI.Lobby.Shop
                 _descriptionText.text = data.Description;
         }
 
-        /// <summary>비용 텍스트를 동적으로 갱신한다.</summary>
-        /// <param name="singleTickets">1회 뽑기 소모 티켓 수</param>
-        /// <param name="singleCrystals">1회 뽑기 소모 Crystal 수</param>
-        /// <param name="tenTickets">10회 뽑기 소모 티켓 수</param>
-        /// <param name="tenCrystals">10회 뽑기 소모 Crystal 수</param>
-        public void RefreshCost(int singleTickets, int singleCrystals, int tenTickets, int tenCrystals)
+        /// <summary>비용 텍스트와 색상을 동적으로 갱신한다.</summary>
+        /// <param name="singleTickets">1회 소모 티켓</param>
+        /// <param name="singleCrystals">1회 소모 Crystal</param>
+        /// <param name="tenTickets">10회 소모 티켓</param>
+        /// <param name="tenCrystals">10회 소모 Crystal</param>
+        /// <param name="ownedTickets">보유 티켓</param>
+        /// <param name="ownedCrystals">보유 Crystal</param>
+        public void RefreshCost(int singleTickets, int singleCrystals,
+                                int tenTickets, int tenCrystals,
+                                int ownedTickets, int ownedCrystals)
         {
             if (_singlePullCostText != null)
-                _singlePullCostText.text = FormatCost(singleTickets, singleCrystals);
+            {
+                _singlePullCostText.text  = FormatCost(singleTickets, singleCrystals);
+                _singlePullCostText.color = CanAfford(singleTickets, singleCrystals, ownedTickets, ownedCrystals)
+                    ? Color.white : new Color(1f, 0.3f, 0.3f);
+            }
 
             if (_tenPullCostText != null)
-                _tenPullCostText.text = FormatCost(tenTickets, tenCrystals);
+            {
+                _tenPullCostText.text  = FormatCost(tenTickets, tenCrystals);
+                _tenPullCostText.color = CanAfford(tenTickets, tenCrystals, ownedTickets, ownedCrystals)
+                    ? Color.white : new Color(1f, 0.3f, 0.3f);
+            }
         }
 
         // ── 내부 헬퍼 ─────────────────────────────────────────────────────
 
-        private string FormatCost(int tickets, int crystals)
+        private static bool CanAfford(int tickets, int crystals, int ownedTickets, int ownedCrystals)
+        {
+            return ownedTickets >= tickets && ownedCrystals >= crystals;
+        }
+
+        private static string FormatCost(int tickets, int crystals)
         {
             if (tickets > 0 && crystals > 0)
-                return $"🎫×{tickets} + 💎×{crystals}";
+                return $"🎫×{tickets}  💎×{crystals}";
             if (tickets > 0)
                 return $"🎫×{tickets}";
             return $"💎×{crystals}";
