@@ -197,7 +197,7 @@ namespace Game.UI.Lobby.Equipment
             foreach (var inst in _inventory)
             {
                 if (inst == null || inst.Data == null)                   continue;
-                if (inst.Grade != grade)                                  continue;
+                if (inst.Grade > grade)                                    continue;
                 if (!BelongsToCurrentTab(inst.Data.SlotType))            continue;
                 if (IsEquipped(inst))                                     continue;
                 _selectedInstances.Add(inst);

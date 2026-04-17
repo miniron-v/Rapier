@@ -33,7 +33,7 @@ namespace Game.UI.Lobby.Equipment
             EquipmentGrade.Unique,
         };
 
-        private static readonly string[] GRADE_LABELS = { "Normal", "Rare", "Epic", "Unique" };
+        private static readonly string[] GRADE_LABELS = { "노말 이하", "레어 이하", "에픽 이하", "유니크 이하" };
 
         // ── Unity Lifecycle ──────────────────────────────────────────────────
 
