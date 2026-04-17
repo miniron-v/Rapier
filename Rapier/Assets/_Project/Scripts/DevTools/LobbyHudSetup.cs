@@ -210,22 +210,6 @@ namespace Game.DevTools
             headerLayout.childForceExpandWidth  = false;
             headerLayout.childForceExpandHeight = false;
 
-            // 테스트 재화 지급 버튼
-            var debugBtnGo = new GameObject("DebugGrantBtn", typeof(RectTransform));
-            debugBtnGo.transform.SetParent(headerGo.transform, false);
-            var debugBtnImg = debugBtnGo.AddComponent<Image>();
-            debugBtnImg.color = new Color(0.35f, 0.55f, 0.35f);
-            var debugBtn = debugBtnGo.AddComponent<Button>();
-            debugBtn.targetGraphic = debugBtnImg;
-            var debugBtnLE = debugBtnGo.AddComponent<LayoutElement>();
-            debugBtnLE.preferredWidth  = 200;
-            debugBtnLE.preferredHeight = 60;
-            var debugBtnLabel = CreateTmpLabel(debugBtnGo, "Label", "테스트 지급", 22, font).GetComponent<TextMeshProUGUI>();
-            debugBtnLabel.alignment = TextAlignmentOptions.Center;
-            var debugBtnLabelRect = debugBtnLabel.GetComponent<RectTransform>();
-            SetAnchors(debugBtnLabelRect, Vector2.zero, Vector2.one);
-            debugBtnLabelRect.offsetMin = debugBtnLabelRect.offsetMax = Vector2.zero;
-
             // 티켓 라벨
             var ticketLabel = CreateTmpLabel(headerGo, "TicketLabel", "🎫 x0", 28, font).GetComponent<TextMeshProUGUI>();
             var ticketLE = ticketLabel.gameObject.AddComponent<LayoutElement>();
@@ -310,7 +294,7 @@ namespace Game.DevTools
             }
 
             // ── View InitReferences ────────────────────────────────────────────
-            view.InitReferences(ticketLabel, crystalLabel, scroll, containerGo.transform, toastText, debugBtn);
+            view.InitReferences(ticketLabel, crystalLabel, scroll, containerGo.transform, toastText);
 
             // ── ShopTabPresenter ───────────────────────────────────────────────
             var presenterGo = new GameObject("ShopTabPresenter", typeof(RectTransform));

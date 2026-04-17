@@ -77,9 +77,6 @@ namespace Game.UI.Lobby.Shop
                 if (card != null)
                     card.OnPullClicked += HandlePullClicked;
 
-            // 테스트 재화 지급 버튼
-            if (_view.DebugGrantButton != null)
-                _view.DebugGrantButton.onClick.AddListener(HandleDebugGrant);
         }
 
         /// <summary>탭 숨김 시 호출. 이벤트 해제.</summary>
@@ -95,8 +92,6 @@ namespace Game.UI.Lobby.Shop
                 if (card != null)
                     card.OnPullClicked -= HandlePullClicked;
 
-            if (_view.DebugGrantButton != null)
-                _view.DebugGrantButton.onClick.RemoveListener(HandleDebugGrant);
         }
 
         // ── 내부 헬퍼 ─────────────────────────────────────────────────────
@@ -141,12 +136,6 @@ namespace Game.UI.Lobby.Shop
             _resultModalPresenter?.Show(result.PulledItems);
             RefreshCurrencyDisplay();
             RefreshAllBannerCosts();
-        }
-
-        private void HandleDebugGrant()
-        {
-            _currencyService.AddGachaTicket(10);
-            _currencyService.AddCrystal(3000);
         }
 
         private void HandleCurrencyChanged(int _)

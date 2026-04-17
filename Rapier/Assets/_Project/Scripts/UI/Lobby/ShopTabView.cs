@@ -19,7 +19,6 @@ namespace Game.UI.Lobby
         [SerializeField] private ScrollRect      _bannerScrollRect;
         [SerializeField] private Transform       _bannerContainer;
         [SerializeField] private TextMeshProUGUI _toastText;
-        [SerializeField] private Button          _debugGrantButton;
 
         private readonly List<BannerCardView> _bannerCards = new();
 
@@ -44,19 +43,14 @@ namespace Game.UI.Lobby
             TextMeshProUGUI crystalText,
             ScrollRect bannerScrollRect,
             Transform bannerContainer,
-            TextMeshProUGUI toastText,
-            Button debugGrantButton)
+            TextMeshProUGUI toastText)
         {
             _gachaTicketText  = gachaTicketText;
             _crystalText      = crystalText;
             _bannerScrollRect = bannerScrollRect;
             _bannerContainer  = bannerContainer;
             _toastText        = toastText;
-            _debugGrantButton = debugGrantButton;
         }
-
-        /// <summary>테스트 재화 지급 버튼.</summary>
-        public Button DebugGrantButton => _debugGrantButton;
 
         /// <summary>가챠 티켓 수량 표시 갱신.</summary>
         public void SetTicketCount(int count)
