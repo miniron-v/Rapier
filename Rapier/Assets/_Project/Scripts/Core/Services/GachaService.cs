@@ -34,7 +34,7 @@ namespace Game.Core.Services
         /// <summary>
         /// 배너에서 count회 뽑기를 수행한다.
         /// count는 1 또는 10만 유효. 티켓 우선 소모, 부족분 Crystal 보충.
-        /// 10연차 Rare 보장 및 천장(Epic 40회, Unique 90회) 적용.
+        /// 10연차 Rare 보장 및 천장(임계값은 배너 SO 의 EpicPityThreshold / UniquePityThreshold) 적용.
         /// </summary>
         public GachaResult Pull(GachaBannerData banner, int count)
         {
