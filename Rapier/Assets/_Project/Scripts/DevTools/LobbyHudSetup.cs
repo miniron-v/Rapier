@@ -1682,10 +1682,13 @@ namespace Game.DevTools
             nameGo.GetComponent<RectTransform>().offsetMin = nameGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
 
             // 2. 아이콘 (좌)
-            var iconGo  = new GameObject("ItemIcon");
+            var iconGo  = new GameObject("ItemIcon", typeof(RectTransform));
             iconGo.transform.SetParent(popupGo.transform, false);
             var iconImg = iconGo.AddComponent<Image>();
             iconImg.color = Color.white;
+            var iconArf = iconGo.AddComponent<AspectRatioFitter>();
+            iconArf.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
+            iconArf.aspectRatio = 1f;
             SetAnchors(iconGo.GetComponent<RectTransform>(), new Vector2(0.02f, 0.62f), new Vector2(0.28f, 0.88f));
             iconGo.GetComponent<RectTransform>().offsetMin = iconGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
 

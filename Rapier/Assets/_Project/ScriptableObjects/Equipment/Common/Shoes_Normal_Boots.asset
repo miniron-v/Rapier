@@ -15,7 +15,7 @@ MonoBehaviour:
   _itemName: "\uAD70\uD654"
   _description: "\uBC1C\uB180\uB9BC\uC744 \uAC00\uBCBD\uAC8C \uD558\uB294 \uACBD\uB7C9
     \uAD70\uD654."
-  _icon: {fileID: 21300000, guid: 5443c72a5e69485fab31a11a5f33f5cc, type: 3}
+  _icon: {fileID: 21300000, guid: 0c9607d83544799468a668a9b5d158bd, type: 3}
   _slotType: 4
   _grade: 0
   _mainStat:
