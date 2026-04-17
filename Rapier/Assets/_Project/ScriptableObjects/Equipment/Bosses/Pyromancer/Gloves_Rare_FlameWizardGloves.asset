@@ -13,8 +13,9 @@ MonoBehaviour:
   m_Name: Gloves_Rare_FlameWizardGloves
   m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Equipment.EquipmentItemData
   _itemName: "\uBD88\uAF43\uC220\uC0AC\uC758 \uC7A5\uAC11"
-  _description: "\uBD88\uAF43\uC744 \uB2E4\uB8E8\uB294 \uC220\uC0AC\uC758 \uC7A5\uAC11. \uBD88\uAF43\uC774 \uC218\uB193\uB418\uC5B4 \uC788\uB2E4."
-  _icon: {fileID: 21300000, guid: 5443c72a5e69485fab31a11a5f33f5cc, type: 3}
+  _description: "\uBD88\uAF43\uC744 \uB2E4\uB8E8\uB294 \uC220\uC0AC\uC758 \uC7A5\uAC11.
+    \uBD88\uAF43\uC774 \uC218\uB193\uB418\uC5B4 \uC788\uB2E4."
+  _icon: {fileID: 21300000, guid: ccc1bf8cb747a034193d05a9c13e4f14, type: 3}
   _slotType: 5
   _grade: 1
   _mainStat:

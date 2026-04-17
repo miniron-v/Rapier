@@ -13,8 +13,9 @@ MonoBehaviour:
   m_Name: Hat_Rare_ThunderWizardHat
   m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Equipment.EquipmentItemData
   _itemName: "\uC804\uACA9\uC220\uC0AC\uC758 \uAD00"
-  _description: "\uBC88\uAC1C\uC640 \uBC88\uAC1C\uC2B9\uC774 \uAE43\uB4E0 \uC8FC\uBB38\uC0AC \uBAA8\uC790. \uCC28\uC9C0 \uC18D\uB3C4\uAC00 \uB300\uD3ED \uD5A5\uC0C1\uB41C\uB2E4."
-  _icon: {fileID: 21300000, guid: 5443c72a5e69485fab31a11a5f33f5cc, type: 3}
+  _description: "\uBC88\uAC1C\uC640 \uBC88\uAC1C\uC2B9\uC774 \uAE43\uB4E0 \uC8FC\uBB38\uC0AC
+    \uBAA8\uC790. \uCC28\uC9C0 \uC18D\uB3C4\uAC00 \uB300\uD3ED \uD5A5\uC0C1\uB41C\uB2E4."
+  _icon: {fileID: 21300000, guid: 34a30a918dd9a11499f2053a2b16e3ce, type: 3}
   _slotType: 1
   _grade: 1
   _mainStat:

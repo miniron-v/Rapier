@@ -13,8 +13,9 @@ MonoBehaviour:
   m_Name: Ring_Normal_Band
   m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Equipment.EquipmentItemData
   _itemName: "\uC804\uC0AC\uC758 \uBC18\uC9C0"
-  _description: "\uCE58\uBA85\uD0C0 \uC704\uB825\uC744 \uC18C\uD3ED \uC0C1\uC2B9\uC2DC\uD0A4\uB294 \uB2E8\uC21C\uD55C \uBC18\uC9C0."
-  _icon: {fileID: 21300000, guid: 5443c72a5e69485fab31a11a5f33f5cc, type: 3}
+  _description: "\uCE58\uBA85\uD0C0 \uC704\uB825\uC744 \uC18C\uD3ED \uC0C1\uC2B9\uC2DC\uD0A4\uB294
+    \uB2E8\uC21C\uD55C \uBC18\uC9C0."
+  _icon: {fileID: 21300000, guid: ea56225f462b254448c11f4734c51fa9, type: 3}
   _slotType: 7
   _grade: 0
   _mainStat:
@@ -23,3 +24,4 @@ MonoBehaviour:
     percentValue: 0
   _subStatPool: {fileID: 11400000, guid: a52821e776a14a6e99d7a5fbfd5ec8e3, type: 2}
   _mainStatPool: {fileID: 11400000, guid: f5f2b3cb625c40d591b902e2253a840e, type: 2}
+  _isBossItem: 0

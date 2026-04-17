@@ -13,8 +13,9 @@ MonoBehaviour:
   m_Name: Necklace_Epic_SoulHarvesterNecklace
   m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Equipment.EquipmentItemData
   _itemName: "\uC601\uD63C \uC218\uD655\uC790\uC758 \uBAA9\uAC78\uC774"
-  _description: "\uC218\uBC31\uC758 \uC601\uD63C\uC744 \uC218\uD655\uD55C \uBB18\uC9C0\uAE30\uC758 \uB3C4\uAD6C. \uC8FD\uC740 \uC790\uC758 \uD798\uC744 \uBC1C\uD718\uD55C\uB2E4."
-  _icon: {fileID: 21300000, guid: 5443c72a5e69485fab31a11a5f33f5cc, type: 3}
+  _description: "\uC218\uBC31\uC758 \uC601\uD63C\uC744 \uC218\uD655\uD55C \uBB18\uC9C0\uAE30\uC758
+    \uB3C4\uAD6C. \uC8FD\uC740 \uC790\uC758 \uD798\uC744 \uBC1C\uD718\uD55C\uB2E4."
+  _icon: {fileID: 21300000, guid: be931a1e1a0903d40804e53f09943459, type: 3}
   _slotType: 6
   _grade: 2
   _mainStat:

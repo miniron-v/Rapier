@@ -13,8 +13,9 @@ MonoBehaviour:
   m_Name: Top_Rare_TitanPlatemail
   m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Equipment.EquipmentItemData
   _itemName: "\uAC70\uC2E0\uC758 \uD310\uAE08 \uAC11\uC8FC"
-  _description: "\uBD84\uB178\uD55C \uAC70\uC2E0\uC758 \uAC15\uCCA0\uB85C \uB2E8\uB149\uB41C \uD310\uAE08 \uAC11\uC8FC."
-  _icon: {fileID: 21300000, guid: 5443c72a5e69485fab31a11a5f33f5cc, type: 3}
+  _description: "\uBD84\uB178\uD55C \uAC70\uC2E0\uC758 \uAC15\uCCA0\uB85C \uB2E8\uB149\uB41C
+    \uD310\uAE08 \uAC11\uC8FC."
+  _icon: {fileID: 21300000, guid: a312bc788ef7537419fc20443c74038e, type: 3}
   _slotType: 2
   _grade: 1
   _mainStat:

@@ -13,8 +13,9 @@ MonoBehaviour:
   m_Name: Weapon_Epic_BerserkerGreatsword
   m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Equipment.EquipmentItemData
   _itemName: "\uAD11\uC804\uC0AC\uC758 \uB300\uAC80"
-  _description: "\uD53C\uC5D0 \uAD11\uB9D0\uB9AC\uB294 \uAD11\uC804\uC0AC\uC758 \uAC70\uB300\uD55C \uB300\uAC80. \uAC00\uD568\uC218\uB85D \uAE30\uC138\uAC00 \uC62C\uB77C\uAC04\uB2E4."
-  _icon: {fileID: 21300000, guid: 5443c72a5e69485fab31a11a5f33f5cc, type: 3}
+  _description: "\uD53C\uC5D0 \uAD11\uB9D0\uB9AC\uB294 \uAD11\uC804\uC0AC\uC758 \uAC70\uB300\uD55C
+    \uB300\uAC80. \uAC00\uD568\uC218\uB85D \uAE30\uC138\uAC00 \uC62C\uB77C\uAC04\uB2E4."
+  _icon: {fileID: 3320190261175296266, guid: 7423e156ecbe5b34491fe1a6cf457021, type: 3}
   _slotType: 0
   _grade: 2
   _mainStat:

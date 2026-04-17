@@ -13,8 +13,9 @@ MonoBehaviour:
   m_Name: Bottom_Normal_Trouser
   m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Equipment.EquipmentItemData
   _itemName: "\uD6C8\uB828\uC6A9 \uD558\uC758"
-  _description: "\uAC00\uBCBC\uC6B4 \uC804\uD22C \uD558\uC758. \uAE30\uCD08 \uCCB4\uB825 \uC99D\uAC00."
-  _icon: {fileID: 21300000, guid: 5443c72a5e69485fab31a11a5f33f5cc, type: 3}
+  _description: "\uAC00\uBCBC\uC6B4 \uC804\uD22C \uD558\uC758. \uAE30\uCD08 \uCCB4\uB825
+    \uC99D\uAC00."
+  _icon: {fileID: 21300000, guid: a66735d8313ed4e419d72f0adb77e724, type: 3}
   _slotType: 3
   _grade: 0
   _mainStat:
@@ -23,3 +24,4 @@ MonoBehaviour:
     percentValue: 0
   _subStatPool: {fileID: 11400000, guid: 1d3348c472be49cb8f4f91d5b4b90c66, type: 2}
   _mainStatPool: {fileID: 0}
+  _isBossItem: 0

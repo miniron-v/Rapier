@@ -12,8 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a874dbde24cd43b99864e8a8abe5bcad, type: 3}
   m_Name: Shoes_Normal_Boots
   m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Equipment.EquipmentItemData
-  _itemName: "\uAD6C\uBCF4 \uAD70\uD654"
-  _description: "\uBC1C\uB180\uB9BC\uC744 \uAC00\uBCBD\uAC8C \uD558\uB294 \uACBD\uB7C9 \uAD70\uD654."
+  _itemName: "\uAD70\uD654"
+  _description: "\uBC1C\uB180\uB9BC\uC744 \uAC00\uBCBD\uAC8C \uD558\uB294 \uACBD\uB7C9
+    \uAD70\uD654."
   _icon: {fileID: 21300000, guid: 5443c72a5e69485fab31a11a5f33f5cc, type: 3}
   _slotType: 4
   _grade: 0
@@ -23,3 +24,4 @@ MonoBehaviour:
     percentValue: 2
   _subStatPool: {fileID: 11400000, guid: f678309a63264cbe92d698ed8f0b5138, type: 2}
   _mainStatPool: {fileID: 0}
+  _isBossItem: 0

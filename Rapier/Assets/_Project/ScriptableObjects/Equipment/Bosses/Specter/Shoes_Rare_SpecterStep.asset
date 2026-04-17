@@ -13,8 +13,10 @@ MonoBehaviour:
   m_Name: Shoes_Rare_SpecterStep
   m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Equipment.EquipmentItemData
   _itemName: "\uB9DD\uB839\uC758 \uBC1C\uAC78\uC74C"
-  _description: "\uB9DD\uB839\uC758 \uD314\uBC1C\uCC28\uC784 \uBC1C\uAC78\uC74C. \uC774\uB3D9\uC18D\uB3C4\uC640 \uD68C\uD53C\uB2A5\uB825\uC744 \uB3D9\uC2DC\uC5D0 \uD64D\uC5F4\uD55C\uB2E4."
-  _icon: {fileID: 21300000, guid: 5443c72a5e69485fab31a11a5f33f5cc, type: 3}
+  _description: "\uB9DD\uB839\uC758 \uD314\uBC1C\uCC28\uC784 \uBC1C\uAC78\uC74C.
+    \uC774\uB3D9\uC18D\uB3C4\uC640 \uD68C\uD53C\uB2A5\uB825\uC744 \uB3D9\uC2DC\uC5D0
+    \uD64D\uC5F4\uD55C\uB2E4."
+  _icon: {fileID: 21300000, guid: bde4dae2448f22f4fb7a671705ac7142, type: 3}
   _slotType: 4
   _grade: 1
   _mainStat:

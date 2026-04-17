@@ -13,8 +13,9 @@ MonoBehaviour:
   m_Name: Ring_Rare_TwinRing
   m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Equipment.EquipmentItemData
   _itemName: "\uC30D\uB465\uC774 \uBC18\uC9C0"
-  _description: "\uD56D\uC0C1 \uC30D\uC73C\uB85C \uC874\uC7AC\uD558\uB294 \uC30D\uB465\uC774 \uC30D\uC2DC \uBC18\uC9C0. \uC758\uC9C0\uAC00 \uC11C\uB85C\uB97C \uB2F4\uACE0\uC788\uB2E4."
-  _icon: {fileID: 21300000, guid: 5443c72a5e69485fab31a11a5f33f5cc, type: 3}
+  _description: "\uD56D\uC0C1 \uC30D\uC73C\uB85C \uC874\uC7AC\uD558\uB294 \uC30D\uB465\uC774
+    \uC30D\uC2DC \uBC18\uC9C0. \uC758\uC9C0\uAC00 \uC11C\uB85C\uB97C \uB2F4\uACE0\uC788\uB2E4."
+  _icon: {fileID: 21300000, guid: 8941fbf79d078334782f2d89eba2e6f8, type: 3}
   _slotType: 7
   _grade: 1
   _mainStat:

@@ -13,8 +13,10 @@ MonoBehaviour:
   m_Name: Weapon_Unique_BerserkerRage
   m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Equipment.EquipmentItemData
   _itemName: "\uAD11\uC804\uC0AC\uC758 \uBD84\uB178"
-  _description: "\uBC84\uC11C\uCEE4\uC758 \uBD84\uB178 \uC790\uCCB4\uAC00 \uBB34\uAE30\uAC00 \uB41C \uC804\uC124\uC758 \uBB34\uAE30. \uD718\uB450\uB97C\uC218\uB85D \uB354\uC6B1 \uAC15\uD574\uC9C4\uB2E4."
-  _icon: {fileID: 21300000, guid: 5443c72a5e69485fab31a11a5f33f5cc, type: 3}
+  _description: "\uBC84\uC11C\uCEE4\uC758 \uBD84\uB178 \uC790\uCCB4\uAC00 \uBB34\uAE30\uAC00
+    \uB41C \uC804\uC124\uC758 \uBB34\uAE30. \uD718\uB450\uB97C\uC218\uB85D \uB354\uC6B1
+    \uAC15\uD574\uC9C4\uB2E4."
+  _icon: {fileID: 5813277547883325623, guid: 6dc32449bbee4be4eb86d5c6f0fccc36, type: 3}
   _slotType: 0
   _grade: 3
   _mainStat:

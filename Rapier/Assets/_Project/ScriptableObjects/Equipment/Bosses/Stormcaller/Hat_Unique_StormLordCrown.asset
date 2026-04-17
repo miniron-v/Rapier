@@ -13,8 +13,10 @@ MonoBehaviour:
   m_Name: Hat_Unique_StormLordCrown
   m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Equipment.EquipmentItemData
   _itemName: "\uD3ED\uD48D\uAD70\uC8FC\uC758 \uAD00"
-  _description: "\uD3ED\uD48D\uC744 \uC790\uC720\uC790\uC7AC\uB85C \uBD80\uB9AC\uB294 \uD3ED\uD48D\uAD70\uC8FC\uC758 \uAD00. \uCC29\uC6A9\uC790\uC758 \uC758\uC9C0\uB97C \uBC88\uAC1C\uCC98\uB7FC \uB521\uAEBC\uC900\uB2E4."
-  _icon: {fileID: 21300000, guid: 5443c72a5e69485fab31a11a5f33f5cc, type: 3}
+  _description: "\uD3ED\uD48D\uC744 \uC790\uC720\uC790\uC7AC\uB85C \uBD80\uB9AC\uB294
+    \uD3ED\uD48D\uAD70\uC8FC\uC758 \uAD00. \uCC29\uC6A9\uC790\uC758 \uC758\uC9C0\uB97C
+    \uBC88\uAC1C\uCC98\uB7FC \uB521\uAEBC\uC900\uB2E4."
+  _icon: {fileID: 21300000, guid: c8bf849e874ef554f985998e57f6b32a, type: 3}
   _slotType: 1
   _grade: 3
   _mainStat:

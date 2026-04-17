@@ -13,8 +13,9 @@ MonoBehaviour:
   m_Name: Necklace_Unique_PeacefulRest
   m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Equipment.EquipmentItemData
   _itemName: "\uD3C9\uC548\uD55C \uC548\uC2DD"
-  _description: "\uBAA8\uB4E0 \uC601\uD63C\uC744 \uD3C9\uC548\uD55C \uC798\uC601\uC73C\uB85C \uC774\uB044\uB294 \uC2E0\uBE44\uB85C\uC6B4 \uBAA9\uAC78\uC774."
-  _icon: {fileID: 21300000, guid: 5443c72a5e69485fab31a11a5f33f5cc, type: 3}
+  _description: "\uBAA8\uB4E0 \uC601\uD63C\uC744 \uD3C9\uC548\uD55C \uC798\uC601\uC73C\uB85C
+    \uC774\uB044\uB294 \uC2E0\uBE44\uB85C\uC6B4 \uBAA9\uAC78\uC774."
+  _icon: {fileID: 21300000, guid: 78ea0e8e66230aa41aef8bd5013c4567, type: 3}
   _slotType: 6
   _grade: 3
   _mainStat:
