@@ -12,29 +12,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e3225823786145acaeb7dc5a967915bd, type: 3}
   m_Name: GravekeeperDropTable
   m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Equipment.DropTableData
-  _maxDrops: 5
   _entries:
   - Grade: 0
     DropRate: 0.8
     Pool:
     - {fileID: 11400000, guid: c6ed3a3f8bbf42a7a121fa8fbd5f81c9, type: 2}
-    - {fileID: 11400000, guid: dc65b69001084d1b965b3b5ec932947d, type: 2}
-    - {fileID: 11400000, guid: 756c1b9f3ca74aa1837afd6d38d38849, type: 2}
-    - {fileID: 11400000, guid: f36293c0fc734f66a9247e9deed31ad9, type: 2}
-    - {fileID: 11400000, guid: ba8ea37021084d7b9df43b7d517155d5, type: 2}
-    - {fileID: 11400000, guid: e887374e354d41d0ba213241f75d77c5, type: 2}
   - Grade: 1
     DropRate: 0.4
     Pool:
     - {fileID: 11400000, guid: e529c709a70a4c589d86c1a8b255089f, type: 2}
-    - {fileID: 11400000, guid: 9d0a642d80c74ce190bf1fff86986fcf, type: 2}
   - Grade: 2
     DropRate: 0.15
     Pool:
     - {fileID: 11400000, guid: 32039118aa864c63a1abdcc0f5dd81dd, type: 2}
-    - {fileID: 11400000, guid: b4ade499e36c4bb1a40d10cf055aceb1, type: 2}
   - Grade: 3
     DropRate: 0.05
     Pool:
     - {fileID: 11400000, guid: 348da9c0333240a7bd3676fe887f2965, type: 2}
-    - {fileID: 11400000, guid: 35dbc2c283e543bb9ca4aa11ef280657, type: 2}
+  _maxDrops: 5
