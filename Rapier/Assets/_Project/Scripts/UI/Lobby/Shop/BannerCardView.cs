@@ -63,8 +63,13 @@ namespace Game.UI.Lobby.Shop
 
             if (_bannerArt != null)
             {
-                _bannerArt.sprite = data.BannerArt;
-                _bannerArt.enabled = data.BannerArt != null;
+                if (data.BannerArt != null)
+                {
+                    _bannerArt.sprite  = data.BannerArt;
+                    _bannerArt.enabled = true;
+                }
+                // BannerArt == null 이면 LobbyHudSetup 에서 placeholder 패널을 이미 구성했으므로
+                // Image 비활성화 없이 그대로 표시한다.
             }
 
             if (_bannerNameText != null)

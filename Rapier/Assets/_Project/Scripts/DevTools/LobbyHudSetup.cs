@@ -8,6 +8,7 @@ using TMPro;
 using Game.Characters;
 using Game.Core;
 using Game.Core.Services;
+using Game.Data.Equipment;
 using Game.Data.Gacha;
 using Game.UI;
 using Game.UI.Lobby;
@@ -231,12 +232,20 @@ namespace Game.DevTools
             var scroll = scrollGo.AddComponent<ScrollRect>();
             scroll.horizontal = false;
             scroll.vertical   = true;
-            scrollGo.AddComponent<Image>().color = Color.clear; // Raycast 대상
-            scrollGo.AddComponent<Mask>().showMaskGraphic = false;
+
+            // Viewport — RectMask2D 로 사각형 클리핑
+            // (Mask + clear Image 조합은 alpha=0 Image 가 전체 영역을 마스킹 아웃시키는 버그)
+            var viewportGo = new GameObject("Viewport", typeof(RectTransform));
+            viewportGo.transform.SetParent(scrollGo.transform, false);
+            var viewportRect = viewportGo.GetComponent<RectTransform>();
+            SetAnchors(viewportRect, Vector2.zero, Vector2.one);
+            viewportRect.offsetMin = viewportRect.offsetMax = Vector2.zero;
+            viewportGo.AddComponent<RectMask2D>();
+            scroll.viewport = viewportRect;
 
             // BannerContainer (VerticalLayoutGroup)
             var containerGo = new GameObject("BannerContainer", typeof(RectTransform));
-            containerGo.transform.SetParent(scrollGo.transform, false);
+            containerGo.transform.SetParent(viewportGo.transform, false);
             var containerRect = containerGo.GetComponent<RectTransform>();
             SetAnchors(containerRect, new Vector2(0, 1), new Vector2(1, 1));
             containerRect.pivot     = new Vector2(0.5f, 1f);
@@ -301,53 +310,110 @@ namespace Game.DevTools
             var cardGo = new GameObject($"BannerCard_{bannerData.BannerId}", typeof(RectTransform));
             cardGo.transform.SetParent(container.transform, false);
             var cardLE = cardGo.AddComponent<LayoutElement>();
-            cardLE.preferredHeight = 400;
+            cardLE.preferredHeight = 700;
 
             // 배경
             var cardBg = cardGo.AddComponent<Image>();
-            cardBg.color = new Color(0.2f, 0.2f, 0.25f, 0.9f);
+            cardBg.color = new Color(0.16f, 0.16f, 0.20f, 0.95f);
 
             // 내부 VerticalLayout
             var innerLayout = cardGo.AddComponent<VerticalLayoutGroup>();
-            innerLayout.spacing             = 10;
-            innerLayout.padding             = new RectOffset(20, 20, 15, 15);
+            innerLayout.spacing             = 12;
+            innerLayout.padding             = new RectOffset(24, 24, 20, 20);
             innerLayout.childAlignment      = TextAnchor.UpperCenter;
             innerLayout.childForceExpandWidth  = true;
             innerLayout.childForceExpandHeight = false;
 
-            // BannerArt (높이 150px)
+            // ── BannerArt (높이 280px) ────────────────────────────────────────
+            // bannerArt 스프라이트가 없으면 등급 확률 표기 패널로 대체
             var artGo = new GameObject("BannerArt", typeof(RectTransform));
             artGo.transform.SetParent(cardGo.transform, false);
             var artImg = artGo.AddComponent<Image>();
-            artImg.color = new Color(0.3f, 0.3f, 0.4f);
-            if (bannerData.BannerArt != null) artImg.sprite = bannerData.BannerArt;
-            artImg.preserveAspect = true;
             var artLE = artGo.AddComponent<LayoutElement>();
-            artLE.preferredHeight = 150;
+            artLE.preferredHeight = 280;
 
-            // 배너 이름
-            var nameText = CreateTmpLabel(cardGo, "BannerName", bannerData.BannerName, 36, font).GetComponent<TextMeshProUGUI>();
+            if (bannerData.BannerArt != null)
+            {
+                artImg.sprite = bannerData.BannerArt;
+                artImg.preserveAspect = true;
+                artImg.color = Color.white;
+            }
+            else
+            {
+                // placeholder — 등급 확률 안내
+                artImg.color = new Color(0.12f, 0.12f, 0.16f);
+
+                // 내부 텍스트로 등급 확률 표기
+                var rateGo = new GameObject("RateInfo", typeof(RectTransform));
+                rateGo.transform.SetParent(artGo.transform, false);
+                var rateRect = rateGo.GetComponent<RectTransform>();
+                rateRect.anchorMin = Vector2.zero;
+                rateRect.anchorMax = Vector2.one;
+                rateRect.offsetMin = new Vector2(20, 20);
+                rateRect.offsetMax = new Vector2(-20, -20);
+
+                var rateTmp = rateGo.AddComponent<TextMeshProUGUI>();
+                rateTmp.font      = font;
+                rateTmp.fontSize  = 28;
+                rateTmp.alignment = TextAlignmentOptions.Center;
+                rateTmp.color     = new Color(0.85f, 0.85f, 0.85f);
+
+                // 가중치에서 확률 계산
+                float totalWeight = 0f;
+                foreach (var entry in bannerData.GradeEntries)
+                    totalWeight += entry.Weight;
+
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine("<size=36><b>장비 가챠</b></size>\n");
+                foreach (var entry in bannerData.GradeEntries)
+                {
+                    float pct = totalWeight > 0 ? entry.Weight / totalWeight * 100f : 0f;
+                    string gradeColor = entry.Grade switch
+                    {
+                        EquipmentGrade.Normal => "#CCCCCC",
+                        EquipmentGrade.Rare   => "#4CA6FF",
+                        EquipmentGrade.Epic   => "#C864FF",
+                        EquipmentGrade.Unique => "#FFB830",
+                        _                     => "#FFFFFF"
+                    };
+                    sb.AppendLine($"<color={gradeColor}>★ {entry.Grade}  —  {pct:F1}%</color>");
+                }
+                rateTmp.text = sb.ToString();
+            }
+
+            // ── 배너 이름 ─────────────────────────────────────────────────────
+            var nameText = CreateTmpLabel(cardGo, "BannerName", bannerData.BannerName, 40, font).GetComponent<TextMeshProUGUI>();
             nameText.fontStyle = FontStyles.Bold;
             var nameLE = nameText.gameObject.AddComponent<LayoutElement>();
-            nameLE.preferredHeight = 45;
+            nameLE.preferredHeight = 55;
 
-            // 설명
-            var descText = CreateTmpLabel(cardGo, "Description", bannerData.Description, 24, font).GetComponent<TextMeshProUGUI>();
-            descText.color     = new Color(0.8f, 0.8f, 0.8f);
+            // ── 설명 ──────────────────────────────────────────────────────────
+            var descText = CreateTmpLabel(cardGo, "Description", bannerData.Description, 26, font).GetComponent<TextMeshProUGUI>();
+            descText.color     = new Color(0.75f, 0.75f, 0.75f);
             descText.alignment = TextAlignmentOptions.TopLeft;
             var descLE = descText.gameObject.AddComponent<LayoutElement>();
-            descLE.preferredHeight = 50;
+            descLE.preferredHeight = 80;
+            descLE.flexibleHeight  = 1;
 
-            // ButtonRow (HorizontalLayoutGroup)
+            // ── 구분선 ────────────────────────────────────────────────────────
+            var divider = new GameObject("Divider", typeof(RectTransform));
+            divider.transform.SetParent(cardGo.transform, false);
+            var divImg = divider.AddComponent<Image>();
+            divImg.color = new Color(0.4f, 0.4f, 0.45f, 0.5f);
+            var divLE = divider.AddComponent<LayoutElement>();
+            divLE.preferredHeight = 2;
+
+            // ── ButtonRow ─────────────────────────────────────────────────────
             var buttonRow = new GameObject("ButtonRow", typeof(RectTransform));
             buttonRow.transform.SetParent(cardGo.transform, false);
             var rowLayout = buttonRow.AddComponent<HorizontalLayoutGroup>();
-            rowLayout.spacing             = 20;
+            rowLayout.spacing             = 24;
             rowLayout.childAlignment      = TextAnchor.MiddleCenter;
             rowLayout.childForceExpandWidth  = true;
             rowLayout.childForceExpandHeight = false;
+            rowLayout.padding = new RectOffset(10, 10, 0, 0);
             var rowLE = buttonRow.AddComponent<LayoutElement>();
-            rowLE.preferredHeight = 80;
+            rowLE.preferredHeight = 100;
 
             var (singleBtn, singleCostText) = CreatePullButton(buttonRow, "SinglePullButton", "1회 뽑기", font);
             var (tenBtn, tenCostText)       = CreatePullButton(buttonRow, "TenPullButton",    "10회 뽑기", font);
@@ -374,21 +440,21 @@ namespace Game.DevTools
             btnLayout.childAlignment      = TextAnchor.MiddleCenter;
             btnLayout.childForceExpandWidth  = true;
             btnLayout.childForceExpandHeight = false;
-            btnLayout.spacing = 2;
-            btnLayout.padding = new RectOffset(5, 5, 5, 5);
+            btnLayout.spacing = 4;
+            btnLayout.padding = new RectOffset(10, 10, 10, 10);
 
             // 라벨
-            var labelText = CreateTmpLabel(btnGo, "Label", label, 24, font).GetComponent<TextMeshProUGUI>();
+            var labelText = CreateTmpLabel(btnGo, "Label", label, 30, font).GetComponent<TextMeshProUGUI>();
             labelText.alignment = TextAlignmentOptions.Center;
             var labelLE = labelText.gameObject.AddComponent<LayoutElement>();
-            labelLE.preferredHeight = 30;
+            labelLE.preferredHeight = 40;
 
             // 비용 텍스트
-            var costText = CreateTmpLabel(btnGo, "Cost", "", 20, font).GetComponent<TextMeshProUGUI>();
+            var costText = CreateTmpLabel(btnGo, "Cost", "", 26, font).GetComponent<TextMeshProUGUI>();
             costText.alignment = TextAlignmentOptions.Center;
             costText.color     = new Color(1f, 0.9f, 0.3f);
             var costLE = costText.gameObject.AddComponent<LayoutElement>();
-            costLE.preferredHeight = 25;
+            costLE.preferredHeight = 35;
 
             return (btn, costText);
         }
