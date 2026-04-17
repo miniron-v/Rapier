@@ -13,7 +13,7 @@ namespace Game.Data.Save
     {
         // ── 스키마 버전 상수 ────────────────────────────────────────
         /// <summary>현재 스키마 버전. SaveMigrator 단계와 반드시 쌍으로 유지.</summary>
-        public const int CurrentSchemaVersion = 2;
+        public const int CurrentSchemaVersion = 3;
 
         // ── 메타 (계정 연동 대비) ───────────────────────────────────
         /// <summary>스키마 버전. 로드 후 마이그레이션 시 CurrentSchemaVersion 으로 승격.</summary>
@@ -54,6 +54,12 @@ namespace Game.Data.Save
         public int  runeGachaTicket  = 0;
         /// <summary>분해 가루. 분해/강화 시스템에서 사용.</summary>
         public int  dust             = 0;
+        /// <summary>캐시(프리미엄) 재화.</summary>
+        public int crystal           = 0;
+        /// <summary>Epic 확정 천장 누적 횟수. 0 = 초기화.</summary>
+        public int epicPityCounter   = 0;
+        /// <summary>Unique 확정 천장 누적 횟수. 0 = 초기화.</summary>
+        public int uniquePityCounter = 0;
 
         // ── 미션 ───────────────────────────────────────────────────
         public List<MissionProgressEntry> dailyMissions  = new();

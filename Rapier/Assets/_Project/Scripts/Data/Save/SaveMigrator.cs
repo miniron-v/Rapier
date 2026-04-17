@@ -31,6 +31,9 @@ namespace Game.Data.Save
                     case 1:
                         MigrateV1ToV2(data);
                         break;
+                    case 2:
+                        MigrateV2ToV3(data);
+                        break;
                     default:
                         // 알 수 없는 버전 — 루프 탈출로 무한 루프 방지
                         Debug.LogError($"[SaveMigrator] 알 수 없는 버전: {data.version}. 마이그레이션 중단.");
@@ -101,6 +104,22 @@ namespace Game.Data.Save
 
             data.version = 2;
             Debug.Log("[SaveMigrator] v1 → v2 마이그레이션 완료");
+        }
+
+        // ── v2 → v3 ───────────────────────────────────────────────
+
+        /// <summary>
+        /// v2 → v3 마이그레이션.
+        /// - crystal, epicPityCounter, uniquePityCounter 신규 필드 추가.
+        ///   JsonUtility 역직렬화 시 기본값 0으로 초기화되므로 명시 작업 불필요.
+        /// </summary>
+        private static void MigrateV2ToV3(SaveData data)
+        {
+            Debug.Log("[SaveMigrator] v2 → v3 마이그레이션 시작");
+            // 신규 int 필드(crystal, epicPityCounter, uniquePityCounter)는
+            // JsonUtility 역직렬화 시 기본값 0으로 초기화되므로 명시 작업 불필요.
+            data.version = 3;
+            Debug.Log("[SaveMigrator] v2 → v3 마이그레이션 완료");
         }
     }
 }

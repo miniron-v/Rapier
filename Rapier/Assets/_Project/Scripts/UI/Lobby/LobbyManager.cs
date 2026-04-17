@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using Game.Core;
 using Game.UI.Lobby;
+using Game.UI.Lobby.Shop;
 
 namespace Game.UI
 {
@@ -38,7 +39,8 @@ namespace Game.UI
             SettingsTabView  settingsTabView,
             HomeTabPresenter      homePresenter,
             CharacterTabPresenter characterPresenter,
-            SettingsTabPresenter  settingsPresenter)
+            SettingsTabPresenter  settingsPresenter,
+            ShopTabPresenter      shopPresenter = null)
         {
             _lobbyPresenter = lobbyPresenter;
             _lobbyPresenter.Init(
@@ -50,7 +52,9 @@ namespace Game.UI
                 settingsTabView,
                 homePresenter,
                 characterPresenter,
-                settingsPresenter);
+                settingsPresenter,
+                saveManager: null,
+                shopPresenter: shopPresenter);
         }
     }
 }

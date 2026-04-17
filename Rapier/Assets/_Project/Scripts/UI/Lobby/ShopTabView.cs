@@ -1,14 +1,98 @@
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
+using TMPro;
+using Game.Data.Gacha;
+using Game.UI.Lobby.Shop;
 
 namespace Game.UI.Lobby
 {
     /// <summary>
     /// 탭 1 — 상점 패널 View.
-    /// B1: "상점 준비 중" 플레이스홀더만 표시.
-    /// 실제 가챠·충전·상품 구현은 후속 Phase에서 추가한다.
+    /// IShopTabView 구현: 재화 표시, 배너 카드 표시, 토스트 알림.
     /// </summary>
-    public class ShopTabView : LobbyTabViewBase
+    public class ShopTabView : LobbyTabViewBase, IShopTabView
     {
-        // 추후 ShopTabPresenter가 참조할 서브 패널들을 여기에 추가한다.
+        private TextMeshProUGUI _gachaTicketText;
+        private TextMeshProUGUI _crystalText;
+        private ScrollRect      _bannerScrollRect;
+        private Transform       _bannerContainer;
+        private TextMeshProUGUI _toastText;
+
+        private readonly List<BannerCardView> _bannerCards = new();
+
+        /// <summary>등록된 배너 카드 뷰 목록.</summary>
+        public IReadOnlyList<BannerCardView> BannerCards => _bannerCards;
+
+        /// <summary>참조 주입 (LobbyHudSetup에서 호출).</summary>
+        public void InitReferences(
+            TextMeshProUGUI gachaTicketText,
+            TextMeshProUGUI crystalText,
+            ScrollRect bannerScrollRect,
+            Transform bannerContainer,
+            TextMeshProUGUI toastText)
+        {
+            _gachaTicketText  = gachaTicketText;
+            _crystalText      = crystalText;
+            _bannerScrollRect = bannerScrollRect;
+            _bannerContainer  = bannerContainer;
+            _toastText        = toastText;
+        }
+
+        /// <summary>가챠 티켓 수량 표시 갱신.</summary>
+        public void SetTicketCount(int count)
+        {
+            if (_gachaTicketText != null)
+                _gachaTicketText.text = $"x{count}";
+        }
+
+        /// <summary>Crystal 수량 표시 갱신.</summary>
+        public void SetCrystalCount(int count)
+        {
+            if (_crystalText != null)
+                _crystalText.text = $"x{count}";
+        }
+
+        /// <summary>배너 카드 표시 갱신.</summary>
+        public void SetBanners(IReadOnlyList<GachaBannerData> banners)
+        {
+            // 기존 카드 숨기기
+            foreach (var card in _bannerCards)
+                if (card != null)
+                    card.gameObject.SetActive(false);
+
+            if (banners == null) return;
+
+            for (int i = 0; i < banners.Count; i++)
+            {
+                if (i < _bannerCards.Count)
+                {
+                    _bannerCards[i].gameObject.SetActive(true);
+                    _bannerCards[i].Refresh(banners[i]);
+                }
+            }
+        }
+
+        /// <summary>배너 카드를 목록에 등록한다 (LobbyHudSetup에서 호출).</summary>
+        public void RegisterBannerCard(BannerCardView card)
+        {
+            _bannerCards.Add(card);
+        }
+
+        /// <summary>재화 부족 등 실패 메시지 토스트 표시.</summary>
+        public void ShowInsufficientToast(string message)
+        {
+            if (_toastText != null)
+                StartCoroutine(ShowToastRoutine(message));
+        }
+
+        private IEnumerator ShowToastRoutine(string message)
+        {
+            _toastText.text = message;
+            _toastText.gameObject.SetActive(true);
+            yield return new WaitForSeconds(1.5f);
+            _toastText.gameObject.SetActive(false);
+        }
     }
 }

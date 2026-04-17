@@ -1,5 +1,6 @@
 using Game.Core;
 using Game.Data.Save;
+using Game.UI.Lobby.Shop;
 using UnityEngine;
 
 namespace Game.UI.Lobby
@@ -37,6 +38,7 @@ namespace Game.UI.Lobby
         [SerializeField] private HomeTabPresenter      _homePresenter;
         [SerializeField] private CharacterTabPresenter _characterPresenter;
         [SerializeField] private SettingsTabPresenter  _settingsPresenter;
+        [SerializeField] private ShopTabPresenter      _shopPresenter;
 
         [Header("Tab Views (assigned via Init or Inspector)")]
         [SerializeField] private HomeTabView      _homeTabView;
@@ -72,7 +74,8 @@ namespace Game.UI.Lobby
             HomeTabPresenter      homePresenter,
             CharacterTabPresenter characterPresenter,
             SettingsTabPresenter  settingsPresenter,
-            SaveManager           saveManager = null)
+            SaveManager           saveManager = null,
+            ShopTabPresenter      shopPresenter = null)
         {
             _tabView            = tabView;
             _homeTabView        = homeTabView;
@@ -84,11 +87,13 @@ namespace Game.UI.Lobby
             _characterPresenter = characterPresenter;
             _settingsPresenter  = settingsPresenter;
             _saveManager        = saveManager;
+            _shopPresenter      = shopPresenter;
 
             // 각 탭 Presenter 초기화
             _homePresenter?.Init(_homeTabView, _saveManager);
             _characterPresenter?.Init(_characterTabView);
             _settingsPresenter?.Init(_settingsTabView);
+            // _shopPresenter?.Init()은 LobbyHudSetup에서 직접 호출됨 (ServiceLocator 의존성 때문)
         }
 
         // ── Unity Lifecycle ───────────────────────────────────────
@@ -179,7 +184,7 @@ namespace Game.UI.Lobby
         {
             switch (tabIndex)
             {
-                case 0: /* 상점 — B1 Presenter 없음 */ break;
+                case 0: _shopPresenter?.OnTabShown();      break;
                 case 1: _characterPresenter?.OnTabShown(); break;
                 case 2: _homePresenter?.OnTabShown();      break;
                 case 3: /* 미션 — B1 Presenter 없음 */    break;
@@ -192,7 +197,7 @@ namespace Game.UI.Lobby
         {
             switch (tabIndex)
             {
-                case 0: /* 상점 — B1 Presenter 없음 */ break;
+                case 0: _shopPresenter?.OnTabHidden();      break;
                 case 1: _characterPresenter?.OnTabHidden(); break;
                 case 2: _homePresenter?.OnTabHidden();      break;
                 case 3: /* 미션 — B1 Presenter 없음 */     break;

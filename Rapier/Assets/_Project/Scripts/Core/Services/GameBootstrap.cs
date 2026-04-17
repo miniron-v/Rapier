@@ -78,6 +78,13 @@ namespace Game.Core.Services
                     Debug.Log($"[GameBootstrap] Created initial save.json at {savePath}");
                 }
 
+                // Phase 가챠: CurrencyService + GachaService 생성/등록
+                var currency = new CurrencyService();
+                currency.Init(sm);
+
+                var gacha = new GachaService();
+                gacha.Init(currency, em, sm);
+
                 // 7. ServiceLocator 에 등록 (이 시점부터 ServiceLocator.Get<SaveManager>() 유효)
                 ServiceLocator.Register(sm);
 

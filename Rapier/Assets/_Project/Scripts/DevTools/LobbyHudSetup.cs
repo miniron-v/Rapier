@@ -6,9 +6,13 @@ using UnityEngine.UI;
 using UnityEngine.InputSystem.UI;
 using TMPro;
 using Game.Characters;
+using Game.Core;
+using Game.Core.Services;
+using Game.Data.Gacha;
 using Game.UI;
 using Game.UI.Lobby;
 using Game.UI.Lobby.Equipment;
+using Game.UI.Lobby.Shop;
 
 namespace Game.DevTools
 {
@@ -109,7 +113,7 @@ namespace Game.DevTools
             var settingsPanel   = CreateTabPanel(contentArea.gameObject, "SettingsPanel",   new Color(0.11f, 0.11f, 0.14f));
 
             // 4. 각 패널 내부 내용 구성
-            var shopView                           = SetupShopPanel(shopPanel);
+            var (shopView, shopPresenter)          = SetupShopPanel(shopPanel);
             var (charView, equipPresenter)         = SetupCharacterPanel(charPanel);
             var homeView                           = SetupHomePanel(homePanel);
             var missionView  = SetupMissionPanel(missionPanel);
@@ -156,10 +160,12 @@ namespace Game.DevTools
                 settingsView,
                 homePresenter,
                 charPresenter,
-                settPresenter
+                settPresenter,
+                shopPresenter
             );
 
             // 9. Dirty 처리
+            if (shopPresenter != null) EditorUtility.SetDirty(shopPresenter);
             EditorUtility.SetDirty(lobbyManager);
             EditorUtility.SetDirty(lobbyPresenter);
             EditorUtility.SetDirty(tabView);
@@ -176,11 +182,305 @@ namespace Game.DevTools
 
         // ── 탭 패널 내부 구성 ─────────────────────────────────────
 
-        private static ShopTabView SetupShopPanel(GameObject panel)
+        private static (ShopTabView view, ShopTabPresenter shopPresenter) SetupShopPanel(GameObject panel)
         {
+            var font = GetFont();
             var view = panel.AddComponent<ShopTabView>();
-            CreateLabel(panel, "상점 준비 중", 48, TextAlignmentOptions.Center);
-            return view;
+
+            // ── SafeAreaInset ──────────────────────────────────────────────────
+            var safeInset = new GameObject("SafeAreaInset", typeof(RectTransform));
+            safeInset.transform.SetParent(panel.transform, false);
+            var safeRect = safeInset.GetComponent<RectTransform>();
+            SetAnchors(safeRect, Vector2.zero, Vector2.one);
+            safeRect.offsetMin = safeRect.offsetMax = Vector2.zero;
+            safeInset.AddComponent<SafeAreaFitter>();
+
+            // ── CurrencyHeader (상단 80px) ─────────────────────────────────────
+            var headerGo = new GameObject("CurrencyHeader", typeof(RectTransform));
+            headerGo.transform.SetParent(safeInset.transform, false);
+            var headerRect = headerGo.GetComponent<RectTransform>();
+            SetAnchors(headerRect, new Vector2(0, 1), Vector2.one);
+            headerRect.pivot     = new Vector2(0.5f, 1f);
+            headerRect.sizeDelta = new Vector2(0, 80);
+            var headerLayout = headerGo.AddComponent<HorizontalLayoutGroup>();
+            headerLayout.childAlignment      = TextAnchor.MiddleRight;
+            headerLayout.spacing             = 30;
+            headerLayout.padding             = new RectOffset(20, 20, 0, 0);
+            headerLayout.childForceExpandWidth  = false;
+            headerLayout.childForceExpandHeight = false;
+
+            // 티켓 라벨
+            var ticketLabel = CreateTmpLabel(headerGo, "TicketLabel", "🎫 x0", 28, font).GetComponent<TextMeshProUGUI>();
+            var ticketLE = ticketLabel.gameObject.AddComponent<LayoutElement>();
+            ticketLE.preferredWidth  = 150;
+            ticketLE.preferredHeight = 60;
+
+            // Crystal 라벨
+            var crystalLabel = CreateTmpLabel(headerGo, "CrystalLabel", "💎 x0", 28, font).GetComponent<TextMeshProUGUI>();
+            var crystalLE = crystalLabel.gameObject.AddComponent<LayoutElement>();
+            crystalLE.preferredWidth  = 200;
+            crystalLE.preferredHeight = 60;
+
+            // ── BannerScrollView ───────────────────────────────────────────────
+            var scrollGo = new GameObject("BannerScrollView", typeof(RectTransform));
+            scrollGo.transform.SetParent(safeInset.transform, false);
+            var scrollRect = scrollGo.GetComponent<RectTransform>();
+            SetAnchors(scrollRect, Vector2.zero, Vector2.one);
+            scrollRect.offsetMin = new Vector2(0, 0);
+            scrollRect.offsetMax = new Vector2(0, -80); // 헤더 아래부터
+            var scroll = scrollGo.AddComponent<ScrollRect>();
+            scroll.horizontal = false;
+            scroll.vertical   = true;
+            scrollGo.AddComponent<Image>().color = Color.clear; // Raycast 대상
+            scrollGo.AddComponent<Mask>().showMaskGraphic = false;
+
+            // BannerContainer (VerticalLayoutGroup)
+            var containerGo = new GameObject("BannerContainer", typeof(RectTransform));
+            containerGo.transform.SetParent(scrollGo.transform, false);
+            var containerRect = containerGo.GetComponent<RectTransform>();
+            SetAnchors(containerRect, new Vector2(0, 1), new Vector2(1, 1));
+            containerRect.pivot     = new Vector2(0.5f, 1f);
+            containerRect.sizeDelta = new Vector2(0, 0);
+            var vlg = containerGo.AddComponent<VerticalLayoutGroup>();
+            vlg.spacing             = 20;
+            vlg.padding             = new RectOffset(20, 20, 20, 20);
+            vlg.childAlignment      = TextAnchor.UpperCenter;
+            vlg.childForceExpandWidth  = true;
+            vlg.childForceExpandHeight = false;
+            var fitter = containerGo.AddComponent<ContentSizeFitter>();
+            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            scroll.content = containerRect;
+
+            // ── Toast (비활성 시작) ────────────────────────────────────────────
+            var toastTextGo = CreateTmpLabel(panel, "Toast", "", 32, font);
+            var toastText = toastTextGo.GetComponent<TextMeshProUGUI>();
+            toastText.alignment = TextAlignmentOptions.Center;
+            toastText.color     = Color.yellow;
+            var toastTransform = toastTextGo.GetComponent<RectTransform>();
+            SetAnchors(toastTransform, new Vector2(0.1f, 0.45f), new Vector2(0.9f, 0.55f));
+            toastTransform.offsetMin = toastTransform.offsetMax = Vector2.zero;
+            toastTextGo.SetActive(false);
+
+            // ── GachaResultModal (비활성 시작) ─────────────────────────────────
+            var (resultModalView, resultModalPresenter) = CreateGachaResultModal(panel, font);
+
+            // ── GachaShopData 로드 → 배너 카드 생성 ───────────────────────────
+            var shopData = AssetDatabase.LoadAssetAtPath<GachaShopData>(
+                "Assets/_Project/Resources/GachaShopData.asset");
+
+            if (shopData != null && shopData.Banners != null)
+            {
+                foreach (var banner in shopData.Banners)
+                {
+                    if (banner == null) continue;
+                    var card = CreateBannerCard(containerGo, banner, font);
+                    view.RegisterBannerCard(card);
+                }
+            }
+            else
+            {
+                Debug.LogWarning("[LobbyHudSetup] GachaShopData not found — 배너 없이 Shop 패널 생성");
+            }
+
+            // ── View InitReferences ────────────────────────────────────────────
+            view.InitReferences(ticketLabel, crystalLabel, scroll, containerGo.transform, toastText);
+
+            // ── ShopTabPresenter ───────────────────────────────────────────────
+            var presenterGo = new GameObject("ShopTabPresenter", typeof(RectTransform));
+            presenterGo.transform.SetParent(panel.transform, false);
+            var shopPresenter = presenterGo.AddComponent<ShopTabPresenter>();
+
+            EditorUtility.SetDirty(view);
+            EditorUtility.SetDirty(shopPresenter);
+
+            return (view, shopPresenter);
+        }
+
+        private static BannerCardView CreateBannerCard(GameObject container, GachaBannerData bannerData, TMP_FontAsset font)
+        {
+            var cardGo = new GameObject($"BannerCard_{bannerData.BannerId}", typeof(RectTransform));
+            cardGo.transform.SetParent(container.transform, false);
+            var cardLE = cardGo.AddComponent<LayoutElement>();
+            cardLE.preferredHeight = 400;
+
+            // 배경
+            var cardBg = cardGo.AddComponent<Image>();
+            cardBg.color = new Color(0.2f, 0.2f, 0.25f, 0.9f);
+
+            // 내부 VerticalLayout
+            var innerLayout = cardGo.AddComponent<VerticalLayoutGroup>();
+            innerLayout.spacing             = 10;
+            innerLayout.padding             = new RectOffset(20, 20, 15, 15);
+            innerLayout.childAlignment      = TextAnchor.UpperCenter;
+            innerLayout.childForceExpandWidth  = true;
+            innerLayout.childForceExpandHeight = false;
+
+            // BannerArt (높이 150px)
+            var artGo = new GameObject("BannerArt", typeof(RectTransform));
+            artGo.transform.SetParent(cardGo.transform, false);
+            var artImg = artGo.AddComponent<Image>();
+            artImg.color = new Color(0.3f, 0.3f, 0.4f);
+            if (bannerData.BannerArt != null) artImg.sprite = bannerData.BannerArt;
+            artImg.preserveAspect = true;
+            var artLE = artGo.AddComponent<LayoutElement>();
+            artLE.preferredHeight = 150;
+
+            // 배너 이름
+            var nameText = CreateTmpLabel(cardGo, "BannerName", bannerData.BannerName, 36, font).GetComponent<TextMeshProUGUI>();
+            nameText.fontStyle = FontStyles.Bold;
+            var nameLE = nameText.gameObject.AddComponent<LayoutElement>();
+            nameLE.preferredHeight = 45;
+
+            // 설명
+            var descText = CreateTmpLabel(cardGo, "Description", bannerData.Description, 24, font).GetComponent<TextMeshProUGUI>();
+            descText.color     = new Color(0.8f, 0.8f, 0.8f);
+            descText.alignment = TextAlignmentOptions.TopLeft;
+            var descLE = descText.gameObject.AddComponent<LayoutElement>();
+            descLE.preferredHeight = 50;
+
+            // ButtonRow (HorizontalLayoutGroup)
+            var buttonRow = new GameObject("ButtonRow", typeof(RectTransform));
+            buttonRow.transform.SetParent(cardGo.transform, false);
+            var rowLayout = buttonRow.AddComponent<HorizontalLayoutGroup>();
+            rowLayout.spacing             = 20;
+            rowLayout.childAlignment      = TextAnchor.MiddleCenter;
+            rowLayout.childForceExpandWidth  = true;
+            rowLayout.childForceExpandHeight = false;
+            var rowLE = buttonRow.AddComponent<LayoutElement>();
+            rowLE.preferredHeight = 80;
+
+            var (singleBtn, singleCostText) = CreatePullButton(buttonRow, "SinglePullButton", "1회 뽑기", font);
+            var (tenBtn, tenCostText)       = CreatePullButton(buttonRow, "TenPullButton",    "10회 뽑기", font);
+
+            // BannerCardView 컴포넌트
+            var cardView = cardGo.AddComponent<BannerCardView>();
+            cardView.InitReferences(artImg, nameText, descText, singleBtn, tenBtn, singleCostText, tenCostText);
+            cardView.Refresh(bannerData);
+
+            return cardView;
+        }
+
+        private static (Button btn, TextMeshProUGUI costText) CreatePullButton(
+            GameObject parent, string name, string label, TMP_FontAsset font)
+        {
+            var btnGo = new GameObject(name, typeof(RectTransform));
+            btnGo.transform.SetParent(parent.transform, false);
+            var btnImg = btnGo.AddComponent<Image>();
+            btnImg.color = new Color(0.25f, 0.45f, 0.7f);
+            var btn = btnGo.AddComponent<Button>();
+            btn.targetGraphic = btnImg;
+
+            var btnLayout = btnGo.AddComponent<VerticalLayoutGroup>();
+            btnLayout.childAlignment      = TextAnchor.MiddleCenter;
+            btnLayout.childForceExpandWidth  = true;
+            btnLayout.childForceExpandHeight = false;
+            btnLayout.spacing = 2;
+            btnLayout.padding = new RectOffset(5, 5, 5, 5);
+
+            // 라벨
+            var labelText = CreateTmpLabel(btnGo, "Label", label, 24, font).GetComponent<TextMeshProUGUI>();
+            labelText.alignment = TextAlignmentOptions.Center;
+            var labelLE = labelText.gameObject.AddComponent<LayoutElement>();
+            labelLE.preferredHeight = 30;
+
+            // 비용 텍스트
+            var costText = CreateTmpLabel(btnGo, "Cost", "", 20, font).GetComponent<TextMeshProUGUI>();
+            costText.alignment = TextAlignmentOptions.Center;
+            costText.color     = new Color(1f, 0.9f, 0.3f);
+            var costLE = costText.gameObject.AddComponent<LayoutElement>();
+            costLE.preferredHeight = 25;
+
+            return (btn, costText);
+        }
+
+        private static (GachaResultModalView view, GachaResultModalPresenter presenter)
+            CreateGachaResultModal(GameObject parent, TMP_FontAsset font)
+        {
+            // 모달 루트 (비활성 시작)
+            var modalGo = new GameObject("GachaResultModal", typeof(RectTransform));
+            modalGo.transform.SetParent(parent.transform, false);
+            var modalRect = modalGo.GetComponent<RectTransform>();
+            SetAnchors(modalRect, Vector2.zero, Vector2.one);
+            modalRect.offsetMin = modalRect.offsetMax = Vector2.zero;
+
+            // 별도 Canvas (sortingOrder 500)
+            var modalCanvas = modalGo.AddComponent<Canvas>();
+            modalCanvas.overrideSorting = true;
+            modalCanvas.sortingOrder    = 500;
+            modalGo.AddComponent<GraphicRaycaster>();
+
+            // Dimmer (반투명 검정)
+            var dimmer = new GameObject("Dimmer", typeof(RectTransform));
+            dimmer.transform.SetParent(modalGo.transform, false);
+            var dimmerRect = dimmer.GetComponent<RectTransform>();
+            SetAnchors(dimmerRect, Vector2.zero, Vector2.one);
+            dimmerRect.offsetMin = dimmerRect.offsetMax = Vector2.zero;
+            var dimmerImg = dimmer.AddComponent<Image>();
+            dimmerImg.color = new Color(0, 0, 0, 0.7f);
+
+            // Flash Image (연출용)
+            var flashGo = new GameObject("FlashImage", typeof(RectTransform));
+            flashGo.transform.SetParent(modalGo.transform, false);
+            var flashRect = flashGo.GetComponent<RectTransform>();
+            SetAnchors(flashRect, Vector2.zero, Vector2.one);
+            flashRect.offsetMin = flashRect.offsetMax = Vector2.zero;
+            var flashImg = flashGo.AddComponent<Image>();
+            flashImg.color         = new Color(1, 1, 1, 0);
+            flashImg.raycastTarget = false;
+            flashGo.SetActive(false);
+
+            // ResultPanel (중앙)
+            var resultPanel = new GameObject("ResultPanel", typeof(RectTransform));
+            resultPanel.transform.SetParent(modalGo.transform, false);
+            var resultRect = resultPanel.GetComponent<RectTransform>();
+            SetAnchors(resultRect, new Vector2(0.05f, 0.15f), new Vector2(0.95f, 0.85f));
+            resultRect.offsetMin = resultRect.offsetMax = Vector2.zero;
+            var resultBg = resultPanel.AddComponent<Image>();
+            resultBg.color = new Color(0.12f, 0.12f, 0.15f, 0.95f);
+
+            // ItemGrid
+            var gridGo = new GameObject("ItemGrid", typeof(RectTransform));
+            gridGo.transform.SetParent(resultPanel.transform, false);
+            var gridRect = gridGo.GetComponent<RectTransform>();
+            SetAnchors(gridRect, new Vector2(0, 0.15f), Vector2.one);
+            gridRect.offsetMin = new Vector2(10, 0);
+            gridRect.offsetMax = new Vector2(-10, -10);
+            var grid = gridGo.AddComponent<GridLayoutGroup>();
+            grid.cellSize        = new Vector2(180, 220);
+            grid.spacing         = new Vector2(15, 15);
+            grid.constraint      = GridLayoutGroup.Constraint.FixedColumnCount;
+            grid.constraintCount = 5;
+            grid.childAlignment  = TextAnchor.UpperCenter;
+            grid.padding         = new RectOffset(10, 10, 10, 10);
+
+            // CloseButton
+            var closeBtnGo = new GameObject("CloseButton", typeof(RectTransform));
+            closeBtnGo.transform.SetParent(resultPanel.transform, false);
+            var closeBtnRect = closeBtnGo.GetComponent<RectTransform>();
+            SetAnchors(closeBtnRect, new Vector2(0.2f, 0.02f), new Vector2(0.8f, 0.12f));
+            closeBtnRect.offsetMin = closeBtnRect.offsetMax = Vector2.zero;
+            var closeBtnImg = closeBtnGo.AddComponent<Image>();
+            closeBtnImg.color = new Color(0.4f, 0.2f, 0.2f);
+            var closeBtn = closeBtnGo.AddComponent<Button>();
+            closeBtn.targetGraphic = closeBtnImg;
+            CreateTmpLabel(closeBtnGo, "Label", "닫기", 28, font);
+
+            // GachaResultModalView
+            var modalView = modalGo.AddComponent<GachaResultModalView>();
+            modalView.InitReferences(gridGo.transform, closeBtn, flashImg);
+
+            // GachaResultModalPresenter
+            var presenterGo = new GameObject("GachaResultPresenter");
+            presenterGo.transform.SetParent(modalGo.transform, false);
+            var presenter = presenterGo.AddComponent<GachaResultModalPresenter>();
+            presenter.InitReferences(modalView);
+
+            modalGo.SetActive(false); // 비활성 시작
+
+            EditorUtility.SetDirty(modalView);
+            EditorUtility.SetDirty(presenter);
+
+            return (modalView, presenter);
         }
 
         private static (CharacterTabView view, EquipmentPanelPresenter equipPresenter) SetupCharacterPanel(GameObject panel)
