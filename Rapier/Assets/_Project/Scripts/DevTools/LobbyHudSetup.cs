@@ -309,6 +309,10 @@ namespace Game.DevTools
         {
             var cardGo = new GameObject($"BannerCard_{bannerData.BannerId}", typeof(RectTransform));
             cardGo.transform.SetParent(container.transform, false);
+            var cardRect = cardGo.GetComponent<RectTransform>();
+            SetAnchors(cardRect, new Vector2(0, 1), new Vector2(1, 1));
+            cardRect.pivot     = new Vector2(0.5f, 1f);
+            cardRect.sizeDelta = new Vector2(0, 700);
             var cardLE = cardGo.AddComponent<LayoutElement>();
             cardLE.preferredHeight = 700;
 
