@@ -13,6 +13,8 @@ namespace Game.UI.Lobby.Shop
     /// </summary>
     public class GachaResultModalView : MonoBehaviour
     {
+        [SerializeField] private TMP_FontAsset _font;
+
         private Transform _itemContainer;
         private Button    _closeButton;
         private Image     _flashImage;
@@ -29,11 +31,12 @@ namespace Game.UI.Lobby.Shop
         }
 
         /// <summary>참조 주입. Awake 이전에 호출됨 — 여기서 리스너 등록.</summary>
-        public void InitReferences(Transform itemContainer, Button closeButton, Image flashImage)
+        public void InitReferences(Transform itemContainer, Button closeButton, Image flashImage, TMP_FontAsset font)
         {
             _itemContainer = itemContainer;
             _closeButton   = closeButton;
             _flashImage    = flashImage;
+            _font          = font;
 
             _closeButton?.onClick.AddListener(HandleCloseClicked);
         }
@@ -116,6 +119,7 @@ namespace Game.UI.Lobby.Shop
             var nameGo  = new GameObject("ItemName", typeof(RectTransform));
             nameGo.transform.SetParent(go.transform, false);
             var nameTmp = nameGo.AddComponent<TextMeshProUGUI>();
+            nameTmp.font      = _font;
             nameTmp.fontSize  = 20;
             nameTmp.alignment = TextAlignmentOptions.Center;
             nameTmp.color     = Color.white;

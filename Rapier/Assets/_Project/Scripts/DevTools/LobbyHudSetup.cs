@@ -467,7 +467,7 @@ namespace Game.DevTools
 
             // GachaResultModalView
             var modalView = modalGo.AddComponent<GachaResultModalView>();
-            modalView.InitReferences(gridGo.transform, closeBtn, flashImg);
+            modalView.InitReferences(gridGo.transform, closeBtn, flashImg, font);
 
             // GachaResultModalPresenter
             var presenterGo = new GameObject("GachaResultPresenter");
