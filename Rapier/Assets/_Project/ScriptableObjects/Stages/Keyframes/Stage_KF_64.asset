@@ -14,7 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Stage.StageData
   _stageName: Stage KF 64
   _stageIndex: 64
-  _rooms: []
   _hpMultiplier: 11
   _atkMultiplier: 5
-  _gradeDropRates: []

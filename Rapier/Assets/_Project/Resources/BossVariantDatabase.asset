@@ -16,40 +16,40 @@ MonoBehaviour:
   - bossSlot: 0
     tier: 0
     statData: {fileID: 11400000, guid: 622c83114ce1e8046b32569d25ce7f94, type: 2}
-    bossPrefab: {fileID: 667487818031754892, guid: cb58e538f6562964385c993757f6a0f0, type: 3}
+    bossPrefab: {fileID: 5040457167931817585, guid: cb58e538f6562964385c993757f6a0f0, type: 3}
     dropTable: {fileID: 11400000, guid: 432e71904bd746f7a1be0a24f3e04477, type: 2}
   - bossSlot: 1
     tier: 0
     statData: {fileID: 11400000, guid: 27468607bc2cfd841a7babaa77889be7, type: 2}
-    bossPrefab: {fileID: 667487818031754892, guid: 6a5fc69f930461b4db1f1c3f3290fd24, type: 3}
+    bossPrefab: {fileID: 5040457167931817585, guid: 6a5fc69f930461b4db1f1c3f3290fd24, type: 3}
     dropTable: {fileID: 11400000, guid: 8e5afaef4b574c6b867a545985d73f67, type: 2}
   - bossSlot: 2
     tier: 0
     statData: {fileID: 11400000, guid: 25f3785235e274e4bb488885928b50c9, type: 2}
-    bossPrefab: {fileID: 3543775144922020013, guid: 3c10cf9bf2492bd4685404deca1b4cc0, type: 3}
+    bossPrefab: {fileID: 8795018537962025359, guid: 3c10cf9bf2492bd4685404deca1b4cc0, type: 3}
     dropTable: {fileID: 11400000, guid: 7cacaf0806734474a24311621c51e64b, type: 2}
   - bossSlot: 3
     tier: 0
     statData: {fileID: 11400000, guid: a19622a65d8e7c14aa6251fa2c2a1650, type: 2}
-    bossPrefab: {fileID: 2867687641489462899, guid: 696f230154d271749aab500b4b5cbe59, type: 3}
+    bossPrefab: {fileID: 4784043667512040478, guid: 696f230154d271749aab500b4b5cbe59, type: 3}
     dropTable: {fileID: 11400000, guid: 7c3a91f2d84e6b05a1329f874c50e8d1, type: 2}
   - bossSlot: 4
     tier: 0
     statData: {fileID: 11400000, guid: 100036905df2f0e4d9b8d610fb948ccb, type: 2}
-    bossPrefab: {fileID: 124578638695749052, guid: 816b65fb0ec622a4cb2e348c117ec4ce, type: 3}
+    bossPrefab: {fileID: 2250586595298725142, guid: 816b65fb0ec622a4cb2e348c117ec4ce, type: 3}
     dropTable: {fileID: 11400000, guid: 37d2c8af0a634e879d8f1fc0196c21ed, type: 2}
   - bossSlot: 5
     tier: 0
     statData: {fileID: 11400000, guid: 8c114cc9f7df42f46add96f86db5276a, type: 2}
-    bossPrefab: {fileID: 2818613788987566506, guid: 256b7e45bc7fe434193622d639f5556e, type: 3}
+    bossPrefab: {fileID: 3121825593972784285, guid: 256b7e45bc7fe434193622d639f5556e, type: 3}
     dropTable: {fileID: 11400000, guid: 12b23d0c9aae47faad6bcf993bac130d, type: 2}
   - bossSlot: 6
     tier: 0
     statData: {fileID: 11400000, guid: 4ee48f61b5073954faa5300a03a0a509, type: 2}
-    bossPrefab: {fileID: 3464660190391926363, guid: 7d6c678919ac9094eaf7f10e4227468b, type: 3}
+    bossPrefab: {fileID: 4452773329936753597, guid: 7d6c678919ac9094eaf7f10e4227468b, type: 3}
     dropTable: {fileID: 11400000, guid: 91ec33840f39484c886c66e3d0b73f54, type: 2}
   - bossSlot: 7
     tier: 0
     statData: {fileID: 11400000, guid: 622c83114ce1e8046b32569d25ce7f94, type: 2}
-    bossPrefab: {fileID: 667487818031754892, guid: cb58e538f6562964385c993757f6a0f0, type: 3}
+    bossPrefab: {fileID: 5040457167931817585, guid: cb58e538f6562964385c993757f6a0f0, type: 3}
     dropTable: {fileID: 11400000, guid: 432e71904bd746f7a1be0a24f3e04477, type: 2}
