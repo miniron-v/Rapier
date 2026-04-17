@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using Game.Core;
 using Game.Data.Equipment;
@@ -173,8 +174,8 @@ namespace Game.Core.Stage
                 // 스테이지 공통 드롭률 오버라이드 취득 (StageContext POCO 에서)
                 var stageMgr = ServiceLocator.TryGet<StageManager>();
                 var stageCtx = stageMgr?.CurrentStageContext;
-                // GradeDropRates 는 StageComposer 가 GradeDropRate[] 로 생성하므로 직접 캐스팅 가능.
-                GradeDropRate[] stageDropRates = stageCtx?.GradeDropRates as GradeDropRate[];
+                // GradeDropRates 는 IReadOnlyList<GradeDropRate> — LootManager 시그니처와 일치.
+                IReadOnlyList<GradeDropRate> stageDropRates = stageCtx?.GradeDropRates;
 
                 // 드롭테이블: StageContext.DropTable (BossVariantEntry.dropTable) 을 우선 사용.
                 // StageContext 가 없거나 DropTable 이 null 이면 BossStatData.dropTable 폴백.

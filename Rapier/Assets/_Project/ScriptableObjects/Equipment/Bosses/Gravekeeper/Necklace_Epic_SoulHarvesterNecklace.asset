@@ -23,3 +23,4 @@ MonoBehaviour:
     percentValue: 0
   _subStatPool: {fileID: 11400000, guid: 30d31299a6d64671bea9915d3d9bf799, type: 2}
   _mainStatPool: {fileID: 11400000, guid: f5f2b3cb625c40d591b902e2253a840e, type: 2}
+  _isBossItem: 1

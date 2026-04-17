@@ -37,6 +37,10 @@ namespace Game.Data.Equipment
         [Tooltip("장신구(Necklace/Ring) 전용 메인스탯 풀 SO. 드롭 시 1회 추첨.")]
         [SerializeField] private MainStatPoolData _mainStatPool;
 
+        [Header("드랍 분류")]
+        [Tooltip("보스 전담 드랍 장비 여부. 보스 드랍 풀에 포함되는 장비는 true. 공용 장비(가챠 전용)는 false.")]
+        [SerializeField] private bool _isBossItem = false;
+
         // ── 읽기 전용 프로퍼티 ──────────────────────────────────────────────
         /// <summary>아이템 이름</summary>
         public string ItemName    => _itemName;
@@ -57,6 +61,13 @@ namespace Game.Data.Equipment
         public SubStatPoolData SubStatPool => _subStatPool;
         /// <summary>장신구 메인스탯 풀 (Necklace/Ring 전용. 그 외 null)</summary>
         public MainStatPoolData MainStatPool => _mainStatPool;
+
+        /// <summary>
+        /// 보스 전담 드랍 장비 여부.
+        /// true = 보스 드랍 풀 전용 (BALANCE §2-2 메인스탯 × 1.2 배율 적용 대상 — Phase E).
+        /// false = 공용 장비 (가챠 전용 경로).
+        /// </summary>
+        public bool IsBossItem => _isBossItem;
 
         /// <summary>이 등급에서 허용되는 룬 소켓 수를 반환한다.</summary>
         public int RuneSocketCount => EquipmentGradeHelper.GetRuneSocketCount(_grade);
