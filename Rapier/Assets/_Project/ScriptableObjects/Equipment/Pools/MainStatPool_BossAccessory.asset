@@ -1,0 +1,120 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8488497e0435417bbebb44eac4abfde9, type: 3}
+  m_Name: MainStatPool_BossAccessory
+  m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Equipment.MainStatPoolData
+  _entries:
+  - statType: 2
+    usePercent: 1
+    weight: 1
+    normal:
+      min: 2.4
+      max: 2.4
+    rare:
+      min: 4.8
+      max: 4.8
+    epic:
+      min: 8.4
+      max: 8.4
+    unique:
+      min: 12
+      max: 12
+  - statType: 3
+    usePercent: 1
+    weight: 1
+    normal:
+      min: 3.6
+      max: 3.6
+    rare:
+      min: 7.2
+      max: 7.2
+    epic:
+      min: 12
+      max: 12
+    unique:
+      min: 18
+      max: 18
+  - statType: 4
+    usePercent: 1
+    weight: 1
+    normal:
+      min: 3.6
+      max: 3.6
+    rare:
+      min: 7.2
+      max: 7.2
+    epic:
+      min: 12
+      max: 12
+    unique:
+      min: 18
+      max: 18
+  - statType: 5
+    usePercent: 1
+    weight: 1
+    normal:
+      min: 3.6
+      max: 3.6
+    rare:
+      min: 7.2
+      max: 7.2
+    epic:
+      min: 12
+      max: 12
+    unique:
+      min: 18
+      max: 18
+  - statType: 6
+    usePercent: 1
+    weight: 1
+    normal:
+      min: 2.4
+      max: 2.4
+    rare:
+      min: 4.8
+      max: 4.8
+    epic:
+      min: 8.4
+      max: 8.4
+    unique:
+      min: 12
+      max: 12
+  - statType: 7
+    usePercent: 1
+    weight: 1
+    normal:
+      min: 6
+      max: 6
+    rare:
+      min: 14.4
+      max: 14.4
+    epic:
+      min: 26.4
+      max: 26.4
+    unique:
+      min: 42
+      max: 42
+  - statType: 9
+    usePercent: 1
+    weight: 1
+    normal:
+      min: 3.6
+      max: 3.6
+    rare:
+      min: 8.4
+      max: 8.4
+    epic:
+      min: 15.6
+      max: 15.6
+    unique:
+      min: 24
+      max: 24

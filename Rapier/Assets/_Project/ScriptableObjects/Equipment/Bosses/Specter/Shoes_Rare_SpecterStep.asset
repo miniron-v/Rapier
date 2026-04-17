@@ -20,7 +20,7 @@ MonoBehaviour:
   _mainStat:
     statType: 2
     flatValue: 0
-    percentValue: 4
+    percentValue: 4.8
   _subStatPool: {fileID: 11400000, guid: f678309a63264cbe92d698ed8f0b5138, type: 2}
   _mainStatPool: {fileID: 0}
   _isBossItem: 1
