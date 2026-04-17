@@ -236,6 +236,10 @@ namespace Game.Enemies
             _view.StopWindup();
             _attackPhase = AttackPhase.Chase;
 
+            // ── 페이즈 전환 시 잔존 투사체 즉시 제거 ─────────────────
+            // 코루틴 중단만으로는 이미 날아간 투사체가 월드에 남는다.
+            CleanupProjectilesInCurrentPhase();
+
             // 색상 전환
             if (_sr != null)
             {
@@ -264,6 +268,18 @@ namespace Game.Enemies
 
         /// <summary>페이즈 전환 시 자식 훅. 기본 구현 없음.</summary>
         protected virtual void OnPhaseTransition(int phaseIndex) { }
+
+        /// <summary>현재 페이즈 시퀀스 내 활성 투사체를 즉시 제거한다.</summary>
+        private void CleanupProjectilesInCurrentPhase()
+        {
+            var phase = GetPhase(_currentPhaseIndex);
+            if (phase?.sequence == null) return;
+            foreach (var action in phase.sequence)
+            {
+                if (action is ProjectileAttackAction proj)
+                    proj.DestroyActiveProjectile();
+            }
+        }
 
         /// <summary>페이즈 전환 연출 시간. BossPresenterBase가 override.</summary>
         protected virtual float GetPhaseTransitionDuration() => 0.5f;

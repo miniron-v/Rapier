@@ -179,6 +179,17 @@ namespace Game.Core.Stage
             SceneController.LoadLobby();
         }
 
+        /// <summary>직전 방이 IntermissionRoom인 경우에만 이어하기 가능. 추후 인터미션 컨텐츠에서 활용.</summary>
+        public bool CanContinueFromDeath
+        {
+            get
+            {
+                if (!_isStageActive || _rooms == null) return false;
+                int prevIndex = _currentRoomIndex - 1;
+                return prevIndex >= 0 && _rooms[prevIndex].roomType == RoomType.IntermissionRoom;
+            }
+        }
+
         /// <summary>
         /// 사망 후 이어하기: 직전 IntermissionRoom으로 이동. RunStat 유지.
         /// 직전 인터미션이 없으면 현재 보스 방을 재진입.

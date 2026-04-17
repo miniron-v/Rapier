@@ -96,7 +96,7 @@ namespace Game.UI.Intermission
             _stageManager = stageManager;
 
             if (_deathPopupView != null)
-                _deathPopupView.Show();
+                _deathPopupView.Show(stageManager.CanContinueFromDeath);
             else
             {
                 Debug.LogWarning("[IntermissionManager] DeathPopupView 없음 — 자동 이어하기.");

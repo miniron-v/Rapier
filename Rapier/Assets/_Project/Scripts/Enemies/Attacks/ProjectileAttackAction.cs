@@ -47,6 +47,7 @@ namespace Game.Enemies
 
             // ── 투사체 생성 (빈 GameObject 로 시뮬레이션) ──────────
             var proj    = new GameObject("Projectile_Pyro");
+            proj.transform.SetParent(EnemyRoot.Container, worldPositionStays: true);
             var projSr  = proj.AddComponent<SpriteRenderer>();
             ActiveProjectile = proj;
             projSr.sprite = CreateCircleSprite(12);

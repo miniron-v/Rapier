@@ -53,10 +53,12 @@ namespace Game.UI.Intermission
 
         // ── 공개 API ─────────────────────────────────────────────────
         /// <summary>사망 팝업을 표시하고 게임 시간을 정지한다.</summary>
-        public void Show()
+        /// <param name="canContinue">이어하기 버튼 표시 여부. 직전 IntermissionRoom이 있을 때만 true.</param>
+        public void Show(bool canContinue = false)
         {
-            if (_titleText != null) _titleText.text = "전투 불능!";
-            if (_panel     != null) _panel.SetActive(true);
+            if (_titleText      != null) _titleText.text = "전투 불능!";
+            if (_continueButton != null) _continueButton.gameObject.SetActive(canContinue);
+            if (_panel          != null) _panel.SetActive(true);
             Time.timeScale = 0f;
         }
 
