@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Game.Core.Utils;
 using Game.Data.Equipment;
 using TMPro;
 using UnityEngine;
@@ -341,10 +342,12 @@ namespace Game.UI.Lobby.Equipment
         /// <summary>강화 배율이 적용된 StatEntry를 포맷한다.</summary>
         private static string FormatStatEntryWithEnhance(StatEntry entry, float enhanceMultiplier)
         {
+            // flatValue 는 HP/ATK 등 정수 스탯 — Provider 와 동일하게 RoundHalfUp 적용.
+            // percentValue 는 % 스탯 — 소수 유지.
             var enhanced = new StatEntry
             {
                 statType     = entry.statType,
-                flatValue    = entry.flatValue    * enhanceMultiplier,
+                flatValue    = MathUtils.RoundHalfUp(entry.flatValue * enhanceMultiplier),
                 percentValue = entry.percentValue * enhanceMultiplier,
             };
             return FormatStatEntry(enhanced);

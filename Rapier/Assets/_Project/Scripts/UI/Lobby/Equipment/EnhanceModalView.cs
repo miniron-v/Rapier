@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Game.Core.Utils;
 using Game.Data.Equipment;
 using TMPro;
 using UnityEngine;
@@ -174,14 +175,16 @@ namespace Game.UI.Lobby.Equipment
                 string statLabel = GetStatLabel(rawMain.statType);
                 if (rawMain.flatValue != 0f)
                 {
-                    float curVal  = rawMain.flatValue * curMult;
-                    float nextVal = rawMain.flatValue * nextMult;
-                    float delta   = nextVal - curVal;
+                    // flatValue 는 정수 스탯 — Provider/상세뷰와 동일하게 RoundHalfUp 적용
+                    int curVal  = (int)MathUtils.RoundHalfUp(rawMain.flatValue * curMult);
+                    int nextVal = (int)MathUtils.RoundHalfUp(rawMain.flatValue * nextMult);
+                    int delta   = nextVal - curVal;
                     _mainStatPreviewText.text =
-                        $"{statLabel} {curVal:0.##} → {nextVal:0.##} (+{delta:0.##})";
+                        $"{statLabel} {curVal} → {nextVal} (+{delta})";
                 }
                 else if (rawMain.percentValue != 0f)
                 {
+                    // percentValue 는 소수 유지
                     float curVal  = rawMain.percentValue * curMult;
                     float nextVal = rawMain.percentValue * nextMult;
                     float delta   = nextVal - curVal;

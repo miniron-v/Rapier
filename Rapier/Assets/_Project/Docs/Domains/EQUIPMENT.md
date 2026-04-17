@@ -77,6 +77,7 @@ EquipmentManager ─OnEquipped/Unequipped→ EquipmentMetaStatProvider
 ```
 
 - **씬 간 보존**: `EquipmentManager` 는 `DontDestroyOnLoad` + `ServiceLocator.Register(this)`.
+- **flatValue 정수화 규약**: `StatEntry.flatValue` (HP, ATK 등 깡 수치) 는 `EquipmentMetaStatProvider` 가 강화 배율 적용 직후 `MathUtils.RoundHalfUp` 으로 정수화. 소수 오차 누적 방지. `percentValue` (% 스탯) 는 소수 유지. UI (`ItemDetailPopupView`, `EnhanceModalView`) 도 동일 헬퍼 사용.
 - **재계산**: 스테이지 중 장비 변경 없음 → `Init` 시점 1회 계산. 로비 내 변경은 View 미리보기용만 이벤트 발행.
 - **룬 처리**: 룬 `StatEffect` (StatEntry) 를 장비와 동일 파이프라인. 감소형은 룬 하나가 하나의 독립 소스. 캐릭터 전용 룬 (`_targetCharacterId` 불일치) 은 Provider 단계에서 필터링.
 - **저장 트리거**: `EquipmentManager.Equip/Unequip` 내부에서 `TrySave()` 호출 → `SaveManager.Save()` 로 체이닝 (`SaveManager` 는 `EquipmentManager.Init` 시 주입). 매 장착 변경 시 `save.json` 갱신. 레거시 `IEquipmentSaveProvider` 경로는 사용하지 않는다.

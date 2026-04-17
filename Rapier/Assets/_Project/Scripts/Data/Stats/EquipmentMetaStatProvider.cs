@@ -1,3 +1,4 @@
+using Game.Core.Utils;
 using Game.Data.Equipment;
 using UnityEngine;
 
@@ -53,11 +54,13 @@ namespace Game.Data.MetaStats
                     : instance.Data.MainStat;
 
                 // 강화 배율 적용 (enhanceLevel 0 이면 배율 1.0 — BALANCE §6-1 구간별 가속)
+                // flatValue 는 HP/ATK 등 정수 스탯 — 장비별 기여 계산 직후 RoundHalfUp 으로 정수화.
+                // percentValue 는 % 스탯 — 소수 유지.
                 float enhanceMultiplier = EquipmentGradeHelper.GetEnhanceMultiplier(instance.EnhanceLevel);
                 var mainStat = new StatEntry
                 {
                     statType     = rawMainStat.statType,
-                    flatValue    = rawMainStat.flatValue    * enhanceMultiplier,
+                    flatValue    = MathUtils.RoundHalfUp(rawMainStat.flatValue * enhanceMultiplier),
                     percentValue = rawMainStat.percentValue * enhanceMultiplier,
                 };
                 container.Apply(mainStat);
