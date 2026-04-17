@@ -34,6 +34,8 @@ namespace Game.Editor
         // ── 상수 ─────────────────────────────────────────────────────
         private const string FONT_ASSET_PATH =
             "Assets/_Project/ScriptableObjects/Fonts/NEXONLv1Gothic Regular SDF.asset";
+        private const string BOLD_FONT_ASSET_PATH =
+            "Assets/_Project/ScriptableObjects/Fonts/NEXONLv1Gothic Bold SDF.asset";
 
         private const string SCENE_SAVE_PATH =
             "Assets/_Project/Scenes/StageDemo.unity";
@@ -50,11 +52,19 @@ namespace Game.Editor
 
         // ── 폰트 캐시 ─────────────────────────────────────────────────
         private static TMP_FontAsset _font;
+        private static TMP_FontAsset _boldFont;
         private static TMP_FontAsset GetFont()
         {
             if (_font == null)
                 _font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FONT_ASSET_PATH);
             return _font;
+        }
+
+        private static TMP_FontAsset GetBoldFont()
+        {
+            if (_boldFont == null)
+                _boldFont = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(BOLD_FONT_ASSET_PATH);
+            return _boldFont;
         }
 
         // ── 메뉴 항목 ────────────────────────────────────────────────
@@ -69,7 +79,7 @@ namespace Game.Editor
         /// <param name="skipSceneNameCheck">StageSceneSetup 내부에서 호출 시 true — 씬 이름 검사 생략.</param>
         public static void BuildPauseUI(bool forceRebuild, bool skipSceneNameCheck = false)
         {
-            _font = null;
+            _font = null; _boldFont = null;
             Debug.Log($"[StagePauseSetup] Font={GetFont() != null}");
 
             var activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
@@ -208,14 +218,15 @@ namespace Game.Editor
         private static GameObject CreateTMPText(Transform parent, string name, string text,
                                                  int fontSize, FontStyles style, Color color)
         {
-            var go  = new GameObject(name, typeof(RectTransform));
+            var go     = new GameObject(name, typeof(RectTransform));
             go.transform.SetParent(parent, false);
-            var tmp = go.AddComponent<TextMeshProUGUI>();
-            var f   = GetFont();
+            var tmp    = go.AddComponent<TextMeshProUGUI>();
+            var isBold = (style & FontStyles.Bold) != 0;
+            var f      = isBold ? (GetBoldFont() ?? GetFont()) : GetFont();
             if (f != null) tmp.font = f;
             tmp.text      = text;
             tmp.fontSize  = fontSize;
-            tmp.fontStyle = style;
+            tmp.fontStyle = isBold ? (style & ~FontStyles.Bold) : style;
             tmp.color     = color;
             return go;
         }

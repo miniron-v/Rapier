@@ -60,8 +60,11 @@ namespace Game.DevTools
 
         private const string FONT_ASSET_PATH =
             "Assets/_Project/ScriptableObjects/Fonts/NEXONLv1Gothic Regular SDF.asset";
+        private const string BOLD_FONT_ASSET_PATH =
+            "Assets/_Project/ScriptableObjects/Fonts/NEXONLv1Gothic Bold SDF.asset";
 
         private static TMP_FontAsset _font;
+        private static TMP_FontAsset _boldFont;
 
         private static TMP_FontAsset GetFont()
         {
@@ -74,10 +77,21 @@ namespace Game.DevTools
             return _font;
         }
 
+        private static TMP_FontAsset GetBoldFont()
+        {
+            if (_boldFont == null)
+            {
+                _boldFont = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(BOLD_FONT_ASSET_PATH);
+                if (_boldFont == null)
+                    Debug.LogError($"[LobbyHudSetup] NEXON Bold 폰트 로드 실패: {BOLD_FONT_ASSET_PATH}");
+            }
+            return _boldFont;
+        }
+
         // ── 메인 빌드 메서드 ──────────────────────────────────────
         private static void Build()
         {
-            _font = null; // 매 빌드마다 재로드
+            _font = null; _boldFont = null; // 매 빌드마다 재로드
             EnsureEventSystem();
 
             // 기존 LobbyCanvas 비활성화 (충돌 방지)
@@ -211,13 +225,13 @@ namespace Game.DevTools
             headerLayout.childForceExpandHeight = false;
 
             // 티켓 라벨
-            var ticketLabel = CreateTmpLabel(headerGo, "TicketLabel", "🎫 x0", 28, font).GetComponent<TextMeshProUGUI>();
+            var ticketLabel = CreateTmpLabel(headerGo, "TicketLabel", "티켓 x0", 28, font).GetComponent<TextMeshProUGUI>();
             var ticketLE = ticketLabel.gameObject.AddComponent<LayoutElement>();
             ticketLE.preferredWidth  = 150;
             ticketLE.preferredHeight = 60;
 
             // Crystal 라벨
-            var crystalLabel = CreateTmpLabel(headerGo, "CrystalLabel", "💎 x0", 28, font).GetComponent<TextMeshProUGUI>();
+            var crystalLabel = CreateTmpLabel(headerGo, "CrystalLabel", "크리스탈 x0", 28, font).GetComponent<TextMeshProUGUI>();
             var crystalLE = crystalLabel.gameObject.AddComponent<LayoutElement>();
             crystalLE.preferredWidth  = 200;
             crystalLE.preferredHeight = 60;
@@ -358,9 +372,9 @@ namespace Game.DevTools
             nameRect.offsetMin = new Vector2(pad, 0);
             nameRect.offsetMax = new Vector2(0, -pad * 0.5f);
             var nameText = nameGo.AddComponent<TextMeshProUGUI>();
-            nameText.font      = font;
+            nameText.font      = GetBoldFont() ?? font;
             nameText.fontSize  = 36;
-            nameText.fontStyle = FontStyles.Bold;
+            nameText.fontStyle = FontStyles.Normal;
             nameText.alignment = TextAlignmentOptions.MidlineLeft;
             nameText.color     = Color.white;
             nameText.text      = bannerData.BannerName;
@@ -1420,8 +1434,8 @@ namespace Game.DevTools
             descPanelRect.offsetMin = descPanelRect.offsetMax = Vector2.zero;
 
             // 캐릭터 이름 텍스트
-            var charNameGo  = CreateTmpLabel(descPanelGo, "CharacterName", "캐릭터 이름", 44f, font);
-            charNameGo.GetComponent<TextMeshProUGUI>().fontStyle = FontStyles.Bold;
+            var charNameGo  = CreateTmpLabel(descPanelGo, "CharacterName", "캐릭터 이름", 44f, GetBoldFont() ?? font);
+            charNameGo.GetComponent<TextMeshProUGUI>().fontStyle = FontStyles.Normal;
             var charNameRect = charNameGo.GetComponent<RectTransform>();
             SetAnchors(charNameRect, new Vector2(0.05f, 0.70f), new Vector2(0.95f, 0.95f));
             charNameRect.offsetMin = charNameRect.offsetMax = Vector2.zero;
@@ -1816,9 +1830,9 @@ namespace Game.DevTools
             nameGo.GetComponent<RectTransform>().offsetMin = nameGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
 
             // 3. 강화 단계 (+N → +N+1)
-            var levelGo = CreateTmpLabel(panelGo, "EnhanceLevel", "+0 → +1", 40f, font);
+            var levelGo = CreateTmpLabel(panelGo, "EnhanceLevel", "+0 → +1", 40f, GetBoldFont() ?? font);
             levelGo.GetComponent<TextMeshProUGUI>().color = new Color(1f, 0.9f, 0.3f);
-            levelGo.GetComponent<TextMeshProUGUI>().fontStyle = TMPro.FontStyles.Bold;
+            levelGo.GetComponent<TextMeshProUGUI>().fontStyle = FontStyles.Normal;
             SetAnchors(levelGo.GetComponent<RectTransform>(), new Vector2(0.30f, 0.80f), new Vector2(0.98f, 0.90f));
             levelGo.GetComponent<RectTransform>().offsetMin = levelGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
 
@@ -1882,8 +1896,8 @@ namespace Game.DevTools
             }
 
             // 11. 토스트 텍스트 (중앙)
-            var toastGo = CreateTmpLabel(panelGo, "ToastText", string.Empty, 40f, font);
-            toastGo.GetComponent<TextMeshProUGUI>().fontStyle = TMPro.FontStyles.Bold;
+            var toastGo = CreateTmpLabel(panelGo, "ToastText", string.Empty, 40f, GetBoldFont() ?? font);
+            toastGo.GetComponent<TextMeshProUGUI>().fontStyle = FontStyles.Normal;
             SetAnchors(toastGo.GetComponent<RectTransform>(), new Vector2(0.05f, 0.20f), new Vector2(0.95f, 0.34f));
             toastGo.GetComponent<RectTransform>().offsetMin = toastGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
             toastGo.SetActive(false);
@@ -2258,8 +2272,8 @@ namespace Game.DevTools
             innerRt.offsetMin = innerRt.offsetMax = Vector2.zero;
 
             // 타이틀
-            var titleGo = CreateTmpLabel(innerGo, "Title", "분해 완료", 44f, font);
-            titleGo.GetComponent<TextMeshProUGUI>().fontStyle = FontStyles.Bold;
+            var titleGo = CreateTmpLabel(innerGo, "Title", "분해 완료", 44f, GetBoldFont() ?? font);
+            titleGo.GetComponent<TextMeshProUGUI>().fontStyle = FontStyles.Normal;
             SetAnchors(titleGo.GetComponent<RectTransform>(), new Vector2(0.05f, 0.60f), new Vector2(0.95f, 0.90f));
             titleGo.GetComponent<RectTransform>().offsetMin = titleGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
 

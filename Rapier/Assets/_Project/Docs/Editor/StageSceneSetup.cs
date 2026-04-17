@@ -50,6 +50,8 @@ namespace Game.Editor
         // ── 에셋 경로 ─────────────────────────────────────────────
         private const string FONT_ASSET_PATH =
             "Assets/_Project/ScriptableObjects/Fonts/NEXONLv1Gothic Regular SDF.asset";
+        private const string BOLD_FONT_ASSET_PATH =
+            "Assets/_Project/ScriptableObjects/Fonts/NEXONLv1Gothic Bold SDF.asset";
         private const string SCENE_SAVE_PATH =
             "Assets/_Project/Scenes/StageDemo.unity";
 
@@ -59,15 +61,29 @@ namespace Game.Editor
         private const string ASSASSIN_PREFAB_PATH =
             "Assets/_Project/Prefabs/Player/Assassin_Player.prefab";
 
+        private const string WARRIOR_PREFAB_PATH =
+            "Assets/_Project/Prefabs/Player/WarriorPlayer.prefab";
+
+        private const string RANGER_PREFAB_PATH =
+            "Assets/_Project/Prefabs/Player/RangerPlayer.prefab";
+
         // Phase 17: 보스 프리팹/스탯 경로 제거 — StageData SO가 보유하며 런타임 로드.
 
         // ── 폰트 캐시 ─────────────────────────────────────────────
         private static TMP_FontAsset _font;
+        private static TMP_FontAsset _boldFont;
         private static TMP_FontAsset GetFont()
         {
             if (_font == null)
                 _font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FONT_ASSET_PATH);
             return _font;
+        }
+
+        private static TMP_FontAsset GetBoldFont()
+        {
+            if (_boldFont == null)
+                _boldFont = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(BOLD_FONT_ASSET_PATH);
+            return _boldFont;
         }
 
         // ── 색상 팔레트 ───────────────────────────────────────────
@@ -87,7 +103,7 @@ namespace Game.Editor
 
         private static void BuildScene(bool forceRebuild)
         {
-            _font = null;
+            _font = null; _boldFont = null;
             Debug.Log($"[StageSceneSetup] Font={GetFont() != null}");
 
             var existingScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
@@ -124,9 +140,10 @@ namespace Game.Editor
             // ── [Core] ────────────────────────────────────────────
             var coreGo = new GameObject("[Core]");
             Undo.RegisterCreatedObjectUndo(coreGo, "Create [Core]");
-            var stageManager       = coreGo.AddComponent<StageManager>();
-            var progressionManager = coreGo.AddComponent<ProgressionManager>();
-            var stageBuilder       = coreGo.AddComponent<StageBuilder>();
+            var stageManager         = coreGo.AddComponent<StageManager>();
+            var progressionManager   = coreGo.AddComponent<ProgressionManager>();
+            var stageBuilder         = coreGo.AddComponent<StageBuilder>();
+            var bossDeathSequencer   = coreGo.AddComponent<BossDeathSequencer>();
 
             // ── CharacterSpawnPoint (동적 캐릭터 스폰) ───────────────
             // Rapier_Player를 하드코딩 배치하는 대신, CharacterSpawner 컴포넌트가
@@ -139,24 +156,38 @@ namespace Game.Editor
 
             var rapierPrefab   = AssetDatabase.LoadAssetAtPath<GameObject>(RAPIER_PREFAB_PATH);
             var assassinPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(ASSASSIN_PREFAB_PATH);
+            var warriorPrefab  = AssetDatabase.LoadAssetAtPath<GameObject>(WARRIOR_PREFAB_PATH);
+            var rangerPrefab   = AssetDatabase.LoadAssetAtPath<GameObject>(RANGER_PREFAB_PATH);
 
             if (rapierPrefab == null)
                 Debug.LogWarning($"[StageSceneSetup] Rapier 프리팹 없음: {RAPIER_PREFAB_PATH}");
             if (assassinPrefab == null)
                 Debug.LogWarning($"[StageSceneSetup] Assassin 프리팹 없음: {ASSASSIN_PREFAB_PATH}");
+            if (warriorPrefab == null)
+                Debug.LogWarning($"[StageSceneSetup] Warrior 프리팹 없음: {WARRIOR_PREFAB_PATH}");
+            if (rangerPrefab == null)
+                Debug.LogWarning($"[StageSceneSetup] Ranger 프리팹 없음: {RANGER_PREFAB_PATH}");
 
             // SerializedObject 로 _entries 배열 구성
             var spawnerSo = new SerializedObject(spawner);
             var entriesProp = spawnerSo.FindProperty("_entries");
-            entriesProp.arraySize = 2;
+            entriesProp.arraySize = 4;
 
             var rapierEntry = entriesProp.GetArrayElementAtIndex(0);
-            rapierEntry.FindPropertyRelative("characterId").stringValue          = "Rapier";
-            rapierEntry.FindPropertyRelative("prefab").objectReferenceValue      = rapierPrefab;
+            rapierEntry.FindPropertyRelative("characterId").stringValue       = "Rapier";
+            rapierEntry.FindPropertyRelative("prefab").objectReferenceValue   = rapierPrefab;
 
             var assassinEntry = entriesProp.GetArrayElementAtIndex(1);
-            assassinEntry.FindPropertyRelative("characterId").stringValue        = "Assassin";
-            assassinEntry.FindPropertyRelative("prefab").objectReferenceValue    = assassinPrefab;
+            assassinEntry.FindPropertyRelative("characterId").stringValue     = "Assassin";
+            assassinEntry.FindPropertyRelative("prefab").objectReferenceValue = assassinPrefab;
+
+            var warriorEntry = entriesProp.GetArrayElementAtIndex(2);
+            warriorEntry.FindPropertyRelative("characterId").stringValue      = "Warrior";
+            warriorEntry.FindPropertyRelative("prefab").objectReferenceValue  = warriorPrefab;
+
+            var rangerEntry = entriesProp.GetArrayElementAtIndex(3);
+            rangerEntry.FindPropertyRelative("characterId").stringValue       = "Ranger";
+            rangerEntry.FindPropertyRelative("prefab").objectReferenceValue   = rangerPrefab;
 
             spawnerSo.ApplyModifiedProperties();
             EditorUtility.SetDirty(spawner);
@@ -198,6 +229,7 @@ namespace Game.Editor
             scaler.matchWidthOrHeight  = 0.5f;
             canvasGo.AddComponent<GraphicRaycaster>();
             var intermissionManager = canvasGo.AddComponent<IntermissionManager>();
+            var stageClearManager   = canvasGo.AddComponent<StageClearManager>();
 
             // ── IntermissionView ──────────────────────────────────
             var ivGo = new GameObject("IntermissionPanel");
@@ -330,14 +362,26 @@ namespace Game.Editor
             var imSo = new SerializedObject(intermissionManager);
             imSo.FindProperty("_intermissionView").objectReferenceValue  = intermissionView;
             imSo.FindProperty("_deathPopupView").objectReferenceValue    = deathPopupView;
-            imSo.FindProperty("_stageClearView").objectReferenceValue    = stageClearView;
             imSo.FindProperty("_stageManagerRef").objectReferenceValue   = stageManager;
             imSo.ApplyModifiedProperties();
+
+            // ── StageClearManager 배선 ────────────────────────────
+            var scmSo = new SerializedObject(stageClearManager);
+            scmSo.FindProperty("_stageClearView").objectReferenceValue = stageClearView;
+            scmSo.ApplyModifiedProperties();
+
+            // ── BossDeathSequencer 배선 ───────────────────────────
+            var droppedItemPrefab = AssetDatabase.LoadAssetAtPath<DroppedItemView>(
+                "Assets/_Project/Prefabs/Stage/DroppedItemView.prefab");
+            var bdsSo = new SerializedObject(bossDeathSequencer);
+            bdsSo.FindProperty("_droppedItemPrefab").objectReferenceValue = droppedItemPrefab;
+            bdsSo.ApplyModifiedProperties();
 
             // ── ProgressionManager 배선 ───────────────────────────
             var pmSo = new SerializedObject(progressionManager);
             pmSo.FindProperty("_stageManager").objectReferenceValue        = stageManager;
             pmSo.FindProperty("_intermissionManager").objectReferenceValue = intermissionManager;
+            pmSo.FindProperty("_bossDeathSequencer").objectReferenceValue  = bossDeathSequencer;
             pmSo.FindProperty("_playerSpawnPosition").vector2Value         = new Vector2(0f, -3f);
             pmSo.FindProperty("_portalSpawnPosition").vector2Value         = new Vector2(0f,  3f);
             pmSo.ApplyModifiedProperties();
@@ -354,6 +398,8 @@ namespace Game.Editor
             EditorUtility.SetDirty(deathPopupView);
             EditorUtility.SetDirty(stageClearView);
             EditorUtility.SetDirty(intermissionManager);
+            EditorUtility.SetDirty(stageClearManager);
+            EditorUtility.SetDirty(bossDeathSequencer);
             EditorUtility.SetDirty(progressionManager);
             EditorUtility.SetDirty(stageBuilder);
 
@@ -419,14 +465,15 @@ namespace Game.Editor
         private static GameObject CreateTMPText(Transform parent, string name, string text,
                                                  int fontSize, FontStyles style, Color color)
         {
-            var go  = new GameObject(name);
+            var go     = new GameObject(name);
             go.transform.SetParent(parent, false);
-            var tmp = go.AddComponent<TextMeshProUGUI>();
-            var f   = GetFont();
+            var tmp    = go.AddComponent<TextMeshProUGUI>();
+            var isBold = (style & FontStyles.Bold) != 0;
+            var f      = isBold ? (GetBoldFont() ?? GetFont()) : GetFont();
             if (f != null) tmp.font = f;
             tmp.text      = text;
             tmp.fontSize  = fontSize;
-            tmp.fontStyle = style;
+            tmp.fontStyle = isBold ? (style & ~FontStyles.Bold) : style;
             tmp.color     = color;
             return go;
         }

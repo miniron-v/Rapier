@@ -46,14 +46,24 @@ namespace Game.Editor
 
         private const string FONT_ASSET_PATH =
             "Assets/_Project/ScriptableObjects/Fonts/NEXONLv1Gothic Regular SDF.asset";
+        private const string BOLD_FONT_ASSET_PATH =
+            "Assets/_Project/ScriptableObjects/Fonts/NEXONLv1Gothic Bold SDF.asset";
 
         private static TMP_FontAsset _font;
+        private static TMP_FontAsset _boldFont;
 
         private static TMP_FontAsset GetFont()
         {
             if (_font == null)
                 _font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FONT_ASSET_PATH);
             return _font;
+        }
+
+        private static TMP_FontAsset GetBoldFont()
+        {
+            if (_boldFont == null)
+                _boldFont = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(BOLD_FONT_ASSET_PATH);
+            return _boldFont;
         }
 
         private static readonly Color BG_DARK         = new Color(0.05f, 0.05f, 0.05f, 0.85f);
@@ -72,7 +82,7 @@ namespace Game.Editor
 
         private static void BuildHud(bool forceRebuild)
         {
-            _font = null; // 매 빌드마다 재로드
+            _font = null; _boldFont = null; // 매 빌드마다 재로드
             var sq = AssetDatabase.LoadAssetAtPath<Sprite>(SPRITE_BASE + "Square.png");
             Debug.Log($"[BossHudSetup] Square={sq != null}, Font={GetFont() != null}");
 
@@ -356,12 +366,13 @@ namespace Game.Editor
             var go  = new GameObject(name);
             go.transform.SetParent(parent, false);
             var tmp       = go.AddComponent<TextMeshProUGUI>();
-            var font      = GetFont();
+            var isBold    = (style & FontStyles.Bold) != 0;
+            var font      = isBold ? (GetBoldFont() ?? GetFont()) : GetFont();
             if (font != null)
                 tmp.font  = font;
             tmp.text      = text;
             tmp.fontSize  = fontSize;
-            tmp.fontStyle = style;
+            tmp.fontStyle = isBold ? (style & ~FontStyles.Bold) : style;
             tmp.color     = color;
             return go;
         }
