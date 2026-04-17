@@ -122,10 +122,10 @@ namespace Game.UI.Lobby.Shop
         private static string FormatCost(int tickets, int crystals)
         {
             if (tickets > 0 && crystals > 0)
-                return $"🎫×{tickets}  💎×{crystals}";
+                return $"티켓×{tickets}  크리스탈×{crystals}";
             if (tickets > 0)
-                return $"🎫×{tickets}";
-            return $"💎×{crystals}";
+                return $"티켓×{tickets}";
+            return $"크리스탈×{crystals}";
         }
 
         // ── Event Handlers ────────────────────────────────────────────────
