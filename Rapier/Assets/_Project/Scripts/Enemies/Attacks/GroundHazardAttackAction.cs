@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Game.Enemies
@@ -33,6 +34,27 @@ namespace Game.Enemies
         [NonSerialized]
         public GameObject ActiveHazard;
 
+        public override List<AttackIndicatorEntry> PrepareWindup(EnemyAttackContext ctx)
+        {
+            if (indicators.Count == 0 || ctx.PlayerTransform == null)
+                return indicators;
+
+            // Circle 인디케이터의 centerOffset을 플레이어 위치 기준으로 갱신
+            var result = new List<AttackIndicatorEntry>(indicators);
+            for (int i = 0; i < result.Count; i++)
+            {
+                var entry = result[i];
+                if (entry.shape == AttackIndicatorShape.Circle)
+                {
+                    Vector2 selfPos   = ctx.SelfTransform.position;
+                    Vector2 playerPos = ctx.PlayerTransform.position;
+                    entry.circleData.centerOffset = playerPos - selfPos;
+                    result[i] = entry;
+                }
+            }
+            return result;
+        }
+
         public override IEnumerator Execute(EnemyAttackContext ctx, Action onComplete)
         {
             if (ctx.PlayerTransform == null)
@@ -45,9 +67,10 @@ namespace Game.Enemies
             var hazard   = new GameObject("GroundHazard_Pyro");
             ActiveHazard = hazard;
 
-            var sr    = hazard.AddComponent<SpriteRenderer>();
-            sr.sprite = sprite;
-            sr.color  = new Color(1f, 0.3f, 0f, 0.5f);
+            var sr         = hazard.AddComponent<SpriteRenderer>();
+            sr.sprite      = sprite;
+            sr.color       = new Color(1f, 0.3f, 0f, 0.5f);
+            sr.sortingOrder = 2;
             hazard.transform.localScale = Vector3.one * hazardRadius * 2f;
             hazard.transform.position   = ctx.PlayerTransform.position;
 

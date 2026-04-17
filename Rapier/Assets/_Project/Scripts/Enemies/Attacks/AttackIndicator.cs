@@ -101,6 +101,9 @@ namespace Game.Enemies
                     case AttackIndicatorShape.Rectangle:
                         BuildRectMeshes(set, entry.rectData, angleDeg, t);
                         break;
+                    case AttackIndicatorShape.Circle:
+                        BuildCircleMeshes(set, entry.circleData, t);
+                        break;
                 }
             }
         }
@@ -244,6 +247,89 @@ namespace Game.Enemies
             var   verts   = new List<Vector3>();
             var   tris    = new List<int>();
             AddLineStrip(verts, tris, p0, p1);
+            mesh.vertices  = verts.ToArray();
+            mesh.triangles = tris.ToArray();
+            mesh.RecalculateNormals();
+            return mesh;
+        }
+
+        // ── 원형 ──────────────────────────────────────────────────
+
+        private void BuildCircleMeshes(IndicatorSet set, CircleIndicatorData data, float t)
+        {
+            Vector3 offset = new Vector3(data.centerOffset.x, data.centerOffset.y, 0f);
+            set.root.transform.localPosition = offset * (transform.lossyScale.x > 0f ? 1f / transform.lossyScale.x : 1f);
+
+            set.fillFilter.mesh    = BuildCircleFillMesh(data.radius);
+            set.outlineFilter.mesh = BuildCircleOutlineMesh(data.radius);
+            float scanRadius       = data.radius * t;
+            set.scanFilter.mesh    = scanRadius < 0.01f ? new Mesh() : BuildCircleScanMesh(scanRadius);
+        }
+
+        private Mesh BuildCircleFillMesh(float radius)
+        {
+            var mesh  = new Mesh();
+            var verts = new Vector3[SECTOR_SEGMENTS + 2];
+            var tris  = new int[SECTOR_SEGMENTS * 3];
+            verts[0]  = Vector3.zero;
+            for (int i = 0; i <= SECTOR_SEGMENTS; i++)
+            {
+                float a      = (360f / SECTOR_SEGMENTS * i) * Mathf.Deg2Rad;
+                verts[i + 1] = new Vector3(Mathf.Cos(a) * radius, Mathf.Sin(a) * radius, 0f);
+            }
+            for (int i = 0; i < SECTOR_SEGMENTS; i++)
+            {
+                tris[i * 3]     = 0;
+                tris[i * 3 + 1] = i + 1;
+                tris[i * 3 + 2] = (i + 1) % SECTOR_SEGMENTS + 1;
+            }
+            mesh.vertices  = verts;
+            mesh.triangles = tris;
+            mesh.RecalculateNormals();
+            return mesh;
+        }
+
+        private Mesh BuildCircleOutlineMesh(float radius)
+        {
+            var mesh  = new Mesh();
+            var verts = new List<Vector3>();
+            var tris  = new List<int>();
+            int baseIdx = 0;
+            for (int i = 0; i <= SECTOR_SEGMENTS; i++)
+            {
+                float a   = (360f / SECTOR_SEGMENTS * i) * Mathf.Deg2Rad;
+                var   dir = new Vector3(Mathf.Cos(a), Mathf.Sin(a), 0f);
+                verts.Add(dir * (radius - OUTLINE_THICKNESS * 0.5f));
+                verts.Add(dir * (radius + OUTLINE_THICKNESS * 0.5f));
+            }
+            for (int i = 0; i < SECTOR_SEGMENTS; i++)
+            {
+                int b = baseIdx + i * 2;
+                tris.AddRange(new[] { b, b+1, b+2, b+1, b+3, b+2 });
+            }
+            mesh.vertices  = verts.ToArray();
+            mesh.triangles = tris.ToArray();
+            mesh.RecalculateNormals();
+            return mesh;
+        }
+
+        private Mesh BuildCircleScanMesh(float radius)
+        {
+            var mesh  = new Mesh();
+            var verts = new List<Vector3>();
+            var tris  = new List<int>();
+            for (int i = 0; i <= SECTOR_SEGMENTS; i++)
+            {
+                float a   = (360f / SECTOR_SEGMENTS * i) * Mathf.Deg2Rad;
+                var   dir = new Vector3(Mathf.Cos(a), Mathf.Sin(a), 0f);
+                verts.Add(dir * (radius - OUTLINE_THICKNESS * 0.5f));
+                verts.Add(dir * (radius + OUTLINE_THICKNESS * 0.5f));
+            }
+            for (int i = 0; i < SECTOR_SEGMENTS; i++)
+            {
+                int b = i * 2;
+                tris.AddRange(new[] { b, b+1, b+2, b+1, b+3, b+2 });
+            }
             mesh.vertices  = verts.ToArray();
             mesh.triangles = tris.ToArray();
             mesh.RecalculateNormals();

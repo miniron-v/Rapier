@@ -38,10 +38,10 @@ MonoBehaviour:
   approachAngleVariance: 30
   bossScale: 2.5
   phaseTransitionDuration: 1
-  dropTable: {fileID: 11400000, guid: 7cacaf0806734474a24311621c51e64b, type: 2}
   _spawnCount: 1
   _spawnOffsets:
   - {x: 0, y: 0}
+  dropTable: {fileID: 11400000, guid: 7cacaf0806734474a24311621c51e64b, type: 2}
   references:
     version: 2
     RefIds:
@@ -62,19 +62,30 @@ MonoBehaviour:
         projectileSpeed: 7
         maxRange: 12
         hitRadius: 0.4
-        damageMultiplier: 1
+        damagePercent: 100
         homingStrength: 0
     - rid: 2897679572369932389
       type: {class: GroundHazardAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
       data:
         windupDuration: 0.8
         lockIndicatorDirection: 0
-        indicators: []
+        indicators:
+        - shape: 2
+          angleOffset: 0
+          sectorData:
+            range: 0
+            angle: 0
+          rectData:
+            range: 0
+            width: 0
+          circleData:
+            radius: 3
+            centerOffset: {x: 0, y: 0}
         duration: 4
         tickInterval: 0.5
-        tickDamage: 0.3
+        tickDamagePercent: 30
         hazardRadius: 3
-        sprite: {fileID: -2413806693520163455, guid: bd8b5b5a2d5ffe042a4330b044065860, type: 3}
+        sprite: {fileID: 21300000, guid: bd8b5b5a2d5ffe042a4330b044065860, type: 3}
     - rid: 2897679572369932390
       type: {class: ProjectileAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
       data:
@@ -92,19 +103,30 @@ MonoBehaviour:
         projectileSpeed: 10
         maxRange: 15
         hitRadius: 0.4
-        damageMultiplier: 1.2
+        damagePercent: 100
         homingStrength: 0
     - rid: 2897679572369932391
       type: {class: GroundHazardAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
       data:
         windupDuration: 0.8
         lockIndicatorDirection: 0
-        indicators: []
+        indicators:
+        - shape: 2
+          angleOffset: 0
+          sectorData:
+            range: 0
+            angle: 0
+          rectData:
+            range: 0
+            width: 0
+          circleData:
+            radius: 3.5
+            centerOffset: {x: 0, y: 0}
         duration: 5
         tickInterval: 0.4
-        tickDamage: 0.35
+        tickDamagePercent: 30
         hazardRadius: 3.5
-        sprite: {fileID: -2413806693520163455, guid: bd8b5b5a2d5ffe042a4330b044065860, type: 3}
+        sprite: {fileID: 21300000, guid: bd8b5b5a2d5ffe042a4330b044065860, type: 3}
     - rid: 2897679572369932392
       type: {class: MultiDirectionalAttackAction, ns: Game.Enemies, asm: Assembly-CSharp}
       data:
@@ -136,4 +158,4 @@ MonoBehaviour:
             range: 0
             width: 0
         hitRange: 4
-        damageMultiplier: 1.2
+        damagePercent: 100

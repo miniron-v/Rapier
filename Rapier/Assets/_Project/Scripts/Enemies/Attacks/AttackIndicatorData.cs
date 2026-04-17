@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Game.Enemies
 {
-    public enum AttackIndicatorShape { Sector, Rectangle }
+    public enum AttackIndicatorShape { Sector, Rectangle, Circle }
 
     [Serializable]
     public struct SectorIndicatorData
@@ -25,6 +25,15 @@ namespace Game.Enemies
     }
 
     [Serializable]
+    public struct CircleIndicatorData
+    {
+        [Tooltip("원 반지름")]
+        public float radius;
+        [Tooltip("보스 기준 센터 오프셋 (월드 좌표 기준 로컬 오프셋, PrepareWindup에서 주입)")]
+        public Vector2 centerOffset;
+    }
+
+    [Serializable]
     public struct AttackIndicatorEntry
     {
         public AttackIndicatorShape shape;
@@ -37,5 +46,8 @@ namespace Game.Enemies
 
         [Header("Rectangle")]
         public RectIndicatorData rectData;
+
+        [Header("Circle")]
+        public CircleIndicatorData circleData;
     }
 }
