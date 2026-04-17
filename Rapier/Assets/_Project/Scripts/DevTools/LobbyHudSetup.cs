@@ -446,6 +446,14 @@ namespace Game.DevTools
             var cardView = cardGo.AddComponent<BannerCardView>();
             cardView.InitReferences(artImg, nameText, descText, singleBtn, tenBtn, singleCostText, tenCostText);
             cardView.Refresh(bannerData);
+            EditorUtility.SetDirty(cardView);
+
+            // 에디터 Setup 시점 기본 비용 표시 (Play 모드 진입 전에도 보이도록)
+            int t1 = bannerData.TicketCostPerPull;
+            int c1 = bannerData.CrystalCostPerPull;
+            int c10 = (int)Game.Core.Utils.MathUtils.RoundHalfUp(
+                bannerData.CrystalCostPerPull * 10 * bannerData.TenPullDiscount);
+            cardView.RefreshCost(t1, c1, t1 * 10, c10);
 
             return cardView;
         }

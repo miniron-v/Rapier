@@ -14,16 +14,28 @@ namespace Game.UI.Lobby
     /// </summary>
     public class ShopTabView : LobbyTabViewBase, IShopTabView
     {
-        private TextMeshProUGUI _gachaTicketText;
-        private TextMeshProUGUI _crystalText;
-        private ScrollRect      _bannerScrollRect;
-        private Transform       _bannerContainer;
-        private TextMeshProUGUI _toastText;
+        [SerializeField] private TextMeshProUGUI _gachaTicketText;
+        [SerializeField] private TextMeshProUGUI _crystalText;
+        [SerializeField] private ScrollRect      _bannerScrollRect;
+        [SerializeField] private Transform       _bannerContainer;
+        [SerializeField] private TextMeshProUGUI _toastText;
 
         private readonly List<BannerCardView> _bannerCards = new();
 
         /// <summary>등록된 배너 카드 뷰 목록.</summary>
         public IReadOnlyList<BannerCardView> BannerCards => _bannerCards;
+
+        private void Awake()
+        {
+            // 에디터 Rebuild 시 RegisterBannerCard / InitReferences 로 주입된 참조는
+            // 비직렬화 필드이므로 Play 모드 진입 시 소실된다.
+            // 자식 계층에서 런타임 복원.
+            if (_bannerCards.Count == 0)
+            {
+                var cards = GetComponentsInChildren<BannerCardView>(true);
+                _bannerCards.AddRange(cards);
+            }
+        }
 
         /// <summary>참조 주입 (LobbyHudSetup에서 호출).</summary>
         public void InitReferences(

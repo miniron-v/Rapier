@@ -16,9 +16,9 @@ namespace Game.UI.Lobby.Shop
     {
         [SerializeField] private TMP_FontAsset _font;
 
-        private Transform _itemContainer;
-        private Button    _closeButton;
-        private Image     _flashImage;
+        [SerializeField] private Transform _itemContainer;
+        [SerializeField] private Button    _closeButton;
+        [SerializeField] private Image     _flashImage;
 
         private readonly List<GachaResultItemView> _itemViews = new();
 

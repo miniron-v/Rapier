@@ -12,15 +12,15 @@ namespace Game.UI.Lobby.Shop
     /// </summary>
     public class BannerCardView : MonoBehaviour
     {
-        private Image             _bannerArt;
-        private TextMeshProUGUI   _bannerNameText;
-        private TextMeshProUGUI   _descriptionText;
-        private Button            _singlePullButton;
-        private Button            _tenPullButton;
-        private TextMeshProUGUI   _singlePullCostText;
-        private TextMeshProUGUI   _tenPullCostText;
+        [SerializeField] private Image             _bannerArt;
+        [SerializeField] private TextMeshProUGUI   _bannerNameText;
+        [SerializeField] private TextMeshProUGUI   _descriptionText;
+        [SerializeField] private Button            _singlePullButton;
+        [SerializeField] private Button            _tenPullButton;
+        [SerializeField] private TextMeshProUGUI   _singlePullCostText;
+        [SerializeField] private TextMeshProUGUI   _tenPullCostText;
 
-        private GachaBannerData _currentBanner;
+        [SerializeField] private GachaBannerData _currentBanner;
 
         /// <summary>뽑기 버튼 클릭 시 발화. (배너 데이터, 뽑기 횟수)</summary>
         public event Action<GachaBannerData, int> OnPullClicked;

@@ -10,7 +10,7 @@ namespace Game.UI.Lobby.Shop
     /// </summary>
     public class GachaResultModalPresenter : MonoBehaviour
     {
-        private GachaResultModalView _view;
+        [SerializeField] private GachaResultModalView _view;
 
         /// <summary>참조 주입.</summary>
         public void InitReferences(GachaResultModalView view)
