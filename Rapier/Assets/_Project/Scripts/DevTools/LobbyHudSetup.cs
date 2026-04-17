@@ -306,21 +306,19 @@ namespace Game.DevTools
         }
 
         /// <summary>
-        /// 배너 카드 1장 생성. LayoutElement 미사용 — anchor 비율 배분으로 레이아웃.
-        /// 카드 비율 2:1 (가로:세로). 부모 VLG 가 가로 폭을 결정하므로
-        /// AspectRatioFitter (widthControlsHeight) 로 세로를 자동 계산한다.
+        /// 배너 카드 1장 생성. 부모 VLG 가 가로를 stretch.
+        /// 세로는 LayoutElement.preferredHeight 로 지정 (1080 기준 약 2:1).
+        /// 내부 자식은 anchor 비율 배분.
         /// </summary>
         private static BannerCardView CreateBannerCard(GameObject container, GachaBannerData bannerData, TMP_FontAsset font)
         {
             // ── 카드 루트 ─────────────────────────────────────────────────────
             var cardGo = new GameObject($"BannerCard_{bannerData.BannerId}", typeof(RectTransform));
             cardGo.transform.SetParent(container.transform, false);
-            var cardRect = cardGo.GetComponent<RectTransform>();
-            // 부모 VLG 가 가로를 stretch 해 주므로 anchor 는 기본(0.5,0.5) 유지.
-            // AspectRatioFitter 가 가로 기준으로 세로를 결정.
-            var arf = cardGo.AddComponent<AspectRatioFitter>();
-            arf.aspectMode  = AspectRatioFitter.AspectMode.WidthControlsHeight;
-            arf.aspectRatio = 2f; // 가로:세로 = 2:1
+            // VLG(childForceExpandWidth) 가 가로를 부모 폭으로 확장.
+            // 세로만 LayoutElement 로 지정. 1080 기준 패딩 제외 ~1040 가로, 500 세로 ≈ 2:1.
+            var cardLE = cardGo.AddComponent<LayoutElement>();
+            cardLE.preferredHeight = 500;
 
             // 배경
             var cardBg = cardGo.AddComponent<Image>();
