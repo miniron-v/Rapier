@@ -159,7 +159,7 @@ namespace Game.UI.Lobby.Equipment
             if (_enhanceLevelText != null)
                 _enhanceLevelText.text = $"+{curLevel} → +{nextLevel}";
 
-            // 메인 스탯 미리보기 (base × (1 + 0.10 × level))
+            // 메인 스탯 미리보기 (base × BALANCE §6-1 구간별 가속 배율)
             if (_mainStatPreviewText != null)
             {
                 bool isAccessory = data.SlotType == EquipmentSlotType.Necklace
@@ -168,8 +168,8 @@ namespace Game.UI.Lobby.Equipment
                     ? instance.RolledMainStat.Value
                     : data.MainStat;
 
-                float curMult  = 1f + 0.10f * curLevel;
-                float nextMult = 1f + 0.10f * nextLevel;
+                float curMult  = EquipmentGradeHelper.GetEnhanceMultiplier(curLevel);
+                float nextMult = EquipmentGradeHelper.GetEnhanceMultiplier(nextLevel);
 
                 string statLabel = GetStatLabel(rawMain.statType);
                 if (rawMain.flatValue != 0f)

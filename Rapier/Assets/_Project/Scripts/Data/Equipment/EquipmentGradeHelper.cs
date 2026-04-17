@@ -67,5 +67,43 @@ namespace Game.Data.Equipment
                 _                    => 6
             };
         }
+
+        /// <summary>
+        /// 강화 레벨 기준 메인스탯 배율을 반환한다 (BALANCE §6-1 구간별 가속 공식).
+        /// level=0 → 1.0, level=15 → 4.48. 음수는 1.0.
+        ///
+        /// 구간별 단계당 증가:
+        ///   +1~+3  : +0.08  (누적 1.00 → 1.24)
+        ///   +4~+6  : +0.12  (누적 1.24 → 1.60)
+        ///   +7~+9  : +0.18  (누적 1.60 → 2.14)
+        ///   +10~+12: +0.28  (누적 2.14 → 2.98)
+        ///   +13~+15: +0.50  (누적 2.98 → 4.48)
+        ///
+        /// 검증: GetEnhanceMultiplier(0)=1.00 / (3)=1.24 / (6)=1.60 / (9)=2.14 / (12)=2.98 / (15)=4.48
+        /// </summary>
+        public static float GetEnhanceMultiplier(int level)
+        {
+            if (level <= 0) return 1.0f;
+
+            // 각 구간: [stepEnd, stepInc]
+            // +1~+3: +0.08 / +4~+6: +0.12 / +7~+9: +0.18 / +10~+12: +0.28 / +13~+15: +0.50
+            int[]   stepEnd = {  3,     6,     9,    12,    15 };
+            float[] stepInc = { 0.08f, 0.12f, 0.18f, 0.28f, 0.50f };
+
+            float m         = 1.0f;
+            int   prev      = 0;
+            int   remaining = level;
+
+            for (int i = 0; i < stepEnd.Length && remaining > 0; i++)
+            {
+                int bucket = stepEnd[i] - prev;
+                int take   = UnityEngine.Mathf.Min(remaining, bucket);
+                m         += take * stepInc[i];
+                remaining -= take;
+                prev       = stepEnd[i];
+            }
+
+            return m;
+        }
     }
 }

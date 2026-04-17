@@ -52,8 +52,8 @@ namespace Game.Data.MetaStats
                     ? (instance.RolledMainStat ?? instance.Data.MainStat)
                     : instance.Data.MainStat;
 
-                // 강화 배율 적용 (enhanceLevel 0 이면 배율 1.0 — 변화 없음)
-                float enhanceMultiplier = 1f + 0.10f * instance.EnhanceLevel;
+                // 강화 배율 적용 (enhanceLevel 0 이면 배율 1.0 — BALANCE §6-1 구간별 가속)
+                float enhanceMultiplier = EquipmentGradeHelper.GetEnhanceMultiplier(instance.EnhanceLevel);
                 var mainStat = new StatEntry
                 {
                     statType     = rawMainStat.statType,

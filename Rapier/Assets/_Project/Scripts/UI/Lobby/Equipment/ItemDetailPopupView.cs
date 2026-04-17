@@ -174,8 +174,8 @@ namespace Game.UI.Lobby.Equipment
             else
                 rawMainStat = data.MainStat;
 
-            // 강화 배율 적용 (enhanceLevel 0이면 ×1.0 — 변화 없음)
-            float enhanceMult = 1f + 0.10f * instance.EnhanceLevel;
+            // 강화 배율 적용 (enhanceLevel 0이면 ×1.0 — BALANCE §6-1 구간별 가속)
+            float enhanceMult = EquipmentGradeHelper.GetEnhanceMultiplier(instance.EnhanceLevel);
             _mainStatText.text = FormatStatEntryWithEnhance(rawMainStat, enhanceMult);
 
             // 서브 스탯 (고정 크기 영역 — 없으면 비워둠)
