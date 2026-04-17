@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using UnityEngine.UI;
 using Game.Data.Gacha;
 
 namespace Game.UI.Lobby.Shop
@@ -15,5 +16,7 @@ namespace Game.UI.Lobby.Shop
         void ShowInsufficientToast(string message);
         /// <summary>등록된 배너 카드 뷰 목록.</summary>
         IReadOnlyList<BannerCardView> BannerCards { get; }
+        /// <summary>테스트 재화 지급 버튼.</summary>
+        Button DebugGrantButton { get; }
     }
 }

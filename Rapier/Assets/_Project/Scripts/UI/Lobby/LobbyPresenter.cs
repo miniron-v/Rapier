@@ -50,9 +50,6 @@ namespace Game.UI.Lobby
         // Phase 13-B: SaveManager 주입 (HomeTabPresenter 에서 스테이지 번호 조회용)
         private SaveManager _saveManager;
 
-        // 마지막 선택 탭 저장 키
-        private const string KEY_LAST_TAB = "Lobby_LastTab";
-
         // 현재 활성 탭 인덱스 (0-based), -1 = 초기값(탭 없음)
         private int _currentTabIndex = -1;
 
@@ -128,9 +125,8 @@ namespace Game.UI.Lobby
                     _tabView.TabButtons[i].onClick.AddListener(_tabHandlers[i]);
             }
 
-            // 마지막 탭 복원 (기본: 탭 3 메인, 인덱스 2)
-            int savedTab = PlayerPrefs.GetInt(KEY_LAST_TAB, (int)LobbyTabIndex.Home - 1);
-            ShowTab(savedTab);
+            // 항상 Home 탭으로 시작
+            ShowTab((int)LobbyTabIndex.Home - 1);
         }
 
         private void OnDisable()
@@ -174,9 +170,6 @@ namespace Game.UI.Lobby
 
             // 새 탭 Presenter 알림
             NotifyTabShown(tabIndex);
-
-            // 마지막 탭 저장
-            PlayerPrefs.SetInt(KEY_LAST_TAB, tabIndex);
         }
 
         /// <summary>해당 탭 Presenter에 OnTabShown을 알린다.</summary>
