@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using Game.Core;
-using Game.Core.Utils;
 using Game.Data.Equipment;
 using Game.Data.Gacha;
 using Game.Data.Save;
@@ -120,12 +119,7 @@ namespace Game.Core.Services
             int currentTicket = GetCurrentTicket(banner.TicketType);
             int usableTickets = Mathf.Min(currentTicket, count);
             int deficit       = count - usableTickets;
-            float rawCrystal  = deficit * banner.CrystalCostPerPull;
-
-            if (count == 10)
-                rawCrystal *= banner.TenPullDiscount;
-
-            int crystalCost = (int)MathUtils.RoundHalfUp(rawCrystal);
+            int crystalCost   = deficit * banner.CrystalCostPerPull;
 
             return (usableTickets, crystalCost);
         }

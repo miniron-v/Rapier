@@ -59,7 +59,6 @@ public static class CreateGachaDemoAssets
         bannerSO.FindProperty("_description").stringValue    = "다양한 공용 장비를 획득할 수 있는 표준 배너.\nEpic/Unique 등급 장비 출현!";
         bannerSO.FindProperty("_ticketCostPerPull").intValue = 1;
         bannerSO.FindProperty("_crystalCostPerPull").intValue = 300;
-        bannerSO.FindProperty("_tenPullDiscount").floatValue = 0.9f;
         bannerSO.FindProperty("_ticketType").enumValueIndex  = (int)GachaTicketType.Equipment;
 
         // gradeEntries 배열 구성

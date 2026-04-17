@@ -17,7 +17,6 @@ namespace Game.Data.Gacha
         [SerializeField] private Sprite _bannerArt;
         [SerializeField] private int _ticketCostPerPull = 1;
         [SerializeField] private int _crystalCostPerPull = 300;
-        [SerializeField] [Range(0f, 1f)] private float _tenPullDiscount = 0.9f;
         [SerializeField] private GachaTicketType _ticketType;
         [SerializeField] private List<GachaGradeEntry> _gradeEntries = new();
 
@@ -33,8 +32,6 @@ namespace Game.Data.Gacha
         public int TicketCostPerPull    => _ticketCostPerPull;
         /// <summary>1회 뽑기 Crystal 비용 (티켓 없을 때)</summary>
         public int CrystalCostPerPull   => _crystalCostPerPull;
-        /// <summary>10회 할인율 (0~1. 예: 0.9 = 10% 할인)</summary>
-        public float TenPullDiscount    => _tenPullDiscount;
         /// <summary>사용 티켓 종류</summary>
         public GachaTicketType TicketType => _ticketType;
         /// <summary>등급별 풀+가중치 목록</summary>

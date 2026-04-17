@@ -28,11 +28,11 @@ namespace Game.UI.Lobby.Shop
             if (_view != null) _view.OnCloseClicked -= HandleCloseClicked;
         }
 
-        /// <summary>결과 아이템 목록을 표시하고 모달을 열린다.</summary>
+        /// <summary>모달을 열고 결과 아이템 목록을 표시한다.</summary>
         public void Show(IReadOnlyList<EquipmentInstance> items)
         {
-            _view.ShowResults(items);
             _view.SetVisible(true);
+            _view.ShowResults(items);
         }
 
         // ── Event Handlers ────────────────────────────────────────────────
