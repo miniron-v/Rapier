@@ -5,11 +5,11 @@ using Game.Data.Equipment;
 namespace Game.Data.Stage
 {
     /// <summary>
-    /// 키프레임 보간 결과 + BossVariantEntry 를 받아 런타임 StageData 를 조립한다.
+    /// 키프레임 보간 결과 + BossVariantEntry 를 받아 런타임 StageContext POCO 를 조립한다.
     ///
     /// [사용처]
     ///   StageDatabase.GetStage(index) 가 호출하는 전용 정적 헬퍼.
-    ///   반환된 StageData 는 HideFlags.DontSave 이므로 에셋 시스템에 등록되지 않는다.
+    ///   ScriptableObject 를 생성하지 않는다 — CLAUDE.md §7 원칙 준수.
     ///
     /// [등급 드랍률 테이블] BALANCE §3-2 차수별 확률 (tier 0-based = 차수-1):
     ///   tier 0 (1차): N=0.80, R=0.20, E=0.00, U=0.000
@@ -35,26 +35,25 @@ namespace Game.Data.Stage
         };
 
         /// <summary>
-        /// 런타임 StageData 를 조립하여 반환한다.
+        /// 런타임 StageContext POCO 를 조립하여 반환한다.
         ///
         /// <para>
-        /// - hpMultiplier / atkMultiplier : 호출자가 키프레임 보간으로 계산한 값.<br/>
-        /// - variant : BossVariantDatabase.GetVariant(slot, tier) 반환값.
-        ///   null 이면 방 배열은 비어있고 드랍테이블도 null 인 StageData 를 반환한다.<br/>
-        /// - tier : 0-based 차수 (0~5 clamp 적용된 값을 넘길 것).
+        /// - stageIndex  : 1-based 스테이지 번호.<br/>
+        /// - tier        : 0-based 차수 (0~5, clamp 적용된 값을 넘길 것).<br/>
+        /// - bossSlot    : 0-based 보스 슬롯 (0~7).<br/>
+        /// - hpMul / atkMul : 호출자가 키프레임 보간으로 계산한 배율.<br/>
+        /// - variant     : BossVariantDatabase.GetVariant(slot, tier) 반환값.
+        ///   null 이면 방 배열은 비어있고 드랍테이블도 null.
         /// </para>
         /// </summary>
-        /// <param name="stageIndex">1-based 스테이지 번호.</param>
-        /// <param name="hpMultiplier">보간된 HP 배율.</param>
-        /// <param name="atkMultiplier">보간된 ATK 배율.</param>
-        /// <param name="tier">0-based 차수 (0~5).</param>
-        /// <param name="variant">BossVariantEntry. null 허용.</param>
-        public static StageData Compose(
-            int stageIndex, float hpMultiplier, float atkMultiplier,
-            int tier, BossVariantEntry variant)
+        public static StageContext Compose(
+            int stageIndex, int tier, int bossSlot,
+            float hpMul, float atkMul,
+            BossVariantEntry variant)
         {
-            // 등급 드랍률 배열 생성
             int clampedTier = Mathf.Clamp(tier, 0, 5);
+
+            // 등급 드랍률 배열 생성
             var gradeDropRates = new GradeDropRate[4];
             for (int g = 0; g < 4; g++)
             {
@@ -74,7 +73,7 @@ namespace Game.Data.Stage
                     new RoomNode
                     {
                         roomType     = RoomType.BossRoom,
-                        bossPrefab   = variant.bossPrefab, // BossVariantEntry 에서 프리팹 참조
+                        bossPrefab   = variant.bossPrefab,
                         bossStatData = variant.statData,
                         displayName  = variant.statData.enemyName,
                     }
@@ -85,14 +84,11 @@ namespace Game.Data.Stage
                 rooms = System.Array.Empty<RoomNode>();
             }
 
-            DropTableData dropTable = variant?.dropTable;
-
-            // in-memory StageData 생성 (DontSave — 에셋 DB 미등록)
-            var composed = ScriptableObject.CreateInstance<StageData>();
-            composed.hideFlags = HideFlags.DontSave;
-            composed.InitForCompose(stageIndex, hpMultiplier, atkMultiplier, rooms, gradeDropRates, dropTable);
-
-            return composed;
+            return new StageContext(
+                stageIndex, clampedTier, bossSlot,
+                hpMul, atkMul,
+                rooms, gradeDropRates,
+                variant?.dropTable);
         }
     }
 }

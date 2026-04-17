@@ -157,14 +157,14 @@ namespace Game.Core.Stage
             int spawnCount   = bossStatData != null ? bossStatData.SpawnCount : 1;
             var spawnOffsets = bossStatData?.SpawnOffsets;
 
-            // StageData multiplier (공통)
+            // StageContext 배율 (공통)
             float hpMult  = 1f;
             float atkMult = 1f;
-            var stageData = _stageManager != null ? _stageManager.CurrentStageData : null;
-            if (stageData != null)
+            var stageCtx = _stageManager != null ? _stageManager.CurrentStageContext : null;
+            if (stageCtx != null)
             {
-                hpMult  = stageData.HpMultiplier;
-                atkMult = stageData.AtkMultiplier;
+                hpMult  = stageCtx.HpMultiplier;
+                atkMult = stageCtx.AtkMultiplier;
             }
 
             // ── 인스턴스 생성 루프 ───────────────────────────────────

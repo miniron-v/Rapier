@@ -7,8 +7,8 @@ namespace Game.Core
     /// <summary>
     /// 격자 패턴 배경과 벽(경계)을 런타임에 생성한다.
     ///
-    /// Phase 17: StageDatabase(Resources)에서 현재 스테이지 SO를 로드하여
-    /// StageManager.Init(StageData) 에 전달한다.
+    /// Phase 17: StageDatabase(Resources)에서 현재 스테이지를 로드하여
+    /// StageManager.Init(StageContext) 에 전달한다.
     /// SceneController.CurrentStageIndex (static) 로 어느 스테이지를 로드할지 결정.
     ///
     /// [하위 호환]
@@ -59,17 +59,17 @@ namespace Game.Core
                 return;
             }
 
-            int stageIndex = SceneController.CurrentStageIndex;
-            var stageData  = database.GetStage(stageIndex);
+            int stageIndex  = SceneController.CurrentStageIndex;
+            var stageContext = database.GetStage(stageIndex);
 
-            if (stageData == null)
+            if (stageContext == null)
             {
                 Debug.LogWarning($"[StageBuilder] StageDatabase에 스테이지 {stageIndex} 데이터 없음 — BossRushManager 단독 모드.");
                 return;
             }
 
-            _stageManager.Init(stageData);
-            Debug.Log($"[StageBuilder] 스테이지 {stageIndex} '{stageData.StageName}' 주입 완료.");
+            _stageManager.Init(stageContext);
+            Debug.Log($"[StageBuilder] 스테이지 {stageIndex} '{stageContext.StageName}' 주입 완료.");
         }
 
         private void OnDestroy()

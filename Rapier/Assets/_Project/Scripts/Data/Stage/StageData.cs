@@ -6,19 +6,19 @@ using Game.Data.Equipment;
 namespace Game.Data.Stage
 {
     /// <summary>
-    /// 스테이지 1개의 구성 데이터 SO.
+    /// 스테이지 키프레임 SO. 디스크에 저장되는 읽기 전용 데이터 정의.
     ///
     /// [필드]
-    ///   _stageName          : 스테이지 표시 이름
-    ///   _stageIndex         : 1-based 스테이지 번호
-    ///   _rooms              : 방 배열 (IntermissionRoom + BossRoom × 1, 키프레임 SO는 빈 배열)
-    ///   _hpMultiplier       : 보스 기본 HP 배율
-    ///   _atkMultiplier      : 보스 기본 ATK 배율
-    ///   _gradeDropRates     : 스테이지 공통 등급별 드롭률 오버라이드
+    ///   _stageName          : 스테이지 표시 이름 (키프레임 식별용)
+    ///   _stageIndex         : 1-based 스테이지 번호 (키프레임 위치)
+    ///   _rooms              : 방 배열 (키프레임 SO는 빈 배열, 런타임 합성은 StageContext 에서)
+    ///   _hpMultiplier       : 보스 기본 HP 배율 (키프레임 값)
+    ///   _atkMultiplier      : 보스 기본 ATK 배율 (키프레임 값)
+    ///   _gradeDropRates     : 스테이지 공통 등급별 드롭률 오버라이드 (현재 미사용, 확장용)
     ///
-    /// [규칙]
-    ///   SO 필드는 읽기 전용 프로퍼티로만 외부 노출. setter 금지.
-    ///   런타임 합성 StageData는 InitForCompose() 로만 필드를 채운다 (ScriptableObject.CreateInstance 후 즉시 호출).
+    /// [규칙] CLAUDE.md §7
+    ///   SO 값은 런타임 불변. 외부 노출은 읽기 전용 프로퍼티로만. setter 금지.
+    ///   런타임 합성(HP/ATK 보간, 방 배열, 드랍테이블)은 StageContext POCO 에 담는다.
     /// </summary>
     [CreateAssetMenu(menuName = "Game/Data/Stage/StageData", fileName = "StageData")]
     public class StageData : ScriptableObject
@@ -29,52 +29,31 @@ namespace Game.Data.Stage
         [SerializeField] private float     _hpMultiplier  = 1f;
         [SerializeField] private float     _atkMultiplier = 1f;
 
-        [Header("등급별 드롭률 (스테이지 공통)")]
+        [Header("등급별 드롭률 (스테이지 공통, 확장 예약)")]
         [Tooltip("스테이지 내 모든 보스에 적용되는 등급별 드롭률 오버라이드.\n" +
-                 "비어있으면 각 보스의 DropTableData 기본값 사용.")]
+                 "현재 미사용. StageContext.GradeDropRates 가 런타임 드롭률을 담는다.")]
         [SerializeField] private GradeDropRate[] _gradeDropRates = new GradeDropRate[0];
 
-        // ── 런타임 합성 전용 (BossVariantDatabase에서 주입) ────────────
-        /// <summary>런타임 합성 시 BossVariantEntry.dropTable 을 여기에 캐싱한다. SO 디스크 에셋에서는 null.</summary>
-        [NonSerialized] public DropTableData ComposedDropTable;
-
-        /// <summary>스테이지 표시 이름.</summary>
+        /// <summary>스테이지 표시 이름 (키프레임 식별용).</summary>
         public string    StageName     => _stageName;
 
-        /// <summary>1-based 스테이지 번호.</summary>
+        /// <summary>1-based 스테이지 번호 (키프레임 위치).</summary>
         public int       StageIndex    => _stageIndex;
 
-        /// <summary>방 배열 (InspectorOrder: Intermission→Boss×1 패턴). 키프레임 SO는 빈 배열.</summary>
+        /// <summary>방 배열. 키프레임 SO 는 빈 배열. 런타임 방 배열은 StageContext.Rooms 참조.</summary>
         public RoomNode[] Rooms        => _rooms;
 
-        /// <summary>보스 기본 HP에 곱하는 배율. 스테이지별 난이도 스케일링.</summary>
+        /// <summary>보스 기본 HP에 곱하는 키프레임 배율. StageDatabase 가 보간에 사용.</summary>
         public float     HpMultiplier  => _hpMultiplier;
 
-        /// <summary>보스 기본 ATK에 곱하는 배율. 스테이지별 난이도 스케일링.</summary>
+        /// <summary>보스 기본 ATK에 곱하는 키프레임 배율. StageDatabase 가 보간에 사용.</summary>
         public float     AtkMultiplier => _atkMultiplier;
 
         /// <summary>
-        /// 스테이지 공통 등급별 드롭률 오버라이드 목록.
-        /// 비어있으면 각 보스의 DropTableData 기본값을 그대로 사용한다.
+        /// 스테이지 공통 등급별 드롭률 오버라이드 목록 (확장 예약).
+        /// 런타임 드롭률은 StageContext.GradeDropRates 를 사용한다.
         /// </summary>
         public GradeDropRate[] GradeDropRates => _gradeDropRates;
-
-        /// <summary>
-        /// StageComposer.Compose() 가 ScriptableObject.CreateInstance&lt;StageData&gt;() 후 호출하는 내부 초기화.
-        /// Reflection 없이 필드를 직접 채운다. 디스크 에셋에서는 절대 호출하지 않는다.
-        /// </summary>
-        internal void InitForCompose(
-            int stageIndex, float hpMultiplier, float atkMultiplier,
-            RoomNode[] rooms, GradeDropRate[] gradeDropRates, DropTableData dropTable)
-        {
-            _stageName      = $"Stage {stageIndex}";
-            _stageIndex     = stageIndex;
-            _hpMultiplier   = hpMultiplier;
-            _atkMultiplier  = atkMultiplier;
-            _rooms          = rooms ?? Array.Empty<RoomNode>();
-            _gradeDropRates = gradeDropRates ?? Array.Empty<GradeDropRate>();
-            ComposedDropTable = dropTable;
-        }
     }
 
     /// <summary>

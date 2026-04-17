@@ -1,23 +1,26 @@
 using UnityEngine;
 using Game.Core.Stage;
 using Game.Data.RunStats;
-using Game.Data.Save;
 using Game.Core;
 
 namespace Game.UI.Intermission
 {
     /// <summary>
-    /// 인터미션 흐름 관리자.
+    /// 인터미션 흐름 관리자. INTERMISSION.md §3 본연 역할만 담당.
     ///
     /// [역할]
-    ///   - ProgressionManager로부터 Open() / ShowDeathPopup() 호출을 받는다.
-    ///   - IntermissionView / DeathPopupView / StageClearView 수명 관리.
+    ///   - ProgressionManager 로부터 Open() / ShowDeathPopup() 호출을 받는다.
+    ///   - IntermissionView / DeathPopupView 수명 관리.
     ///   - 스탯 선택 완료 → 스탯 적용 + UI 닫기 (다음 방 전환은 포탈이 담당).
     ///   - 이어하기/로비 복귀 → StageManager.ContinueFromDeath() / ReturnToLobby() 연결.
-    ///   - 스테이지 클리어 → StageClearView.Show() + StageManager.OnStageCleared 구독.
+    ///
+    /// [역할에서 제거됨]
+    ///   - 스테이지 클리어 처리는 StageClearManager 가 전담한다 (SRP 준수).
+    ///   - OnStageCleared 구독 제거.
+    ///   - StageClearView / Crystal 지급 / RecordStageClear 전부 StageClearManager 로 이전.
     ///
     /// [이벤트 구독 쌍]
-    ///   OnEnable  : 모든 View 이벤트 + StageManager.OnStageCleared 구독
+    ///   OnEnable  : 모든 View 이벤트 구독
     ///   OnDisable : 구독 해제 (짝 보장)
     /// </summary>
     public class IntermissionManager : MonoBehaviour
@@ -25,7 +28,6 @@ namespace Game.UI.Intermission
         [Header("참조")]
         [SerializeField] private IntermissionView  _intermissionView;
         [SerializeField] private DeathPopupView    _deathPopupView;
-        [SerializeField] private StageClearView    _stageClearView;
         [SerializeField] private StageManager      _stageManagerRef;
 
         // ── 내부 상태 ────────────────────────────────────────────────
@@ -43,15 +45,6 @@ namespace Game.UI.Intermission
                 _deathPopupView.OnContinueClicked      += HandleContinue;
                 _deathPopupView.OnReturnToLobbyClicked += HandleReturnToLobby;
             }
-
-            if (_stageClearView != null)
-            {
-                _stageClearView.OnReturnToLobbyClicked += HandleClearReturnToLobby;
-                _stageClearView.OnNextStageClicked     += HandleNextStage;
-            }
-
-            if (_stageManagerRef != null)
-                _stageManagerRef.OnStageCleared += HandleStageCleared;
         }
 
         private void OnDisable()
@@ -64,18 +57,6 @@ namespace Game.UI.Intermission
                 _deathPopupView.OnContinueClicked      -= HandleContinue;
                 _deathPopupView.OnReturnToLobbyClicked -= HandleReturnToLobby;
             }
-
-            if (_stageClearView != null)
-            {
-                _stageClearView.OnReturnToLobbyClicked -= HandleClearReturnToLobby;
-                _stageClearView.OnNextStageClicked     -= HandleNextStage;
-            }
-
-            if (_stageManagerRef != null)
-                _stageManagerRef.OnStageCleared -= HandleStageCleared;
-
-            if (_stageManager != null && _stageManager != _stageManagerRef)
-                _stageManager.OnStageCleared -= HandleStageCleared;
         }
 
         // ── 공개 API ─────────────────────────────────────────────────
@@ -86,8 +67,8 @@ namespace Game.UI.Intermission
         /// </summary>
         public void Open(RunStatContainer runStat, StageManager stageManager)
         {
-            _runStat = runStat;
-            SetStageManager(stageManager);
+            _runStat      = runStat;
+            _stageManager = stageManager;
 
             // 이어하기 모드: UI 없이 포탈만 대기
             if (stageManager != null && stageManager.IsContinueMode)
@@ -112,7 +93,7 @@ namespace Game.UI.Intermission
         /// </summary>
         public void ShowDeathPopup(StageManager stageManager)
         {
-            SetStageManager(stageManager);
+            _stageManager = stageManager;
 
             if (_deathPopupView != null)
                 _deathPopupView.Show();
@@ -146,64 +127,6 @@ namespace Game.UI.Intermission
             Debug.Log("[IntermissionManager] 로비 복귀 선택 — RunStat 초기화.");
             _deathPopupView?.Hide();
             _stageManager?.ReturnToLobby();
-        }
-
-        private void HandleStageCleared()
-        {
-            Debug.Log("[IntermissionManager] 스테이지 클리어 → 결과 화면 표시.");
-
-            // 드롭 아이템 목록과 함께 클리어 화면 표시
-            var pm = ServiceLocator.TryGet<ProgressionManager>();
-            _stageClearView?.Show(pm?.RunDrops);
-
-            // SaveManager에 클리어 기록
-            int clearedIndex = _stageManager != null ? _stageManager.CurrentStageIndex : 0;
-            if (clearedIndex > 0)
-            {
-                var saveManager = ServiceLocator.Get<SaveManager>();
-                saveManager?.RecordStageClear(clearedIndex);
-            }
-        }
-
-        private void HandleClearReturnToLobby()
-        {
-            Debug.Log("[IntermissionManager] 클리어 후 로비 복귀.");
-            _stageClearView?.Hide();
-            Game.Core.SceneController.LoadLobby();
-        }
-
-        private void HandleNextStage()
-        {
-            Debug.Log("[IntermissionManager] 다음 스테이지 진입.");
-            _stageClearView?.Hide();
-
-            // 현재 스테이지 인덱스 + 1. StageManager가 없으면 1로 폴백.
-            int currentIndex = _stageManager != null ? _stageManager.CurrentStageIndex : 0;
-            int nextIndex    = currentIndex + 1;
-
-            // StageDatabase 확인: 다음 스테이지가 없으면 로비 복귀
-            var database = UnityEngine.Resources.Load<Game.Data.Stage.StageDatabase>("StageDatabase");
-            if (database == null || database.GetStage(nextIndex) == null)
-            {
-                Debug.Log($"[IntermissionManager] 스테이지 {nextIndex} 없음 — 로비 복귀.");
-                Game.Core.SceneController.LoadLobby();
-                return;
-            }
-
-            Debug.Log($"[IntermissionManager] 스테이지 {nextIndex} 로드.");
-            Game.Core.SceneController.LoadGame(nextIndex);
-        }
-
-        // ── 내부 유틸 ────────────────────────────────────────────────
-        private void SetStageManager(StageManager stageManager)
-        {
-            if (_stageManager != null && _stageManager != _stageManagerRef)
-                _stageManager.OnStageCleared -= HandleStageCleared;
-
-            _stageManager = stageManager;
-
-            if (_stageManager != null && _stageManager != _stageManagerRef)
-                _stageManager.OnStageCleared += HandleStageCleared;
         }
     }
 }

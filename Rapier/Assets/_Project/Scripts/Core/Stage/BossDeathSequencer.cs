@@ -170,15 +170,15 @@ namespace Game.Core.Stage
             // ④ 드롭 판정 + ⑤ DroppedItemView 흩뿌림 (최종 보스만)
             if (spawnDrops)
             {
-                // 스테이지 공통 드롭률 오버라이드 취득
+                // 스테이지 공통 드롭률 오버라이드 취득 (StageContext POCO 에서)
                 var stageMgr = ServiceLocator.TryGet<StageManager>();
-                var currentStageData = stageMgr?.CurrentStageData;
-                GradeDropRate[] stageDropRates = currentStageData?.GradeDropRates;
+                var stageCtx = stageMgr?.CurrentStageContext;
+                // GradeDropRates 는 StageComposer 가 GradeDropRate[] 로 생성하므로 직접 캐스팅 가능.
+                GradeDropRate[] stageDropRates = stageCtx?.GradeDropRates as GradeDropRate[];
 
-                // 드롭테이블 참조: StageComposer 가 BossVariantEntry.dropTable 을 ComposedDropTable 에 캐싱.
-                // 런타임 합성 StageData 에는 ComposedDropTable 이 있으므로 그것을 우선 사용.
-                // 디스크 SO 기반(레거시) 시에는 BossStatData.dropTable 폴백.
-                DropTableData dropTable = currentStageData?.ComposedDropTable
+                // 드롭테이블: StageContext.DropTable (BossVariantEntry.dropTable) 을 우선 사용.
+                // StageContext 가 없거나 DropTable 이 null 이면 BossStatData.dropTable 폴백.
+                DropTableData dropTable = stageCtx?.DropTable
                     ?? statData?.dropTable;
 
                 var lootManager = new LootManager();

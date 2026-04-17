@@ -10,17 +10,17 @@ namespace Game.Core.Stage
     /// 스테이지 진행 관리자.
     ///
     /// [방 배치]
-    ///   [인터미션] → [보스1] → [인터미션] → [보스2] → [인터미션] → [보스3] → [인터미션] → [보스4] → [클리어]
+    ///   [보스1] → [클리어] (1 스테이지 = 1 보스. BALANCE §0 / PROGRESSION §1)
     ///
     /// [상태]
     ///   - 현재 방 인덱스 추적
-    ///   - 보스 처치 수 (1~4)
+    ///   - 보스 처치 수
     ///   - RunStatContainer 소유 (메모리 only)
-    ///   - CurrentStageData : 현재 스테이지 SO (스케일링 등에 활용)
+    ///   - CurrentStageContext : 런타임 스테이지 컨텍스트 POCO (스케일링 등에 활용)
     ///
     /// [이벤트]
     ///   OnRoomEntered   : 방에 진입할 때 발행 (RoomNode 전달)
-    ///   OnStageCleared  : 보스4 처치 후 발행
+    ///   OnStageCleared  : 보스 처치 후 발행
     ///   OnRunStatReset  : RunStat 초기화 시 발행
     /// </summary>
     public class StageManager : MonoBehaviour
@@ -29,8 +29,8 @@ namespace Game.Core.Stage
         /// <summary>Init()으로 주입된 방 배열.</summary>
         private RoomNode[] _rooms;
 
-        // ── 현재 StageData ───────────────────────────────────────────
-        private StageData _currentStageData;
+        // ── 현재 StageContext ────────────────────────────────────────
+        private StageContext _currentStageContext;
 
         // ── 진행 상태 ────────────────────────────────────────────────
         private int  _currentRoomIndex  = -1;
@@ -52,7 +52,7 @@ namespace Game.Core.Stage
                                          ? _rooms[_currentRoomIndex]
                                          : null;
 
-        /// <summary>전체 보스 방 수 (4).</summary>
+        /// <summary>전체 보스 방 수.</summary>
         public int  TotalBossRooms    { get; private set; }
 
         /// <summary>런 스탯 컨테이너 (읽기 전용 접근).</summary>
@@ -61,17 +61,20 @@ namespace Game.Core.Stage
         /// <summary>이어하기로 인터미션에 재진입한 경우 true. 스탯 UI 생략에 사용.</summary>
         public bool IsContinueMode { get; private set; }
 
-        /// <summary>현재 스테이지 데이터 SO. StageBuilder가 Init(StageData) 호출 시 설정됨.</summary>
-        public StageData CurrentStageData => _currentStageData;
+        /// <summary>
+        /// 현재 스테이지 컨텍스트 POCO. StageBuilder 가 Init(StageContext) 호출 시 설정됨.
+        /// HP/ATK 배율·방 배열·드랍률 등 런타임 합성 정보를 담는다.
+        /// </summary>
+        public StageContext CurrentStageContext => _currentStageContext;
 
-        /// <summary>현재 스테이지의 1-based 인덱스. StageData가 없으면 0.</summary>
-        public int CurrentStageIndex => _currentStageData != null ? _currentStageData.StageIndex : 0;
+        /// <summary>현재 스테이지의 1-based 인덱스. StageContext 가 없으면 0.</summary>
+        public int CurrentStageIndex => _currentStageContext != null ? _currentStageContext.StageIndex : 0;
 
         // ── 이벤트 ───────────────────────────────────────────────────
         /// <summary>방에 진입할 때 발행. RoomNode로 방 종류를 식별.</summary>
         public event Action<RoomNode> OnRoomEntered;
 
-        /// <summary>스테이지 클리어 (보스4 처치) 시 발행.</summary>
+        /// <summary>스테이지 클리어 (보스 처치) 시 발행.</summary>
         public event Action OnStageCleared;
 
         /// <summary>RunStat 초기화 시 발행 (로비 복귀 / 클리어).</summary>
@@ -90,13 +93,27 @@ namespace Game.Core.Stage
 
         // ── 공개 API ─────────────────────────────────────────────────
         /// <summary>
-        /// StageBuilder가 StageData SO를 주입하고 첫 방에 진입시킨다.
+        /// StageBuilder 가 StageContext POCO 를 주입하고 첫 방에 진입시킨다.
         /// </summary>
-        /// <param name="stageData">현재 스테이지 SO.</param>
-        public void Init(StageData stageData)
+        /// <param name="stageContext">현재 스테이지 컨텍스트 POCO.</param>
+        public void Init(StageContext stageContext)
         {
-            _currentStageData = stageData;
-            Init(stageData != null ? stageData.Rooms : Array.Empty<RoomNode>());
+            _currentStageContext = stageContext;
+
+            RoomNode[] rooms;
+            if (stageContext != null && stageContext.Rooms != null)
+            {
+                var list = stageContext.Rooms;
+                rooms = new RoomNode[list.Count];
+                for (int i = 0; i < list.Count; i++)
+                    rooms[i] = list[i];
+            }
+            else
+            {
+                rooms = Array.Empty<RoomNode>();
+            }
+
+            Init(rooms);
         }
 
         /// <summary>
@@ -123,7 +140,7 @@ namespace Game.Core.Stage
         }
 
         /// <summary>
-        /// 포탈을 통과했을 때 호출. 보스 처치 후 또는 인터미션 선택 완료 후 포탈 진입 시 발동.
+        /// 포탈을 통과했을 때 호출. 보스 처치 후 포탈 진입 시 발동.
         /// 마지막 방이면 스테이지 클리어, 아니면 다음 방 진입.
         /// </summary>
         public void NotifyPortalEntered()
