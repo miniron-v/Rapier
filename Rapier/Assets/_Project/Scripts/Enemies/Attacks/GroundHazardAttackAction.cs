@@ -34,6 +34,10 @@ namespace Game.Enemies
         [NonSerialized]
         public GameObject ActiveHazard;
 
+        // PrepareWindup에서 확정된 장판 위치 — Execute에서 재사용
+        [NonSerialized]
+        private Vector2 _lockedHazardPos;
+
         public override List<AttackIndicatorEntry> PrepareWindup(EnemyAttackContext ctx)
         {
             if (indicators.Count == 0 || ctx.PlayerTransform == null)
@@ -48,6 +52,7 @@ namespace Game.Enemies
                 {
                     Vector2 selfPos   = ctx.SelfTransform.position;
                     Vector2 playerPos = ctx.PlayerTransform.position;
+                    _lockedHazardPos              = playerPos;
                     entry.circleData.centerOffset = playerPos - selfPos;
                     result[i] = entry;
                 }
@@ -72,7 +77,7 @@ namespace Game.Enemies
             sr.color       = new Color(1f, 0.3f, 0f, 0.5f);
             sr.sortingOrder = 2;
             hazard.transform.localScale = Vector3.one * hazardRadius * 2f;
-            hazard.transform.position   = ctx.PlayerTransform.position;
+            hazard.transform.position   = _lockedHazardPos;
 
             // ── 지속 데미지 루프 ──────────────────────────────────
             float elapsed  = 0f;
