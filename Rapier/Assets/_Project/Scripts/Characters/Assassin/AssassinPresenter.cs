@@ -65,7 +65,7 @@ namespace Game.Characters.Assassin
                 return;
             }
 
-            Init(_statData, _view);
+            Init(_statData, _view, "Assassin");
 
             // SO에 sprite가 설정되어 있으면 그것을 사용, 없으면 런타임 원형 스프라이트 생성
             var sprite = _statData.sprite != null ? _statData.sprite : CreateCircleSprite(64, Color.white);
