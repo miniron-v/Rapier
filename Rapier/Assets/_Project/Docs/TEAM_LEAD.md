@@ -166,9 +166,8 @@ git branch -d [브랜치명]   # 또는 -D (deny되어 있음, 사용자 확인)
 4. 본 문서 §2 절차에 따라 다음 작업으로 진입.
 5. 사용자에게 진행할 작업과 우선순위 확인 후 시작.
 
-### 다음 세션 예정 작업 (2026-04-13 세션 10 완료 기준)
+### 다음 세션 예정 작업 (2026-04-17 세션 22 완료 기준)
 
-- **Phase 23 (분해/강화)**: 기획 합의 대기 — 장비 분해 재화, 강화 레벨 + 성공률 + 재료 소모 등 설계 필요
-- **페이즈 전환 FSM 정지**: 세션 8부터 carry-over (EnemyPresenterBase 색상 Lerp 중 Update 정지)
-- **Stage/Create 통합 검토**: Boss HUD 외 Player HUD + Drops 도 함께 호출할지 결정
-- **워크트리 정리**: phase-20 / 21 / 22a / 22b / 24 워크트리 보존 중 — 사용자 OK 시 `git worktree remove`
+- **인터미션 재기획**: INTERMISSION.md 기반, 별도 컨텐츠로 재기획 (CanContinueFromDeath 코드 보존됨)
+- **8번째 보스**: BossVariantDatabase slot 7에 Titan 임시 배치 → 신규 보스로 교체
+- **Unique 고유 효과**: EquipmentItemData 관련 필드/인터페이스 미구현, 별건 예약
