@@ -129,10 +129,12 @@ namespace Game.Core.Services
         private EquipmentInstance RollOne(GachaBannerData banner, SaveData saveData)
         {
             // 천장 체크 (임계값은 배너 SO에서 읽어 디자인 유연성 확보)
+            // counter 는 "미등장 상태로 뽑은 직전까지의 누적 횟수" — 79회 실패 후 80번째 뽑기 시점에 counter == 79.
+            // "80번째 뽑기 자체를 확정 결과로" 만들려면 counter + 1 >= threshold, 즉 counter >= threshold - 1.
             EquipmentGrade? forcedGrade = null;
-            if (saveData.uniquePityCounter >= banner.UniquePityThreshold)
+            if (saveData.uniquePityCounter >= banner.UniquePityThreshold - 1)
                 forcedGrade = EquipmentGrade.Unique;
-            else if (saveData.epicPityCounter >= banner.EpicPityThreshold)
+            else if (saveData.epicPityCounter >= banner.EpicPityThreshold - 1)
                 forcedGrade = EquipmentGrade.Epic;
 
             EquipmentGrade rolledGrade;

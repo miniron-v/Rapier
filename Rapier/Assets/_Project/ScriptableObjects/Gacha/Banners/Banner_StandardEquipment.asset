@@ -19,7 +19,7 @@ MonoBehaviour:
     \uCD9C\uD604!"
   _bannerArt: {fileID: 0}
   _ticketCostPerPull: 1
-  _crystalCostPerPull: 150
+  _crystalCostPerPull: 300
   _ticketType: 0
   _gradeEntries:
   - Grade: 0

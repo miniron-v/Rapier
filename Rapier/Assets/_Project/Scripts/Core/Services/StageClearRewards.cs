@@ -11,15 +11,15 @@ namespace Game.Core.Services
         /// </summary>
         public static int GetCrystal(int stageIndex)
         {
-            if (stageIndex <= 8)  return 30;
-            if (stageIndex <= 16) return 45;
-            if (stageIndex <= 24) return 60;
-            if (stageIndex <= 32) return 75;
-            if (stageIndex <= 40) return 90;
-            if (stageIndex <= 48) return 110;
-            if (stageIndex <= 64) return 130;
-            if (stageIndex <= 80) return 150;
-            return 180;
+            if (stageIndex <= 8)  return 150;
+            if (stageIndex <= 16) return 200;
+            if (stageIndex <= 24) return 250;
+            if (stageIndex <= 32) return 300;
+            if (stageIndex <= 40) return 360;
+            if (stageIndex <= 48) return 420;
+            if (stageIndex <= 64) return 480;
+            if (stageIndex <= 80) return 540;
+            return 600;
         }
     }
 }
