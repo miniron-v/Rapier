@@ -1681,16 +1681,16 @@ namespace Game.DevTools
             SetAnchors(nameGo.GetComponent<RectTransform>(), new Vector2(0f, 0.88f), new Vector2(1f, 0.98f));
             nameGo.GetComponent<RectTransform>().offsetMin = nameGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
 
-            // 2. 아이콘 (좌)
+            // 2. 아이콘 (좌) — 좌상단 앵커 고정 + 320x320 정사각형
             var iconGo  = new GameObject("ItemIcon", typeof(RectTransform));
             iconGo.transform.SetParent(popupGo.transform, false);
             var iconImg = iconGo.AddComponent<Image>();
             iconImg.color = Color.white;
-            var iconArf = iconGo.AddComponent<AspectRatioFitter>();
-            iconArf.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
-            iconArf.aspectRatio = 1f;
-            SetAnchors(iconGo.GetComponent<RectTransform>(), new Vector2(0.02f, 0.62f), new Vector2(0.28f, 0.88f));
-            iconGo.GetComponent<RectTransform>().offsetMin = iconGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
+            iconImg.preserveAspect = true;
+            var iconRt = iconGo.GetComponent<RectTransform>();
+            iconRt.anchorMin = iconRt.anchorMax = iconRt.pivot = new Vector2(0f, 1f);
+            iconRt.sizeDelta = new Vector2(320f, 320f);
+            iconRt.anchoredPosition = new Vector2(60f, -250f);
 
             // 3. 스탯창 (우 — 고정 크기 영역)
             var statPanel = new GameObject("StatPanel", typeof(RectTransform));
