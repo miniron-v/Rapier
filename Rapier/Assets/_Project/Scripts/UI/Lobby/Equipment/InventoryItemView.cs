@@ -33,8 +33,7 @@ namespace Game.UI.Lobby.Equipment
         [SerializeField] private Button _itemButton;
 
         [Header("분해 모드 시각화")]
-        [SerializeField] private Image _selectionBorder;   // 등급 색 외곽 테두리 (두께 2px 시뮬레이션)
-        [SerializeField] private Image _lockOverlay;        // 자물쇠 아이콘 오버레이 (장착 중일 때)
+        [SerializeField] private Image _lockOverlay;        // (미사용 — 하위 호환용 유지)
         [SerializeField] private Image _longPressGauge;     // Filled 원형 게이지
 
         [Header("장착/잠금 표시")]
@@ -73,10 +72,9 @@ namespace Game.UI.Lobby.Equipment
             if (_itemButton != null)
                 _itemButton.onClick.AddListener(HandleButtonClicked);
 
-            // 기본 상태 — 게이지/테두리/자물쇠 비활성
-            if (_longPressGauge   != null) { _longPressGauge.fillAmount = 0f; _longPressGauge.gameObject.SetActive(false); }
-            if (_selectionBorder  != null) _selectionBorder.gameObject.SetActive(false);
-            if (_lockOverlay      != null) _lockOverlay.gameObject.SetActive(false);
+            // 기본 상태 — 게이지/오버레이 비활성
+            if (_longPressGauge != null) { _longPressGauge.fillAmount = 0f; _longPressGauge.gameObject.SetActive(false); }
+            if (_lockOverlay    != null) _lockOverlay.gameObject.SetActive(false);
             if (_equippedBorder    != null) _equippedBorder.gameObject.SetActive(false);
             if (_equippedBadgeText != null) _equippedBadgeText.gameObject.SetActive(false);
             if (_lockIcon          != null) _lockIcon.gameObject.SetActive(false);
@@ -118,13 +116,11 @@ namespace Game.UI.Lobby.Equipment
         /// <summary>분해 모드용 추가 참조 주입.</summary>
         public void InitDismantleReferences(Image selectionBorder, Image lockOverlay, Image longPressGauge)
         {
-            _selectionBorder = selectionBorder;
-            _lockOverlay     = lockOverlay;
-            _longPressGauge  = longPressGauge;
+            _lockOverlay    = lockOverlay;
+            _longPressGauge = longPressGauge;
 
-            if (_longPressGauge  != null) { _longPressGauge.fillAmount = 0f; _longPressGauge.gameObject.SetActive(false); }
-            if (_selectionBorder != null) _selectionBorder.gameObject.SetActive(false);
-            if (_lockOverlay     != null) _lockOverlay.gameObject.SetActive(false);
+            if (_longPressGauge != null) { _longPressGauge.fillAmount = 0f; _longPressGauge.gameObject.SetActive(false); }
+            if (_lockOverlay    != null) _lockOverlay.gameObject.SetActive(false);
         }
 
         // ── Public 메서드 ────────────────────────────────────────────────────
@@ -148,8 +144,8 @@ namespace Game.UI.Lobby.Equipment
                     out var gradeColor))
                 _gradeBackground.color = gradeColor;
 
-            // 원래 색 캐싱 — 비활성 시 어두움 적용 기준값
-            _originalIconColor = _itemIcon.color;
+            // 원래 색 캐싱 — 항상 최신 등급 색/흰색 기준으로 고정
+            _originalIconColor = Color.white;
             _originalBgColor   = _gradeBackground.color;
 
             // 아이콘/배경만 갱신. 장착·잠금 상태 시각화는 SetDismantleMode → RefreshDismantleVisuals 에서 처리.
@@ -204,8 +200,6 @@ namespace Game.UI.Lobby.Equipment
             {
                 // 일반 모드: 원래 색 복구 + E 배지 / 잠금 아이콘 표시
                 RestoreColor();
-                if (_selectionBorder   != null) _selectionBorder.gameObject.SetActive(false);
-                if (_lockOverlay       != null) _lockOverlay.gameObject.SetActive(false);
                 if (_itemButton        != null) _itemButton.interactable = true;
                 if (_equippedBorder    != null) _equippedBorder.gameObject.SetActive(_isEquipped);
                 if (_equippedBadgeText != null) _equippedBadgeText.gameObject.SetActive(_isEquipped);
@@ -217,8 +211,6 @@ namespace Game.UI.Lobby.Equipment
             if (_isEquipped)
             {
                 SetDark();
-                if (_selectionBorder   != null) _selectionBorder.gameObject.SetActive(false);
-                if (_lockOverlay       != null) _lockOverlay.gameObject.SetActive(false);
                 if (_itemButton        != null) _itemButton.interactable = false;
                 if (_equippedBorder    != null) _equippedBorder.gameObject.SetActive(true);
                 if (_equippedBadgeText != null) _equippedBadgeText.gameObject.SetActive(true);
@@ -228,8 +220,6 @@ namespace Game.UI.Lobby.Equipment
             {
                 // 분해 모드 — 잠김 (미장착)
                 SetDark();
-                if (_selectionBorder   != null) _selectionBorder.gameObject.SetActive(false);
-                if (_lockOverlay       != null) _lockOverlay.gameObject.SetActive(false);
                 if (_itemButton        != null) _itemButton.interactable = false;
                 if (_equippedBorder    != null) _equippedBorder.gameObject.SetActive(false);
                 if (_equippedBadgeText != null) _equippedBadgeText.gameObject.SetActive(false);
@@ -237,14 +227,8 @@ namespace Game.UI.Lobby.Equipment
             }
             else if (_isSelected)
             {
+                // 분해 모드 — 선택됨: 원래 색 복구
                 RestoreColor();
-                if (_selectionBorder != null)
-                {
-                    _selectionBorder.gameObject.SetActive(true);
-                    if (_instance != null)
-                        _selectionBorder.color = EquipmentGradeHelper.GetGradeColor(_instance.Grade);
-                }
-                if (_lockOverlay       != null) _lockOverlay.gameObject.SetActive(false);
                 if (_itemButton        != null) _itemButton.interactable = true;
                 if (_equippedBorder    != null) _equippedBorder.gameObject.SetActive(false);
                 if (_equippedBadgeText != null) _equippedBadgeText.gameObject.SetActive(false);
@@ -254,8 +238,6 @@ namespace Game.UI.Lobby.Equipment
             {
                 // 분해 모드 — 미선택 + 미장착 + 미잠금
                 SetDark();
-                if (_selectionBorder   != null) _selectionBorder.gameObject.SetActive(false);
-                if (_lockOverlay       != null) _lockOverlay.gameObject.SetActive(false);
                 if (_itemButton        != null) _itemButton.interactable = true;
                 if (_equippedBorder    != null) _equippedBorder.gameObject.SetActive(false);
                 if (_equippedBadgeText != null) _equippedBadgeText.gameObject.SetActive(false);

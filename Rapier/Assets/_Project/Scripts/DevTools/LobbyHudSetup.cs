@@ -878,19 +878,9 @@ namespace Game.DevTools
             // ItemButton
             var tBtn = templateGo.AddComponent<Button>();
 
-            // ── 분해 모드 시각화 요소 생성 (SelectionBorder / LockOverlay / LongPressGauge) ──
+            // ── 분해 모드 시각화 요소 생성 (LockOverlay / LongPressGauge) ──
 
-            // SelectionBorder (분해 선택 시 등급 색 테두리)
-            var selectionBorderGo  = new GameObject("SelectionBorder", typeof(RectTransform));
-            selectionBorderGo.transform.SetParent(templateGo.transform, false);
-            var selectionBorderImg  = selectionBorderGo.AddComponent<Image>();
-            selectionBorderImg.color = Color.white;
-            var selectionBorderRect = selectionBorderGo.GetComponent<RectTransform>();
-            SetAnchors(selectionBorderRect, Vector2.zero, Vector2.one);
-            selectionBorderRect.offsetMin = new Vector2(-2f, -2f);
-            selectionBorderRect.offsetMax = new Vector2( 2f,  2f);
-
-            // LockOverlay (장착 아이템 분해 차단 오버레이 — 반투명 회색)
+            // LockOverlay (하위 호환용 — 현재 미사용)
             var lockOverlayGo  = new GameObject("LockOverlay", typeof(RectTransform));
             lockOverlayGo.transform.SetParent(templateGo.transform, false);
             var lockOverlayImg  = lockOverlayGo.AddComponent<Image>();
@@ -964,7 +954,7 @@ namespace Game.DevTools
             // InventoryItemView 컴포넌트 추가 및 참조 주입
             var itemViewTemplate = templateGo.AddComponent<InventoryItemView>();
             itemViewTemplate.InitReferences(tIconImg, gradeBgImg, tBtn);
-            itemViewTemplate.InitDismantleReferences(selectionBorderImg, lockOverlayImg, longPressImg);
+            itemViewTemplate.InitDismantleReferences(null, lockOverlayImg, longPressImg);
             itemViewTemplate.InitEquippedLockReferences(equippedBorderImg, equippedBadgeTmp, lockIconImg);
             templateGo.SetActive(false);  // 템플릿은 비활성 유지
 
