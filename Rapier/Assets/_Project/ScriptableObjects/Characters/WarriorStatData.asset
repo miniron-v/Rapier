@@ -31,7 +31,7 @@ MonoBehaviour:
   attackWidth: 1.5
   attackHeight: 2
   attackOffset: 1
-  _chargeDamagePercent: 380
+  _chargeDamagePercent: 600
   _shieldSwingDamagePercent: 150
   _shieldSwingKnockback: 2
   _damageReductionPercent: 50

@@ -35,11 +35,11 @@ MonoBehaviour:
   _tapProjectileSpeed: 25
   _tapProjectileRange: 8
   _tapProjectileWidth: 1
-  _justDodgeArrowDamagePercent: 200
+  _justDodgeArrowDamagePercent: 500
   _justDodgeArrowRange: 10
   _justDodgeArrowWidthMult: 3
   _chargeArrowMinDamagePercent: 100
-  _chargeArrowMaxDamagePercent: 220
+  _chargeArrowMaxDamagePercent: 300
   _chargeArrowMinRange: 4
   _chargeArrowMaxRange: 10
   _chargeArrowMaxWidthMult: 3

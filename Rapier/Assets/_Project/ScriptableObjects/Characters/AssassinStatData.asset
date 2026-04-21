@@ -32,7 +32,7 @@ MonoBehaviour:
   attackHeight: 2
   attackOffset: 1
   _phantomDuration: 5
-  _phantomDamagePercent: 50
+  _phantomDamagePercent: 150
   _maxPhantoms: 3
   _aoeSkillDamagePercent: 150
   _aoeSkillRadius: 3.5
