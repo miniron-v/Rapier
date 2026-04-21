@@ -146,7 +146,7 @@ namespace Game.UI.Lobby.Equipment
                     out var gradeColor))
                 _gradeBackground.color = gradeColor;
 
-            RefreshDismantleVisuals();
+            // 아이콘/배경만 갱신. 장착·잠금 상태 시각화는 SetDismantleMode → RefreshDismantleVisuals 에서 처리.
         }
 
         /// <summary>분해 모드 진입/종료 시 시각화 갱신.</summary>
@@ -177,8 +177,6 @@ namespace Game.UI.Lobby.Equipment
         /// <inheritdoc/>
         public void OnPointerDown(PointerEventData eventData)
         {
-            // 장착 중이거나 잠긴 아이템이면 롱프레스도 무반응
-            if (_isDismantleMode && (_isEquipped || _isLocked)) return;
             if (_instance == null) return;
 
             CancelLongPress();
