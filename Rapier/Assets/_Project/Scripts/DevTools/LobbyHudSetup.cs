@@ -933,8 +933,8 @@ namespace Game.DevTools
             SetAnchors(equippedBadgeRect, Vector2.zero, Vector2.one);
             equippedBadgeRect.offsetMin = equippedBadgeRect.offsetMax = Vector2.zero;
 
-            // LockIcon (좌측 하단, Lock.png)
-            const string LOCK_SPRITE_PATH = "Assets/_Project/Art/UI/Lock.png";
+            // LockIcon (좌측 하단, Lock.png — Rapier-Private)
+            const string LOCK_SPRITE_PATH = "Assets/Rapier-Private/Sprites/Lock.png";
             var lockSprite = AssetDatabase.LoadAssetAtPath<Sprite>(LOCK_SPRITE_PATH);
             if (lockSprite == null)
                 Debug.LogWarning($"[LobbyHudSetup] Lock 스프라이트 로드 실패: {LOCK_SPRITE_PATH}");
