@@ -911,13 +911,13 @@ namespace Game.DevTools
             var equippedBorderGo  = new GameObject("EquippedBorder", typeof(RectTransform));
             equippedBorderGo.transform.SetParent(templateGo.transform, false);
             var equippedBorderImg  = equippedBorderGo.AddComponent<Image>();
-            equippedBorderImg.color = new Color(0.4f, 0.9f, 0.4f, 1f);
+            equippedBorderImg.color = new Color(0.341f, 0.800f, 0.341f, 1f);
             var equippedBorderRect = equippedBorderGo.GetComponent<RectTransform>();
             equippedBorderRect.anchorMin          = new Vector2(0f, 1f);
             equippedBorderRect.anchorMax          = new Vector2(0f, 1f);
             equippedBorderRect.pivot              = new Vector2(0f, 1f);
             equippedBorderRect.anchoredPosition   = Vector2.zero;
-            equippedBorderRect.sizeDelta          = new Vector2(24f, 18f);
+            equippedBorderRect.sizeDelta          = new Vector2(24f, 24f);
 
             // EquippedBadgeText ("E" 텍스트 — EquippedBorder의 자식, 배경을 꽉 채움)
             var equippedBadgeGo   = new GameObject("EquippedBadgeText", typeof(RectTransform));
