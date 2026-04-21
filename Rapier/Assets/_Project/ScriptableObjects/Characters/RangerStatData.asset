@@ -19,7 +19,7 @@ MonoBehaviour:
     \uAC15\uD1B5\uC758 \uACC4\uC2B9\uC790. \uD654\uC0B4\uACFC \uC9C0\uB8C8\uB85C
     \uACF5\uAC04\uC744 \uC9C0\uBC30\uD55C\uB2E4."
   maxHp: 350
-  attackPower: 55
+  attackPower: 50
   moveSpeed: 6.5
   dodgeInvincibleDuration: 0.2
   dodgeCooldown: 2
@@ -35,16 +35,16 @@ MonoBehaviour:
   _tapProjectileSpeed: 25
   _tapProjectileRange: 8
   _tapProjectileWidth: 1
-  _justDodgeArrowDamagePercent: 300
+  _justDodgeArrowDamagePercent: 200
   _justDodgeArrowRange: 10
   _justDodgeArrowWidthMult: 3
   _chargeArrowMinDamagePercent: 100
-  _chargeArrowMaxDamagePercent: 300
+  _chargeArrowMaxDamagePercent: 220
   _chargeArrowMinRange: 4
   _chargeArrowMaxRange: 10
   _chargeArrowMaxWidthMult: 3
   _minePlaceOnDodge: 1
-  _mineDamagePercent: 80
+  _mineDamagePercent: 40
   _mineExplosionRadius: 1.5
   _mineLifetime: 5
   _maxActiveMines: 6
