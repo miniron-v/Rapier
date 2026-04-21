@@ -917,17 +917,15 @@ namespace Game.DevTools
 
             // ── E 배지 + 자물쇠 아이콘 생성 ────────────────────────────────────
 
-            // EquippedBorder (좌측 상단, 연두색 테두리 Image)
+            // EquippedBorder (슬롯 전체를 감싸는 연두색 outline)
             var equippedBorderGo  = new GameObject("EquippedBorder", typeof(RectTransform));
             equippedBorderGo.transform.SetParent(templateGo.transform, false);
             var equippedBorderImg  = equippedBorderGo.AddComponent<Image>();
             equippedBorderImg.color = new Color(0.4f, 0.9f, 0.4f, 1f);
             var equippedBorderRect = equippedBorderGo.GetComponent<RectTransform>();
-            equippedBorderRect.anchorMin = new Vector2(0f, 1f);
-            equippedBorderRect.anchorMax = new Vector2(0f, 1f);
-            equippedBorderRect.pivot     = new Vector2(0f, 1f);
-            equippedBorderRect.anchoredPosition = Vector2.zero;
-            equippedBorderRect.sizeDelta        = new Vector2(28f, 20f);
+            SetAnchors(equippedBorderRect, Vector2.zero, Vector2.one);
+            equippedBorderRect.offsetMin = new Vector2(-3f, -3f);
+            equippedBorderRect.offsetMax = new Vector2( 3f,  3f);
 
             // EquippedBadgeText ("E" 텍스트, 연두색 배경 위에)
             var equippedBadgeGo   = new GameObject("EquippedBadgeText", typeof(RectTransform));

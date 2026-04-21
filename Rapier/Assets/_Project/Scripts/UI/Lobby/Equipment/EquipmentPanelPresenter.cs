@@ -231,14 +231,7 @@ namespace Game.UI.Lobby.Equipment
 
             bool isDismantle = _actionBarPresenter?.IsDismantleMode ?? false;
 
-            if (isDismantle)
-            {
-                _itemDetailPresenter?.Show(instance, instance.Data.SlotType, disableActions: true);
-            }
-            else
-            {
-                _itemDetailPresenter?.Show(instance, instance.Data.SlotType);
-            }
+            _itemDetailPresenter?.Show(instance, instance.Data.SlotType);
         }
 
         private void HandleRuneSocketClicked(EquipmentSlotType slot, int socketIndex)

@@ -24,9 +24,7 @@ namespace Game.UI.Lobby.Equipment
 
         private const float LONG_PRESS_HOLD_DELAY = 0.3f;  // 게이지 시작 전 홀드 대기
         private const float LONG_PRESS_DURATION   = 0.5f;  // 게이지 완충까지 시간
-        private const float ALPHA_UNSELECTED    = 0.4f;
-        private const float ALPHA_SELECTED      = 1.0f;
-        private const float ALPHA_EQUIPPED      = 0.4f;
+        private const float DARK_MULTIPLIER       = 0.45f; // 비활성 슬롯 어두움 배율
 
         // ── Serialized Fields ────────────────────────────────────────────────
 
@@ -51,6 +49,9 @@ namespace Game.UI.Lobby.Equipment
         private bool _isSelected;
         private bool _isEquipped;
         private bool _isLocked;
+
+        private Color _originalIconColor;
+        private Color _originalBgColor;
 
         private Coroutine _longPressRoutine;
 
@@ -147,6 +148,10 @@ namespace Game.UI.Lobby.Equipment
                     out var gradeColor))
                 _gradeBackground.color = gradeColor;
 
+            // 원래 색 캐싱 — 비활성 시 어두움 적용 기준값
+            _originalIconColor = _itemIcon.color;
+            _originalBgColor   = _gradeBackground.color;
+
             // 아이콘/배경만 갱신. 장착·잠금 상태 시각화는 SetDismantleMode → RefreshDismantleVisuals 에서 처리.
         }
 
@@ -197,8 +202,8 @@ namespace Game.UI.Lobby.Equipment
         {
             if (!_isDismantleMode)
             {
-                // 일반 모드: 완전 표시 + E 배지 / 잠금 아이콘 표시
-                SetAlpha(ALPHA_SELECTED);
+                // 일반 모드: 원래 색 복구 + E 배지 / 잠금 아이콘 표시
+                RestoreColor();
                 if (_selectionBorder   != null) _selectionBorder.gameObject.SetActive(false);
                 if (_lockOverlay       != null) _lockOverlay.gameObject.SetActive(false);
                 if (_itemButton        != null) _itemButton.interactable = true;
@@ -208,21 +213,31 @@ namespace Game.UI.Lobby.Equipment
                 return;
             }
 
-            // 분해 모드
+            // 분해 모드 — 장착 중
             if (_isEquipped)
             {
-                SetAlpha(ALPHA_EQUIPPED);
+                SetDark();
                 if (_selectionBorder   != null) _selectionBorder.gameObject.SetActive(false);
-                if (_lockOverlay       != null) _lockOverlay.gameObject.SetActive(true);
+                if (_lockOverlay       != null) _lockOverlay.gameObject.SetActive(false);
                 if (_itemButton        != null) _itemButton.interactable = false;
-                // 분해 모드에서도 E 배지 표시, 잠금 아이콘은 lockOverlay 가 역할 대체
                 if (_equippedBorder    != null) _equippedBorder.gameObject.SetActive(true);
                 if (_equippedBadgeText != null) _equippedBadgeText.gameObject.SetActive(true);
-                if (_lockIcon          != null) _lockIcon.gameObject.SetActive(false);
+                if (_lockIcon          != null) _lockIcon.gameObject.SetActive(_isLocked);
+            }
+            else if (_isLocked)
+            {
+                // 분해 모드 — 잠김 (미장착)
+                SetDark();
+                if (_selectionBorder   != null) _selectionBorder.gameObject.SetActive(false);
+                if (_lockOverlay       != null) _lockOverlay.gameObject.SetActive(false);
+                if (_itemButton        != null) _itemButton.interactable = false;
+                if (_equippedBorder    != null) _equippedBorder.gameObject.SetActive(false);
+                if (_equippedBadgeText != null) _equippedBadgeText.gameObject.SetActive(false);
+                if (_lockIcon          != null) _lockIcon.gameObject.SetActive(true);
             }
             else if (_isSelected)
             {
-                SetAlpha(ALPHA_SELECTED);
+                RestoreColor();
                 if (_selectionBorder != null)
                 {
                     _selectionBorder.gameObject.SetActive(true);
@@ -237,8 +252,8 @@ namespace Game.UI.Lobby.Equipment
             }
             else
             {
-                // 미선택 + 미장착
-                SetAlpha(ALPHA_UNSELECTED);
+                // 분해 모드 — 미선택 + 미장착 + 미잠금
+                SetDark();
                 if (_selectionBorder   != null) _selectionBorder.gameObject.SetActive(false);
                 if (_lockOverlay       != null) _lockOverlay.gameObject.SetActive(false);
                 if (_itemButton        != null) _itemButton.interactable = true;
@@ -248,18 +263,26 @@ namespace Game.UI.Lobby.Equipment
             }
         }
 
-        private void SetAlpha(float alpha)
+        private void RestoreColor()
         {
-            SetImageAlpha(_itemIcon,        alpha);
-            SetImageAlpha(_gradeBackground, alpha);
+            if (_itemIcon        != null) _itemIcon.color        = _originalIconColor;
+            if (_gradeBackground != null) _gradeBackground.color = _originalBgColor;
         }
 
-        private static void SetImageAlpha(Image img, float alpha)
+        private void SetDark()
         {
-            if (img == null) return;
-            var c = img.color;
-            c.a      = alpha;
-            img.color = c;
+            if (_itemIcon != null)
+                _itemIcon.color = new Color(
+                    _originalIconColor.r * DARK_MULTIPLIER,
+                    _originalIconColor.g * DARK_MULTIPLIER,
+                    _originalIconColor.b * DARK_MULTIPLIER,
+                    _originalIconColor.a);
+            if (_gradeBackground != null)
+                _gradeBackground.color = new Color(
+                    _originalBgColor.r * DARK_MULTIPLIER,
+                    _originalBgColor.g * DARK_MULTIPLIER,
+                    _originalBgColor.b * DARK_MULTIPLIER,
+                    _originalBgColor.a);
         }
 
         private void CancelLongPress()
