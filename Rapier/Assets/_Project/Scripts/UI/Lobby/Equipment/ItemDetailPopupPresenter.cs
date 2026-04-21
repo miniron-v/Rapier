@@ -67,6 +67,7 @@ namespace Game.UI.Lobby.Equipment
             _view.OnEnhanceClicked    += HandleEnhanceClicked;
             _view.OnCloseClicked      += HandleCloseClicked;
             _view.OnRuneSocketClicked += HandleRuneSocketClicked;
+            _view.OnLockClicked       += HandleLockClicked;
         }
 
         private void OnDisable()
@@ -76,6 +77,7 @@ namespace Game.UI.Lobby.Equipment
             _view.OnEnhanceClicked    -= HandleEnhanceClicked;
             _view.OnCloseClicked      -= HandleCloseClicked;
             _view.OnRuneSocketClicked -= HandleRuneSocketClicked;
+            _view.OnLockClicked       -= HandleLockClicked;
         }
 
         // ── Public Methods ───────────────────────────────────────────────────
@@ -100,7 +102,7 @@ namespace Game.UI.Lobby.Equipment
             bool isEquipped    = IsEquippedByCurrentChar(instance);
             bool equippedOther = !isEquipped && IsEquippedByAnyChar(instance);
 
-            _view.SetData(instance, isEquipped, equippedOther, disableActions);
+            _view.SetData(instance, isEquipped, equippedOther, disableActions, instance.IsLocked);
             _view.transform.SetAsLastSibling();
             _view.SetVisible(true);
         }
@@ -130,7 +132,7 @@ namespace Game.UI.Lobby.Equipment
             if (_view == null || _currentInstance == null) return;
             bool isEquipped    = IsEquippedByCurrentChar(_currentInstance);
             bool equippedOther = !isEquipped && IsEquippedByAnyChar(_currentInstance);
-            _view.SetData(_currentInstance, isEquipped, equippedOther, _disableActions);
+            _view.SetData(_currentInstance, isEquipped, equippedOther, _disableActions, _currentInstance.IsLocked);
         }
 
         // ── Event Handlers ───────────────────────────────────────────────────
@@ -173,6 +175,15 @@ namespace Game.UI.Lobby.Equipment
         private void HandleCloseClicked()
         {
             Hide();
+        }
+
+        private void HandleLockClicked()
+        {
+            if (_manager == null || _currentInstance == null) return;
+            if (_disableActions) return;
+            _manager.SetItemLocked(_currentInstance, !_currentInstance.IsLocked);
+            // 팝업 유지 — 닫지 않음
+            RefreshCurrentItem();
         }
 
         private void HandleRuneSocketClicked(int socketIndex)

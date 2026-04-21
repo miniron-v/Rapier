@@ -173,7 +173,8 @@ namespace Game.UI.Lobby.Equipment
                 // 분해 모드 시각화
                 bool isEquipped = IsEquipped(filtered[i]);
                 bool isSelected = _selectedSet.Contains(filtered[i]);
-                view.SetDismantleMode(_isDismantleMode, isEquipped);
+                bool isLocked   = filtered[i].IsLocked;
+                view.SetDismantleMode(_isDismantleMode, isEquipped, isLocked);
                 view.SetSelected(isSelected);
             }
         }

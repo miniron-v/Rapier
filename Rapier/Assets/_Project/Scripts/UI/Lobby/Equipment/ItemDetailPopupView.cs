@@ -40,6 +40,8 @@ namespace Game.UI.Lobby.Equipment
         [SerializeField] private Button          _enhanceButton;
         [SerializeField] private TextMeshProUGUI _enhanceButtonText;
         [SerializeField] private Button          _closeButton;
+        [SerializeField] private Button          _lockButton;
+        [SerializeField] private TextMeshProUGUI _lockButtonText;
 
         // ── 이벤트 (View → Presenter) ────────────────────────────────────────
 
@@ -55,6 +57,9 @@ namespace Game.UI.Lobby.Equipment
         /// <summary>룬 소켓 클릭 (소켓 인덱스)</summary>
         public event Action<int> OnRuneSocketClicked;
 
+        /// <summary>잠금/해제 버튼 클릭</summary>
+        public event Action OnLockClicked;
+
         // ── Private ──────────────────────────────────────────────────────────
 
         [System.NonSerialized] private Coroutine _subStatPulseCoroutine;
@@ -66,6 +71,7 @@ namespace Game.UI.Lobby.Equipment
             _equipButton?.onClick.AddListener(() => OnEquipClicked?.Invoke());
             _enhanceButton?.onClick.AddListener(() => OnEnhanceClicked?.Invoke());
             _closeButton?.onClick.AddListener(() => OnCloseClicked?.Invoke());
+            _lockButton?.onClick.AddListener(() => OnLockClicked?.Invoke());
 
             for (int i = 0; i < _runeSocketButtons.Count; i++)
             {
@@ -79,6 +85,7 @@ namespace Game.UI.Lobby.Equipment
             _equipButton?.onClick.RemoveAllListeners();
             _enhanceButton?.onClick.RemoveAllListeners();
             _closeButton?.onClick.RemoveAllListeners();
+            _lockButton?.onClick.RemoveAllListeners();
             foreach (var btn in _runeSocketButtons)
                 btn?.onClick.RemoveAllListeners();
         }
@@ -101,7 +108,9 @@ namespace Game.UI.Lobby.Equipment
             TextMeshProUGUI equipButtonText,
             Button          enhanceButton,
             TextMeshProUGUI enhanceButtonText,
-            Button          closeButton)
+            Button          closeButton,
+            Button          lockButton = null,
+            TextMeshProUGUI lockButtonText = null)
         {
             _itemNameText      = itemNameText;
             _itemIcon          = itemIcon;
@@ -115,6 +124,8 @@ namespace Game.UI.Lobby.Equipment
             _enhanceButton     = enhanceButton;
             _enhanceButtonText = enhanceButtonText;
             _closeButton       = closeButton;
+            _lockButton        = lockButton;
+            _lockButtonText    = lockButtonText;
 
             // 런타임 주입 후 리스너 재등록
             _equipButton?.onClick.RemoveAllListeners();
@@ -123,6 +134,8 @@ namespace Game.UI.Lobby.Equipment
             _enhanceButton?.onClick.AddListener(() => OnEnhanceClicked?.Invoke());
             _closeButton?.onClick.RemoveAllListeners();
             _closeButton?.onClick.AddListener(() => OnCloseClicked?.Invoke());
+            _lockButton?.onClick.RemoveAllListeners();
+            _lockButton?.onClick.AddListener(() => OnLockClicked?.Invoke());
 
             for (int i = 0; i < _runeSocketButtons.Count; i++)
             {
@@ -142,7 +155,7 @@ namespace Game.UI.Lobby.Equipment
         /// disableActions: 분해 모드 진입 시 true — 장착/강화 모두 비활성.
         /// </summary>
         public void SetData(EquipmentInstance instance, bool isEquipped, bool equippedByOther,
-                            bool disableActions = false)
+                            bool disableActions = false, bool isLocked = false)
         {
             if (instance == null) return;
 
@@ -220,6 +233,7 @@ namespace Game.UI.Lobby.Equipment
             {
                 SetEquipButtonDisabled();
                 SetEnhanceButtonDisabled();
+                if (_lockButton != null) _lockButton.interactable = false;
             }
             else
             {
@@ -242,6 +256,12 @@ namespace Game.UI.Lobby.Equipment
                     SetEnhanceButtonDisabled();
                 else
                     SetEnhanceButtonEnabled();
+
+                // 잠금 버튼 텍스트 및 활성
+                if (_lockButtonText != null)
+                    _lockButtonText.text = isLocked ? "잠금 해제" : "잠금";
+                if (_lockButton != null)
+                    _lockButton.interactable = true;
             }
         }
 

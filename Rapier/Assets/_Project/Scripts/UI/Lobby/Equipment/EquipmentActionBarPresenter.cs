@@ -119,8 +119,9 @@ namespace Game.UI.Lobby.Equipment
         {
             if (instance == null) return;
 
-            // 장착 중이면 무반응
+            // 장착 중이거나 잠긴 아이템이면 무반응
             if (IsEquipped(instance)) return;
+            if (instance.IsLocked) return;
 
             if (_selectedInstances.Contains(instance))
                 _selectedInstances.Remove(instance);
@@ -200,6 +201,7 @@ namespace Game.UI.Lobby.Equipment
                 if (inst.Grade > grade)                                    continue;
                 if (!BelongsToCurrentTab(inst.Data.SlotType))            continue;
                 if (IsEquipped(inst))                                     continue;
+                if (inst.IsLocked)                                        continue;
                 _selectedInstances.Add(inst);
             }
 

@@ -548,6 +548,16 @@ namespace Game.Data.Equipment
             };
         }
 
+        // ── 잠금 API (Phase 27) ─────────────────────────────────────────────────
+
+        /// <summary>아이템 잠금 상태를 설정하고 저장한다.</summary>
+        public void SetItemLocked(EquipmentInstance instance, bool locked)
+        {
+            if (instance == null) return;
+            instance.SetLocked(locked);
+            TrySave();
+        }
+
         // ── IEquipmentSaveProvider (Game.Data.Save) 구현 ────────────────────
 
         /// <summary>
@@ -588,6 +598,8 @@ namespace Game.Data.Equipment
                     rolledMain    = rolledMainVal,
                     // Phase 25-A
                     enhanceLevel  = instance.EnhanceLevel,
+                    // Phase 27
+                    isLocked      = instance.IsLocked,
                 };
                 result.Add(entry);
             }
@@ -682,6 +694,9 @@ namespace Game.Data.Equipment
                         }
                     }
                 }
+
+                // Phase 27: 잠금 상태 복원
+                instance.SetLocked(entry.isLocked);
 
                 _equipmentInventory.Add(instance);
                 restored++;

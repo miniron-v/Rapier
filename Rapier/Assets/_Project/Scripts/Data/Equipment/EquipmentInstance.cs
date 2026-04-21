@@ -33,6 +33,9 @@ namespace Game.Data.Equipment
         // Phase 25-A: 강화 단계 (0 = 강화 없음)
         [NonSerialized] private int _enhanceLevel;
 
+        // Phase 27: 아이템 잠금 상태 (true = 잠금, 분해 불가)
+        [NonSerialized] private bool _isLocked;
+
         // ── 프로퍼티 ────────────────────────────────────────────────────────
 
         /// <summary>인스턴스 고유 ID</summary>
@@ -63,6 +66,9 @@ namespace Game.Data.Equipment
 
         /// <summary>이 장비의 최대 강화 단계 (등급 기반).</summary>
         public int MaxEnhanceLevel => EquipmentGradeHelper.GetMaxEnhance(Grade);
+
+        /// <summary>아이템 잠금 여부. true 이면 분해 일괄/개별 선택 불가.</summary>
+        public bool IsLocked => _isLocked;
 
         // ── 생성자 (드롭 경로) ───────────────────────────────────────────────
 
@@ -190,6 +196,14 @@ namespace Game.Data.Equipment
         internal void SetEnhanceLevel(int level)
         {
             _enhanceLevel = level;
+        }
+
+        /// <summary>
+        /// 아이템 잠금 상태를 설정한다. EquipmentManager.SetItemLocked 전용.
+        /// </summary>
+        public void SetLocked(bool locked)
+        {
+            _isLocked = locked;
         }
 
         /// <summary>

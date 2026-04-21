@@ -13,7 +13,7 @@ namespace Game.Data.Save
     {
         // ── 스키마 버전 상수 ────────────────────────────────────────
         /// <summary>현재 스키마 버전. SaveMigrator 단계와 반드시 쌍으로 유지.</summary>
-        public const int CurrentSchemaVersion = 3;
+        public const int CurrentSchemaVersion = 4;
 
         // ── 메타 (계정 연동 대비) ───────────────────────────────────
         /// <summary>스키마 버전. 로드 후 마이그레이션 시 CurrentSchemaVersion 으로 승격.</summary>
@@ -111,6 +111,10 @@ namespace Game.Data.Save
         // Phase 25-A: 강화 단계
         /// <summary>강화 단계. 0 = 강화 없음.</summary>
         public int enhanceLevel = 0;
+
+        // Phase 27: 아이템 잠금
+        /// <summary>잠금 여부. true 이면 분해 불가.</summary>
+        public bool isLocked = false;
     }
 
     [Serializable]

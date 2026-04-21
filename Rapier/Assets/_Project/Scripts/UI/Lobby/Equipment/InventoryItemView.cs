@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Game.Data.Equipment;
+using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -37,12 +38,18 @@ namespace Game.UI.Lobby.Equipment
         [SerializeField] private Image _lockOverlay;        // 자물쇠 아이콘 오버레이 (장착 중일 때)
         [SerializeField] private Image _longPressGauge;     // Filled 원형 게이지
 
+        [Header("장착/잠금 표시")]
+        [SerializeField] private Image            _equippedBorder;    // 연두색 테두리
+        [SerializeField] private TextMeshProUGUI  _equippedBadgeText; // "E" 텍스트
+        [SerializeField] private Image            _lockIcon;           // 자물쇠 아이콘
+
         // ── Private Fields ───────────────────────────────────────────────────
 
         private EquipmentInstance _instance;
         private bool _isDismantleMode;
         private bool _isSelected;
         private bool _isEquipped;
+        private bool _isLocked;
 
         private Coroutine _longPressRoutine;
 
@@ -68,6 +75,9 @@ namespace Game.UI.Lobby.Equipment
             if (_longPressGauge   != null) { _longPressGauge.fillAmount = 0f; _longPressGauge.gameObject.SetActive(false); }
             if (_selectionBorder  != null) _selectionBorder.gameObject.SetActive(false);
             if (_lockOverlay      != null) _lockOverlay.gameObject.SetActive(false);
+            if (_equippedBorder    != null) _equippedBorder.gameObject.SetActive(false);
+            if (_equippedBadgeText != null) _equippedBadgeText.gameObject.SetActive(false);
+            if (_lockIcon          != null) _lockIcon.gameObject.SetActive(false);
         }
 
         private void OnDestroy()
@@ -89,6 +99,18 @@ namespace Game.UI.Lobby.Equipment
             _itemButton      = itemButton;
             if (_itemButton != null)
                 _itemButton.onClick.AddListener(HandleButtonClicked);
+        }
+
+        /// <summary>장착/잠금 표시용 참조 주입 (LobbyHudSetup에서 호출).</summary>
+        public void InitEquippedLockReferences(Image equippedBorder, TextMeshProUGUI equippedBadgeText, Image lockIcon)
+        {
+            _equippedBorder    = equippedBorder;
+            _equippedBadgeText = equippedBadgeText;
+            _lockIcon          = lockIcon;
+
+            if (_equippedBorder    != null) _equippedBorder.gameObject.SetActive(false);
+            if (_equippedBadgeText != null) _equippedBadgeText.gameObject.SetActive(false);
+            if (_lockIcon          != null) _lockIcon.gameObject.SetActive(false);
         }
 
         /// <summary>분해 모드용 추가 참조 주입.</summary>
@@ -128,10 +150,11 @@ namespace Game.UI.Lobby.Equipment
         }
 
         /// <summary>분해 모드 진입/종료 시 시각화 갱신.</summary>
-        public void SetDismantleMode(bool isDismantle, bool isEquipped)
+        public void SetDismantleMode(bool isDismantle, bool isEquipped, bool isLocked)
         {
             _isDismantleMode = isDismantle;
             _isEquipped      = isEquipped;
+            _isLocked        = isLocked;
 
             if (!isDismantle)
             {
@@ -154,8 +177,8 @@ namespace Game.UI.Lobby.Equipment
         /// <inheritdoc/>
         public void OnPointerDown(PointerEventData eventData)
         {
-            // 장착 중이면 롱프레스도 무반응
-            if (_isDismantleMode && _isEquipped) return;
+            // 장착 중이거나 잠긴 아이템이면 롱프레스도 무반응
+            if (_isDismantleMode && (_isEquipped || _isLocked)) return;
             if (_instance == null) return;
 
             CancelLongPress();
@@ -174,11 +197,14 @@ namespace Game.UI.Lobby.Equipment
         {
             if (!_isDismantleMode)
             {
-                // 일반 모드: 완전 표시
+                // 일반 모드: 완전 표시 + E 배지 / 잠금 아이콘 표시
                 SetAlpha(ALPHA_SELECTED);
-                if (_selectionBorder != null) _selectionBorder.gameObject.SetActive(false);
-                if (_lockOverlay     != null) _lockOverlay.gameObject.SetActive(false);
-                if (_itemButton      != null) _itemButton.interactable = true;
+                if (_selectionBorder   != null) _selectionBorder.gameObject.SetActive(false);
+                if (_lockOverlay       != null) _lockOverlay.gameObject.SetActive(false);
+                if (_itemButton        != null) _itemButton.interactable = true;
+                if (_equippedBorder    != null) _equippedBorder.gameObject.SetActive(_isEquipped);
+                if (_equippedBadgeText != null) _equippedBadgeText.gameObject.SetActive(_isEquipped);
+                if (_lockIcon          != null) _lockIcon.gameObject.SetActive(_isLocked);
                 return;
             }
 
@@ -186,9 +212,13 @@ namespace Game.UI.Lobby.Equipment
             if (_isEquipped)
             {
                 SetAlpha(ALPHA_EQUIPPED);
-                if (_selectionBorder != null) _selectionBorder.gameObject.SetActive(false);
-                if (_lockOverlay     != null) _lockOverlay.gameObject.SetActive(true);
-                if (_itemButton      != null) _itemButton.interactable = false;
+                if (_selectionBorder   != null) _selectionBorder.gameObject.SetActive(false);
+                if (_lockOverlay       != null) _lockOverlay.gameObject.SetActive(true);
+                if (_itemButton        != null) _itemButton.interactable = false;
+                // 분해 모드에서도 E 배지 표시, 잠금 아이콘은 lockOverlay 가 역할 대체
+                if (_equippedBorder    != null) _equippedBorder.gameObject.SetActive(true);
+                if (_equippedBadgeText != null) _equippedBadgeText.gameObject.SetActive(true);
+                if (_lockIcon          != null) _lockIcon.gameObject.SetActive(false);
             }
             else if (_isSelected)
             {
@@ -199,16 +229,22 @@ namespace Game.UI.Lobby.Equipment
                     if (_instance != null)
                         _selectionBorder.color = EquipmentGradeHelper.GetGradeColor(_instance.Grade);
                 }
-                if (_lockOverlay != null) _lockOverlay.gameObject.SetActive(false);
-                if (_itemButton  != null) _itemButton.interactable = true;
+                if (_lockOverlay       != null) _lockOverlay.gameObject.SetActive(false);
+                if (_itemButton        != null) _itemButton.interactable = true;
+                if (_equippedBorder    != null) _equippedBorder.gameObject.SetActive(false);
+                if (_equippedBadgeText != null) _equippedBadgeText.gameObject.SetActive(false);
+                if (_lockIcon          != null) _lockIcon.gameObject.SetActive(false);
             }
             else
             {
                 // 미선택 + 미장착
                 SetAlpha(ALPHA_UNSELECTED);
-                if (_selectionBorder != null) _selectionBorder.gameObject.SetActive(false);
-                if (_lockOverlay     != null) _lockOverlay.gameObject.SetActive(false);
-                if (_itemButton      != null) _itemButton.interactable = true;
+                if (_selectionBorder   != null) _selectionBorder.gameObject.SetActive(false);
+                if (_lockOverlay       != null) _lockOverlay.gameObject.SetActive(false);
+                if (_itemButton        != null) _itemButton.interactable = true;
+                if (_equippedBorder    != null) _equippedBorder.gameObject.SetActive(false);
+                if (_equippedBadgeText != null) _equippedBadgeText.gameObject.SetActive(false);
+                if (_lockIcon          != null) _lockIcon.gameObject.SetActive(false);
             }
         }
 
@@ -276,8 +312,8 @@ namespace Game.UI.Lobby.Equipment
 
             if (_isDismantleMode)
             {
-                // 분해 모드: 장착 중이면 무반응 (Button.interactable=false 이므로 여기 도달 안 함)
-                if (_isEquipped) return;
+                // 분해 모드: 장착 중이거나 잠긴 아이템이면 무반응
+                if (_isEquipped || _isLocked) return;
                 OnDismantleToggled?.Invoke(_instance);
             }
             else

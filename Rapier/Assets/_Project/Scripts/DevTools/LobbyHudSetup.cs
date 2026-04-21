@@ -878,9 +878,96 @@ namespace Game.DevTools
             // ItemButton
             var tBtn = templateGo.AddComponent<Button>();
 
+            // ── 분해 모드 시각화 요소 생성 (SelectionBorder / LockOverlay / LongPressGauge) ──
+
+            // SelectionBorder (분해 선택 시 등급 색 테두리)
+            var selectionBorderGo  = new GameObject("SelectionBorder", typeof(RectTransform));
+            selectionBorderGo.transform.SetParent(templateGo.transform, false);
+            var selectionBorderImg  = selectionBorderGo.AddComponent<Image>();
+            selectionBorderImg.color = Color.white;
+            var selectionBorderRect = selectionBorderGo.GetComponent<RectTransform>();
+            SetAnchors(selectionBorderRect, Vector2.zero, Vector2.one);
+            selectionBorderRect.offsetMin = new Vector2(-2f, -2f);
+            selectionBorderRect.offsetMax = new Vector2( 2f,  2f);
+
+            // LockOverlay (장착 아이템 분해 차단 오버레이 — 반투명 회색)
+            var lockOverlayGo  = new GameObject("LockOverlay", typeof(RectTransform));
+            lockOverlayGo.transform.SetParent(templateGo.transform, false);
+            var lockOverlayImg  = lockOverlayGo.AddComponent<Image>();
+            lockOverlayImg.color = new Color(0f, 0f, 0f, 0.55f);
+            var lockOverlayRect = lockOverlayGo.GetComponent<RectTransform>();
+            SetAnchors(lockOverlayRect, Vector2.zero, Vector2.one);
+            lockOverlayRect.offsetMin = lockOverlayRect.offsetMax = Vector2.zero;
+
+            // LongPressGauge (Filled 원형 게이지)
+            const string CIRCLE_SPRITE_PATH =
+                "Packages/com.unity.2d.sprite/Editor/ObjectMenuCreation/DefaultAssets/Textures/v2/Circle.png";
+            var gaugeSprite = AssetDatabase.LoadAssetAtPath<Sprite>(CIRCLE_SPRITE_PATH);
+            var longPressGo  = new GameObject("LongPressGauge", typeof(RectTransform));
+            longPressGo.transform.SetParent(templateGo.transform, false);
+            var longPressImg  = longPressGo.AddComponent<Image>();
+            longPressImg.type        = Image.Type.Filled;
+            longPressImg.fillMethod  = Image.FillMethod.Radial360;
+            longPressImg.fillAmount  = 0f;
+            longPressImg.color       = new Color(1f, 1f, 1f, 0.7f);
+            if (gaugeSprite != null) longPressImg.sprite = gaugeSprite;
+            var longPressRect = longPressGo.GetComponent<RectTransform>();
+            SetAnchors(longPressRect, Vector2.zero, Vector2.one);
+            longPressRect.offsetMin = longPressRect.offsetMax = Vector2.zero;
+
+            // ── E 배지 + 자물쇠 아이콘 생성 ────────────────────────────────────
+
+            // EquippedBorder (좌측 상단, 연두색 테두리 Image)
+            var equippedBorderGo  = new GameObject("EquippedBorder", typeof(RectTransform));
+            equippedBorderGo.transform.SetParent(templateGo.transform, false);
+            var equippedBorderImg  = equippedBorderGo.AddComponent<Image>();
+            equippedBorderImg.color = new Color(0.4f, 0.9f, 0.4f, 1f);
+            var equippedBorderRect = equippedBorderGo.GetComponent<RectTransform>();
+            equippedBorderRect.anchorMin = new Vector2(0f, 1f);
+            equippedBorderRect.anchorMax = new Vector2(0f, 1f);
+            equippedBorderRect.pivot     = new Vector2(0f, 1f);
+            equippedBorderRect.anchoredPosition = Vector2.zero;
+            equippedBorderRect.sizeDelta        = new Vector2(28f, 20f);
+
+            // EquippedBadgeText ("E" 텍스트, 연두색 배경 위에)
+            var equippedBadgeGo   = new GameObject("EquippedBadgeText", typeof(RectTransform));
+            equippedBadgeGo.transform.SetParent(templateGo.transform, false);
+            var equippedBadgeTmp  = equippedBadgeGo.AddComponent<TextMeshProUGUI>();
+            equippedBadgeTmp.text      = "E";
+            equippedBadgeTmp.font      = GetFont();
+            equippedBadgeTmp.fontSize  = 16f;
+            equippedBadgeTmp.fontStyle = FontStyles.Bold;
+            equippedBadgeTmp.color     = Color.white;
+            equippedBadgeTmp.alignment = TextAlignmentOptions.Center;
+            var equippedBadgeRect = equippedBadgeGo.GetComponent<RectTransform>();
+            equippedBadgeRect.anchorMin = new Vector2(0f, 1f);
+            equippedBadgeRect.anchorMax = new Vector2(0f, 1f);
+            equippedBadgeRect.pivot     = new Vector2(0f, 1f);
+            equippedBadgeRect.anchoredPosition = Vector2.zero;
+            equippedBadgeRect.sizeDelta        = new Vector2(28f, 20f);
+
+            // LockIcon (좌측 하단, Lock.png)
+            const string LOCK_SPRITE_PATH = "Assets/_Project/Art/UI/Lock.png";
+            var lockSprite = AssetDatabase.LoadAssetAtPath<Sprite>(LOCK_SPRITE_PATH);
+            if (lockSprite == null)
+                Debug.LogWarning($"[LobbyHudSetup] Lock 스프라이트 로드 실패: {LOCK_SPRITE_PATH}");
+            var lockIconGo   = new GameObject("LockIcon", typeof(RectTransform));
+            lockIconGo.transform.SetParent(templateGo.transform, false);
+            var lockIconImg  = lockIconGo.AddComponent<Image>();
+            lockIconImg.sprite = lockSprite;
+            lockIconImg.color  = Color.white;
+            var lockIconRect = lockIconGo.GetComponent<RectTransform>();
+            lockIconRect.anchorMin = new Vector2(0f, 0f);
+            lockIconRect.anchorMax = new Vector2(0f, 0f);
+            lockIconRect.pivot     = new Vector2(0f, 0f);
+            lockIconRect.anchoredPosition = new Vector2(2f, 2f);
+            lockIconRect.sizeDelta        = new Vector2(24f, 24f);
+
             // InventoryItemView 컴포넌트 추가 및 참조 주입
             var itemViewTemplate = templateGo.AddComponent<InventoryItemView>();
             itemViewTemplate.InitReferences(tIconImg, gradeBgImg, tBtn);
+            itemViewTemplate.InitDismantleReferences(selectionBorderImg, lockOverlayImg, longPressImg);
+            itemViewTemplate.InitEquippedLockReferences(equippedBorderImg, equippedBadgeTmp, lockIconImg);
             templateGo.SetActive(false);  // 템플릿은 비활성 유지
 
             // ── (d) 인벤토리 탭 버튼 3개 (Phase 24) ───────────────────────────
@@ -1761,13 +1848,15 @@ namespace Game.DevTools
             SetAnchors(descGo.GetComponent<RectTransform>(), new Vector2(0.02f, 0.24f), new Vector2(0.98f, 0.49f));
             descGo.GetComponent<RectTransform>().offsetMin = descGo.GetComponent<RectTransform>().offsetMax = Vector2.zero;
 
-            // 6. 장착/강화/닫기 버튼 행 (Phase 25-C: 3버튼 가로 균등 분할)
+            // 6. 장착/강화/잠금/닫기 버튼 행 (4버튼 가로 균등 분할)
             var equipBtn   = CreateSimpleButton(popupGo, "EquipButton", "장착",
-                new Vector2(0.02f, 0.02f), new Vector2(0.34f, 0.14f), new Color(0.2f, 0.7f, 0.3f), font);
+                new Vector2(0.02f, 0.02f), new Vector2(0.26f, 0.14f), new Color(0.2f, 0.7f, 0.3f), font);
             var enhanceBtn = CreateSimpleButton(popupGo, "EnhanceButton", "강화",
-                new Vector2(0.36f, 0.02f), new Vector2(0.64f, 0.14f), new Color(0.8f, 0.55f, 0.1f), font);
+                new Vector2(0.27f, 0.02f), new Vector2(0.51f, 0.14f), new Color(0.8f, 0.55f, 0.1f), font);
+            var lockBtn    = CreateSimpleButton(popupGo, "LockButton", "잠금",
+                new Vector2(0.52f, 0.02f), new Vector2(0.74f, 0.14f), new Color(0.3f, 0.3f, 0.5f), font);
             var closeBtn   = CreateSimpleButton(popupGo, "CloseButton", "닫기",
-                new Vector2(0.66f, 0.02f), new Vector2(0.98f, 0.14f), new Color(0.5f, 0.2f, 0.2f), font);
+                new Vector2(0.75f, 0.02f), new Vector2(0.98f, 0.14f), new Color(0.5f, 0.2f, 0.2f), font);
 
             var view = popupGo.AddComponent<ItemDetailPopupView>();
             view.InitReferences(
@@ -1782,7 +1871,9 @@ namespace Game.DevTools
                 equipBtn.GetComponentInChildren<TextMeshProUGUI>(),
                 enhanceBtn.GetComponent<Button>(),
                 enhanceBtn.GetComponentInChildren<TextMeshProUGUI>(),
-                closeBtn.GetComponent<Button>());
+                closeBtn.GetComponent<Button>(),
+                lockBtn.GetComponent<Button>(),
+                lockBtn.GetComponentInChildren<TextMeshProUGUI>());
 
             var presenter = popupGo.AddComponent<ItemDetailPopupPresenter>();
             presenter.InitReferences(view);
