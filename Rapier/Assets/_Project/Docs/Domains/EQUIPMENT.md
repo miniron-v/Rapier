@@ -563,3 +563,67 @@ EnhanceResult TryEnhance(EquipmentInstance inst);
 
 - 분해 흐름은 `UI.md §6` 참조 (분해 모드 / 결과 모달).
 - 강화 흐름은 `UI.md §7` 참조 (상세 페이지 3버튼 / 강화 모달).
+
+## 9. 인벤토리 잠금 / 장착 배지 (Phase 27)
+
+인벤토리 보관 슬롯에 두 가지 부가 표시를 추가한다. 둘 다 *데이터 의미는 동일* (장착 여부, 잠금 여부) 이므로 `EquipmentInstance` / `CharacterEquipmentSet` 단일 진실원에서 파생.
+
+### 9-1. 데이터 모델
+
+```csharp
+public class EquipmentInstance {
+  [NonSerialized] private bool _isLocked;
+  public bool IsLocked => _isLocked;
+  internal void SetLocked(bool locked) => _isLocked = locked;  // EquipmentManager.SetItemLocked 전용
+}
+```
+
+- **잠금 상태는 인스턴스 단위.** 슬롯/캐릭터와 무관, 인벤토리에 보유한 동안 유지.
+- **장착 여부**는 `CharacterEquipmentSet.GetAllEquipped()` 로 *파생 계산*. 인스턴스 자체에 장착 플래그를 두지 않는다.
+
+### 9-2. EquipmentManager API
+
+```csharp
+public void SetItemLocked(EquipmentInstance instance, bool locked) {
+  if (instance == null) return;
+  instance.SetLocked(locked);
+  TrySave();
+  OnEquipmentInventoryChanged?.Invoke();   // ← 누락 시 UI stale (세션 27 사고)
+}
+```
+
+이벤트 발행 필수. UI 가 `OnEquipmentInventoryChanged` 를 구독해 즉시 잠금 아이콘을 표시한다.
+
+### 9-3. 분해 차단
+
+`EquipmentActionBarPresenter`:
+- `ToggleSelection(instance)` 진입 시 `if (instance.IsLocked) return;` — 개별 선택 차단.
+- `HandleBulkGradeSelected` 의 등급 일괄 선택 순회에서도 `if (inst.IsLocked) continue;` — 일괄 선택 제외.
+
+장착 중인 인스턴스는 기존 정책대로 분해 불가 (§8-2). 장착 + 잠금 조건이 겹치면 둘 다에 의해 차단됨.
+
+### 9-4. 저장 스키마 (v4)
+
+`EquipmentSaveEntry` 에 `public bool isLocked = false;` 추가. 직렬화/역직렬화는 `EquipmentManager.SerializeOwnedEquipment` / `DeserializeOwnedEquipment` 가 `instance.IsLocked` ↔ `entry.isLocked` 매핑.
+
+스키마 버전: `SaveData.CurrentSchemaVersion = 4`. 마이그레이션은 빈 스텁 (`MigrateV3ToV4` — JsonUtility 기본값 false 자연 복원, `PROGRESSION.md §4-마이그레이션` 버전 이력 참조).
+
+### 9-5. UI 표시
+
+`InventoryItemView`:
+- **EquippedBorder + EquippedBadgeText**: 장착 중인 슬롯 좌상단에 24×24 배지 (배경색 #57CC57, "E" 텍스트).
+- **LockIcon**: 잠긴 슬롯 좌하단 자물쇠 아이콘. 분해 모드에서도 표시 (잠금 해제 가능).
+- **분해 모드 비활성화**: 장착 중 또는 잠금 상태인 슬롯은 어두운 색 (DARK_MULTIPLIER=0.45). 알파 변경 금지 — 색만 변환. 원본 색 캐싱 시 *상수* (`Color.white`) / 등급 결정 *직후 한 곳* 에서만 캐싱 (재캐싱 시 원본 손실 — `feedback_runtime_color_caching.md`).
+- **롱프레스**: *분해 모드에서만* 동작 (0.3초 hold delay → 0.5초 게이지 → `OnLongPressed` → 상세 팝업). `OnPointerDown` 진입 시 `if (!_isDismantleMode) return;`.
+
+`EquipmentPanelView.RefreshInventory`: 각 슬롯에 `view.SetDismantleMode(_isDismantleMode, isEquipped, isLocked)` 전달. `isEquipped` / `isLocked` 는 매 갱신 시 파생 계산.
+
+### 9-6. ItemDetailPopup 통합
+
+`ItemDetailPopupView` 에 `_lockButton` + `_lockButtonText` 추가. `OnLockClicked` 이벤트.
+
+`ItemDetailPopupPresenter.HandleLockClicked`:
+1. `_manager.SetItemLocked(_currentInstance, !_currentInstance.IsLocked)`.
+2. 팝업 *유지* (닫지 않음) — `RefreshCurrentItem()` 으로 버튼 라벨/아이콘만 토글.
+
+분해 모드 진입 중에도 잠금/장착 해제 액션은 허용 (`disableActions: true` 미적용). 분해 모드 동안 사용자가 잠금 정리 가능.

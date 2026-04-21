@@ -140,3 +140,12 @@ PlayerPrefs 금지. `Application.persistentDataPath/save.json`. 구현: `Game.Da
 - `SaveData.version < CurrentSchemaVersion` 이면 `SaveMigrator.Migrate()` 체인 후 즉시 재저장.
 - 버전 업 시 이 문서 + `SaveMigrator` 에 새 단계 **반드시 쌍으로** 추가.
 - 필드 삭제는 `[Obsolete]` 2 단계 후 실제 제거 (로드 호환 보장).
+
+#### 버전 이력
+
+| 버전 | 변경 | 비고 |
+|---|---|---|
+| v0 → v1 | deviceId / schemaCreatedAt 초기화, `Progress_CurrentStage` PlayerPrefs 흡수 | 명시 변환 |
+| v1 → v2 | `highestStage`(레거시) → `highestClearedStage` 흡수 후 초기화 | 명시 변환 |
+| v2 → v3 | `crystal`, `epicPityCounter`, `uniquePityCounter` 신규 int 필드 | JsonUtility 기본값 0 자연 복원, 버전만 승격 |
+| v3 → v4 | `EquipmentSaveEntry.isLocked` 신규 bool 필드 (Phase 27 인벤토리 잠금) | JsonUtility 기본값 false 자연 복원, 버전만 승격 |
