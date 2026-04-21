@@ -155,9 +155,9 @@
 | 캐릭터 | 구조 특성 | S1 실전 DPS | S1 목표 시간 | 변동 요인 |
 |---|---|---|---|---|
 | Rapier | 조건부 사이클: Just 회피 → DashSkill(+표식 ATK×4) → ChargeSkill(표식 소모, 스택당 ATK×3) | **140** | **18초** | Just 회피 성공률, 표식 스택 환수 타이밍 |
-| Warrior | 차지 잠금 1.5s + 피해 감소 50% → GroundSmash(ATK×3.8) / ShieldSwing | **145** | **17초** | 차지 타이밍, 패링 성공률 |
-| Assassin | Just 회피 → 잔상 스폰 (최대 3, 5초 유지) → 본체 Tap 시 잔상 동참 (ATK×0.4) | **150** | **17초** | 잔상 유지율 50%, 잔상-보스 거리(ATTACK_RANGE 3m) |
-| Ranger | 독립 스트림 4종: Tap 화살 / 회피 지뢰 3발 / ChargeArrow / JustDodge Arrow | **145** | **17초** | 회피 빈도 (회피=딜), 지뢰 명중률 |
+| Warrior | 차지 잠금 1.5s + 피해 감소 50% → GroundSmash(ATK×6) / ShieldSwing / 패링→슬로우→GroundSmash | **140** | **18초** | 차지 타이밍, 패링 경로 4.5초 Tap 차단(차지 1.5s + 슬로우 3s) |
+| Assassin | Just 회피 3초 Tap 차단 → 잔상 스폰(최대 3, 5초 유지) → 본체 Tap 시 잔상 동참(ATK×1.5) | **140** | **18초** | 잔상 유지율 50%, 잔상-보스 거리(ATTACK_RANGE 3m), 슬로우 손실 |
+| Ranger | 독립 스트림 4종: Tap 화살 / 회피 지뢰 3발 / ChargeArrow(Max ATK×3) / JustDodge Arrow(ATK×5) | **140** | **18초** | 회피 빈도 (회피=딜), 차지 1초 Tap 차단, 슬로우 3초 Tap 차단 |
 
 **세션 25 조정 적용 SO 값**:
 - Warrior `_chargeDamagePercent`: 350 → **380**
@@ -167,7 +167,22 @@
 **세션 26 조정 적용 SO 값** (Just 회피 리턴 대폭 상향):
 - Rapier `markDamagePercent`: 70 → **400** (표식 단일 히트 ATK×0.7 → ATK×4)
 - Rapier `chargeSkillPercent`: 100 → **300** (ChargeSkill 스택당 ATK×1 → ATK×3, 5스택 = ATK×15)
-- **이유**: Just 회피 슬로우 3초 동안 Tap 차단 → 기회비용 (Tap 7.5회 ≈ 375 데미지) 대비 이전 보상(표식 35 + Charge 250) 이 순손실. 표식·Charge 대폭 상향으로 Just 회피가 Tap 대비 확실한 이득 구조로 전환.
+- **이유**: Just 회피 슬로우 3초 동안 Tap 차단 → 기회비용 (Tap 7.5회 ≈ 375 데미지) 대비 이전 보상(표식 35 + Charge 250) 이 순손실. 표식·Charge 대폭 상향으로 Just 회피가 Tap 대비 확실한 이득 구조로 전환. **실측 확인 (Rapier vs S1 Titan 숙련 플레이 적정 범위, 2026-04-21)**.
+
+**세션 26-2 조정 적용 SO 값** (Warrior/Ranger/Assassin 시간 손실 구간 보상 상향):
+
+각 캐릭터에도 Rapier 와 동일한 구조적 손실이 있음을 확인:
+- **Warrior**: 차지 1.5s + 패링 슬로우 3s = **4.5초** Tap 차단. 기회비용 Tap 11.25회 × ATK 60 = 675 대비 GroundSmash 228(ATK×3.8) 순손실 447.
+- **Ranger**: Hold 차지 1s + Just 회피 슬로우 3s. 슬로우 기회비용 Tap 7.5회 × ATK 50 = 375 대비 JustDodge Arrow 100(ATK×2) 순손실 275.
+- **Assassin**: Just 회피 슬로우 3s (본인은 Tap 안 침). 슬로우 손실 Tap 7.5회 × ATK 45 = 337 대비 잔상 1체 5초 이득 140 순손실 197.
+
+조정:
+- Warrior `_chargeDamagePercent`: 380 → **600** (ATK×6, 패링 경로 순이득 구조)
+- Ranger `_justDodgeArrowDamagePercent`: 200 → **500** (ATK×5, 슬로우 손실 흑자)
+- Ranger `_chargeArrowMaxDamagePercent`: 220 → **300** (Max 차지 ATK×3, 1초 손실 대비 순이득)
+- Assassin `_phantomDamagePercent`: 50 → **150** (잔상 Tap 동행 ATK×1.5, 유지율·사거리 감안해도 흑자)
+
+Ranger `_mineDamagePercent` 40 / Assassin `_aoeSkillDamagePercent` 150 은 유지 (순이득 구조). Rapier 세션 26 조정 유지.
 
 **체감 시간 (회피·이동 포함)**:
 - 이상적 (숙련, 스킬 적극 사용): 17~22초
