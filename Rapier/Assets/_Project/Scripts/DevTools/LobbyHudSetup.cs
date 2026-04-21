@@ -907,19 +907,21 @@ namespace Game.DevTools
 
             // ── E 배지 + 자물쇠 아이콘 생성 ────────────────────────────────────
 
-            // EquippedBorder (슬롯 전체를 감싸는 연두색 outline)
+            // EquippedBorder (좌상단 배지 배경 — EquippedBadgeText의 부모)
             var equippedBorderGo  = new GameObject("EquippedBorder", typeof(RectTransform));
             equippedBorderGo.transform.SetParent(templateGo.transform, false);
             var equippedBorderImg  = equippedBorderGo.AddComponent<Image>();
             equippedBorderImg.color = new Color(0.4f, 0.9f, 0.4f, 1f);
             var equippedBorderRect = equippedBorderGo.GetComponent<RectTransform>();
-            SetAnchors(equippedBorderRect, Vector2.zero, Vector2.one);
-            equippedBorderRect.offsetMin = new Vector2(-3f, -3f);
-            equippedBorderRect.offsetMax = new Vector2( 3f,  3f);
+            equippedBorderRect.anchorMin          = new Vector2(0f, 1f);
+            equippedBorderRect.anchorMax          = new Vector2(0f, 1f);
+            equippedBorderRect.pivot              = new Vector2(0f, 1f);
+            equippedBorderRect.anchoredPosition   = Vector2.zero;
+            equippedBorderRect.sizeDelta          = new Vector2(24f, 18f);
 
-            // EquippedBadgeText ("E" 텍스트, 연두색 배경 위에)
+            // EquippedBadgeText ("E" 텍스트 — EquippedBorder의 자식, 배경을 꽉 채움)
             var equippedBadgeGo   = new GameObject("EquippedBadgeText", typeof(RectTransform));
-            equippedBadgeGo.transform.SetParent(templateGo.transform, false);
+            equippedBadgeGo.transform.SetParent(equippedBorderGo.transform, false);
             var equippedBadgeTmp  = equippedBadgeGo.AddComponent<TextMeshProUGUI>();
             equippedBadgeTmp.text      = "E";
             equippedBadgeTmp.font      = GetFont();
@@ -928,11 +930,8 @@ namespace Game.DevTools
             equippedBadgeTmp.color     = Color.white;
             equippedBadgeTmp.alignment = TextAlignmentOptions.Center;
             var equippedBadgeRect = equippedBadgeGo.GetComponent<RectTransform>();
-            equippedBadgeRect.anchorMin = new Vector2(0f, 1f);
-            equippedBadgeRect.anchorMax = new Vector2(0f, 1f);
-            equippedBadgeRect.pivot     = new Vector2(0f, 1f);
-            equippedBadgeRect.anchoredPosition = Vector2.zero;
-            equippedBadgeRect.sizeDelta        = new Vector2(28f, 20f);
+            SetAnchors(equippedBadgeRect, Vector2.zero, Vector2.one);
+            equippedBadgeRect.offsetMin = equippedBadgeRect.offsetMax = Vector2.zero;
 
             // LockIcon (좌측 하단, Lock.png)
             const string LOCK_SPRITE_PATH = "Assets/_Project/Art/UI/Lock.png";
