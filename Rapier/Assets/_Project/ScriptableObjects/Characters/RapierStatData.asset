@@ -31,11 +31,11 @@ MonoBehaviour:
   attackWidth: 1
   attackHeight: 2
   attackOffset: 1
-  markDamagePercent: 70
+  markDamagePercent: 400
   markMaxStack: 5
   skillDashSpeed: 6
   skillReturnSpeed: 3
-  chargeSkillPercent: 100
+  chargeSkillPercent: 300
   skillAttackWidth: 2
   skillAttackHeight: 1.5
   skillAttackOffset: 1
