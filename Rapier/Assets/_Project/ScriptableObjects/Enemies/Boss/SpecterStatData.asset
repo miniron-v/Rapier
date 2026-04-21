@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Game.Enemies.BossStatData
   enemyName: Specter
   sprite: {fileID: -712631045867808456, guid: b670ab75dde984907b8570040daa08c5, type: 3}
-  maxHp: 8000
+  maxHp: 2000
   attackPower: 45
   moveSpeed: 4.5
   attackRange: 1.2

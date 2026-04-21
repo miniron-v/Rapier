@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Game.Enemies.BossStatData
   enemyName: Berserker
   sprite: {fileID: -712631045867808456, guid: b670ab75dde984907b8570040daa08c5, type: 3}
-  maxHp: 11000
+  maxHp: 2700
   attackPower: 60
   moveSpeed: 3.5
   attackRange: 1.3
