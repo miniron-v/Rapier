@@ -88,10 +88,15 @@
 
 ## 3. Setup 에디터 툴
 
-| 툴 | 메뉴 |
-|----|------|
-| BossHudSetup | `Rapier/Boss HUD/Create Boss HUD`, `Rebuild Boss HUD`. 레거시 `BossRushHudCanvas` 도 Rebuild 시 자동 제거. BossRushManager + ProgressionManager 양쪽 발견 시 모두 와이어링. |
-| LobbyHudSetup | `Rapier/Lobby/Create Lobby HUD`, `Rebuild Lobby HUD` |
+| 메뉴 | 파일 | 설명 |
+|------|------|------|
+| `Rapier/Stage/Create` | StageSceneSetup | StageDemo 씬 전체 신규 생성 |
+| `Rapier/Stage/Rebuild` | StageSceneSetup | StageDemo 씬 전체 재빌드 (BossHUD·PauseUI·드롭 시스템 포함) — **주진입점** |
+| `Rapier/Dev/Grant Crystal (+10000)` | BalanceTestTools | 개발용 Crystal 지급 |
+| `Rapier/Dev/Grant Dust (+50000)` | BalanceTestTools | 개발용 Dust 지급 |
+| `Rapier/Dev/Grant Boss Unique Items` | BalanceTestTools | 개발용 보스 유니크 아이템 지급 |
+
+하위 단독 메뉴(Boss HUD, Player HUD, Drops, StageClearManager, Pause UI)는 `Rapier/Stage/Rebuild` 에 통합되어 제거됨. 각 Setup 클래스의 `public static` 메서드는 내부 호출용으로 유지.
 
 ### Setup 툴 작성 시 체크리스트
 

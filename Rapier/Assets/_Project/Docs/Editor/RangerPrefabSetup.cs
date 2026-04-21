@@ -27,7 +27,6 @@ namespace Game.Editor
     {
         private const string PREFAB_DIR = "Assets/_Project/Prefabs/Player";
 
-        [MenuItem("Game/Setup/Create Ranger Prefabs")]
         public static void CreateRangerPrefabs()
         {
             CreateArrowPrefab();

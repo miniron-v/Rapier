@@ -74,10 +74,7 @@ namespace Game.Editor
         private static readonly Color BTN_TEXT_COLOR  = new Color(0.10f, 0.05f, 0.00f, 1.00f);
         private static readonly Color BTN_LOBBY_COLOR = new Color(0.30f, 0.55f, 0.90f, 1.00f);
 
-        [MenuItem("Rapier/Stage/Boss HUD/Create")]
         public static void CreateHud()  => BuildHud(false);
-
-        [MenuItem("Rapier/Stage/Boss HUD/Rebuild")]
         public static void RebuildHud() => BuildHud(true);
 
         private static void BuildHud(bool forceRebuild)

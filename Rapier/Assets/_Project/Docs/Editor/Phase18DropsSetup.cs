@@ -42,10 +42,7 @@ namespace Game.Editor
         private const string PREFAB_PATH = "Assets/_Project/Prefabs/Stage/DroppedItemView.prefab";
 
         // ── 메뉴 항목 ─────────────────────────────────────────────
-        [MenuItem("Rapier/Stage/Drops/Create")]
         public static void Setup()   => Build(forceRebuild: false);
-
-        [MenuItem("Rapier/Stage/Drops/Rebuild")]
         public static void Rebuild() => Build(forceRebuild: true);
 
         // ── 진입점 ────────────────────────────────────────────────

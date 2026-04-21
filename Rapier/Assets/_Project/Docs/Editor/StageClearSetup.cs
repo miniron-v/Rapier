@@ -25,7 +25,6 @@ namespace Game.Editor
     {
         private const string GO_NAME = "[StageClearManager]";
 
-        [MenuItem("Rapier/Stage/Rebuild StageClearManager")]
         public static void RebuildStageClearManager()
         {
             // 기존 오브젝트 제거
@@ -44,7 +43,7 @@ namespace Game.Editor
             EditorUtility.SetDirty(mgr);
 
             // StageClearView 자동 탐색 및 연결
-            var view = Object.FindObjectOfType<StageClearView>();
+            var view = Object.FindObjectOfType<StageClearView>(true);
             if (view != null)
             {
                 // SerializedObject 를 통해 _stageClearView 필드에 참조 주입

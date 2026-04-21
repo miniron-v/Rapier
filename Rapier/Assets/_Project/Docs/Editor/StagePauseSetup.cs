@@ -68,10 +68,7 @@ namespace Game.Editor
         }
 
         // ── 메뉴 항목 ────────────────────────────────────────────────
-        [MenuItem("Rapier/Stage/Pause UI/Add to StageDemo",     priority = 10)]
         public static void AddPauseUI()    => BuildPauseUI(false);
-
-        [MenuItem("Rapier/Stage/Pause UI/Rebuild in StageDemo", priority = 11)]
         public static void RebuildPauseUI() => BuildPauseUI(true);
 
         // ── 진입점 ───────────────────────────────────────────────────

@@ -10,6 +10,7 @@ using Game.Core.Stage;
 using Game.Input;
 using Game.UI;
 using Game.UI.Intermission;
+using Game.UI.Stage;
 
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem.UI;
@@ -358,6 +359,12 @@ namespace Game.Editor
             scSo.FindProperty("_nextStageButton").objectReferenceValue     = scNextBtn.GetComponent<Button>();
             scSo.ApplyModifiedProperties();
 
+            // ── RunDropListView (드롭 목록) ────────────────────────
+            var runDropListView = CreateRunDropListView(scPanel.transform, scTitle.GetComponent<TextMeshProUGUI>(),
+                scLobbyBtn.GetComponent<Button>(), scNextBtn.GetComponent<Button>());
+            scSo.FindProperty("_runDropListView").objectReferenceValue = runDropListView;
+            scSo.ApplyModifiedProperties();
+
             // ── IntermissionManager 배선 ──────────────────────────
             var imSo = new SerializedObject(intermissionManager);
             imSo.FindProperty("_intermissionView").objectReferenceValue  = intermissionView;
@@ -501,6 +508,141 @@ namespace Game.Editor
             textGo.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
 
             return go;
+        }
+
+        /// <summary>
+        /// StageClearView 패널 안에 RunDropListView 를 생성하고 내부 필드를 연결한다.
+        /// 버튼 두 개를 ButtonRow 로 묶어 타이틀 → 스크롤 → 버튼 순서로 배치한다.
+        /// </summary>
+        private static RunDropListView CreateRunDropListView(
+            Transform panelTransform,
+            TextMeshProUGUI titleText,
+            Button lobbyBtn,
+            Button nextBtn)
+        {
+            var font = GetFont();
+            var sq   = AssetDatabase.LoadAssetAtPath<Sprite>(
+                "Packages/com.unity.2d.sprite/Editor/ObjectMenuCreation/DefaultAssets/Textures/v2/Square.png");
+
+            // panel 에 VerticalLayoutGroup 추가
+            var vlg = panelTransform.gameObject.GetComponent<VerticalLayoutGroup>()
+                      ?? panelTransform.gameObject.AddComponent<VerticalLayoutGroup>();
+            vlg.spacing               = 20f;
+            vlg.padding               = new RectOffset(20, 20, 540, 80);
+            vlg.childAlignment        = TextAnchor.UpperCenter;
+            vlg.childForceExpandWidth  = true;
+            vlg.childForceExpandHeight = false;
+            vlg.childControlWidth     = true;
+            vlg.childControlHeight    = true;
+
+            // TitleText 레이아웃
+            if (titleText != null)
+            {
+                var le = titleText.gameObject.GetComponent<LayoutElement>()
+                         ?? titleText.gameObject.AddComponent<LayoutElement>();
+                le.minHeight       = 80f;
+                le.preferredHeight = 80f;
+                le.flexibleHeight  = 0f;
+            }
+
+            // ScrollView
+            var scrollGo = new GameObject("DropListScrollView", typeof(RectTransform));
+            scrollGo.transform.SetParent(panelTransform, false);
+            var scrollRect        = scrollGo.AddComponent<ScrollRect>();
+            scrollRect.horizontal = false;
+            var scrollImg         = scrollGo.AddComponent<Image>();
+            scrollImg.color       = new Color(0.08f, 0.08f, 0.08f, 0.60f);
+            if (sq != null) scrollImg.sprite = sq;
+            var scrollLe          = scrollGo.AddComponent<LayoutElement>();
+            scrollLe.minHeight       = 200f;
+            scrollLe.preferredHeight = 400f;
+            scrollLe.flexibleHeight  = 1f;
+
+            // Viewport
+            var vpGo  = new GameObject("Viewport", typeof(RectTransform));
+            vpGo.transform.SetParent(scrollGo.transform, false);
+            var vpImg = vpGo.AddComponent<Image>();
+            vpImg.color = Color.white;
+            var mask    = vpGo.AddComponent<Mask>();
+            mask.showMaskGraphic = false;
+            var vpRt  = vpGo.GetComponent<RectTransform>();
+            vpRt.anchorMin = Vector2.zero;
+            vpRt.anchorMax = Vector2.one;
+            vpRt.offsetMin = vpRt.offsetMax = Vector2.zero;
+            scrollRect.viewport = vpRt;
+
+            // Content
+            var contentGo = new GameObject("Content", typeof(RectTransform));
+            contentGo.transform.SetParent(vpGo.transform, false);
+            var contentRt  = contentGo.GetComponent<RectTransform>();
+            contentRt.anchorMin = new Vector2(0f, 1f);
+            contentRt.anchorMax = new Vector2(1f, 1f);
+            contentRt.pivot     = new Vector2(0.5f, 1f);
+            contentRt.sizeDelta = Vector2.zero;
+            var contentVlg = contentGo.AddComponent<VerticalLayoutGroup>();
+            contentVlg.spacing               = 12f;
+            contentVlg.padding               = new RectOffset(16, 16, 16, 16);
+            contentVlg.childForceExpandWidth  = true;
+            contentVlg.childForceExpandHeight = false;
+            contentVlg.childControlWidth     = true;
+            contentVlg.childControlHeight    = false;
+            var csf = contentGo.AddComponent<ContentSizeFitter>();
+            csf.verticalFit    = ContentSizeFitter.FitMode.PreferredSize;
+            scrollRect.content = contentRt;
+
+            // EmptyText
+            var emptyGo  = new GameObject("EmptyText", typeof(RectTransform));
+            emptyGo.transform.SetParent(scrollGo.transform, false);
+            var emptyTmp = emptyGo.AddComponent<TextMeshProUGUI>();
+            if (font != null) emptyTmp.font = font;
+            emptyTmp.text      = "획득한 장비 없음";
+            emptyTmp.fontSize  = 28f;
+            emptyTmp.color     = new Color(0.55f, 0.55f, 0.55f, 1f);
+            emptyTmp.alignment = TextAlignmentOptions.Center;
+            var emptyRt = emptyGo.GetComponent<RectTransform>();
+            emptyRt.anchorMin = Vector2.zero;
+            emptyRt.anchorMax = Vector2.one;
+            emptyRt.offsetMin = emptyRt.offsetMax = Vector2.zero;
+            emptyGo.SetActive(false);
+
+            // RunDropListView 연결
+            var view   = scrollGo.AddComponent<RunDropListView>();
+            var viewSo = new SerializedObject(view);
+            viewSo.FindProperty("_panel").objectReferenceValue      = scrollGo;
+            viewSo.FindProperty("_listParent").objectReferenceValue = contentGo.transform;
+            viewSo.FindProperty("_emptyText").objectReferenceValue  = emptyGo;
+            viewSo.FindProperty("_font").objectReferenceValue       = font;
+            viewSo.ApplyModifiedProperties();
+            EditorUtility.SetDirty(view);
+
+            scrollGo.SetActive(false);
+
+            // ButtonRow — 로비/다음 버튼을 가로로 묶기
+            var btnRowGo  = new GameObject("ButtonRow", typeof(RectTransform));
+            btnRowGo.transform.SetParent(panelTransform, false);
+            var btnRowHlg = btnRowGo.AddComponent<HorizontalLayoutGroup>();
+            btnRowHlg.spacing               = 24f;
+            btnRowHlg.padding               = new RectOffset(20, 20, 12, 12);
+            btnRowHlg.childAlignment        = TextAnchor.MiddleCenter;
+            btnRowHlg.childForceExpandWidth  = true;
+            btnRowHlg.childForceExpandHeight = false;
+            btnRowHlg.childControlWidth     = true;
+            btnRowHlg.childControlHeight    = false;
+            var btnRowLe  = btnRowGo.AddComponent<LayoutElement>();
+            btnRowLe.minHeight       = 140f;
+            btnRowLe.preferredHeight = 140f;
+            btnRowLe.flexibleHeight  = 0f;
+
+            // 버튼을 ButtonRow 자식으로 이동 (순서: 다음 스테이지 → 로비)
+            if (nextBtn  != null) nextBtn.transform.SetParent(btnRowGo.transform, false);
+            if (lobbyBtn != null) lobbyBtn.transform.SetParent(btnRowGo.transform, false);
+
+            // Hierarchy 순서: TitleText → ScrollView → ButtonRow
+            if (titleText != null) titleText.transform.SetAsFirstSibling();
+            scrollGo.transform.SetSiblingIndex(1);
+            btnRowGo.transform.SetAsLastSibling();
+
+            return view;
         }
 
         /// <summary>스탯 선택 카드. Find("Title") / Find("Desc")로 자식 접근 가능.</summary>

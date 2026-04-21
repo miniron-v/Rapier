@@ -24,10 +24,7 @@ namespace Game.Editor
         private static readonly Color DODGE_FILL_COLOR      = new Color(1.00f, 0.90f, 0.10f, 0.90f); // 노랑
 
         // ── 메뉴 ──────────────────────────────────────────────────
-        [MenuItem("Rapier/Stage/Player HUD/Create")]
         public static void CreateHudCanvas()  => BuildHud(false);
-
-        [MenuItem("Rapier/Stage/Player HUD/Rebuild")]
         public static void RebuildHudCanvas() => BuildHud(true);
 
         // ── HUD 생성 ──────────────────────────────────────────────
