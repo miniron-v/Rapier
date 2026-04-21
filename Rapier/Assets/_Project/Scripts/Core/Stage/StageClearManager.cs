@@ -131,37 +131,4 @@ namespace Game.Core.Stage
             SceneController.LoadGame(nextIndex);
         }
     }
-
-    /// <summary>
-    /// 스테이지 클리어 Crystal 보상 테이블. BALANCE §7-2.
-    /// </summary>
-    internal static class StageClearRewards
-    {
-        /// <summary>
-        /// stageIndex 에 해당하는 Crystal 보상량을 반환한다.
-        ///
-        /// BALANCE §7-2 구간별 수급:
-        ///   1~8   → 30
-        ///   9~16  → 45
-        ///   17~24 → 60
-        ///   25~32 → 75
-        ///   33~40 → 90
-        ///   41~48 → 110
-        ///   49~64 → 130
-        ///   65~80 → 150
-        ///   81~104 → 180
-        /// </summary>
-        public static int GetCrystal(int stageIndex)
-        {
-            if (stageIndex <=  8) return  30;
-            if (stageIndex <= 16) return  45;
-            if (stageIndex <= 24) return  60;
-            if (stageIndex <= 32) return  75;
-            if (stageIndex <= 40) return  90;
-            if (stageIndex <= 48) return 110;
-            if (stageIndex <= 64) return 130;
-            if (stageIndex <= 80) return 150;
-            return 180; // 81~104
-        }
-    }
 }
