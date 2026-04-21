@@ -113,13 +113,16 @@
 
 보스 런타임 스탯 = 베이스(`BossStatData`) × `StageData` 배율 (`PROGRESSION.md §1`).
 
-곡선 재조정 기준(세션 24~25): **플레이어 실전 DPS** × 목표 클리어 시간 역산. 실전 DPS = Tap + 스킬(Just 회피 사이클·차지 스킬·잔상 등) + 크리티컬 기여. 크리티컬 전투 코드 미구현 → S1 에선 CC/CD 0 으로 크리티컬 기여 0. 회피·이동 시간은 체감 배수 1.3~1.6배로 별도 고려.
+곡선 재조정 기준(세션 24~26): **플레이어 실전 DPS** × 목표 클리어 시간 역산. 실전 DPS = 유효 Tap 시간 × Tap DPS + 스킬 사이클 기여 + 크리티컬 기여. 크리티컬 전투 코드 미구현 → S1 에선 CC/CD 0 으로 크리티컬 기여 0.
 
-**기준 캐릭터 Rapier S1 실전 DPS** (장비 0, 크리티컬 미반영):
-- Tap 단독: ATK 50 / attackCooldown 0.4s / normalAttackPercent 100 → **125 DPS**
-- +Just 회피 → DashSkill + 표식 누적 → ChargeSkill 사이클 기여 → **실전 145 DPS**
+**중요**: Just 회피 슬로우 시퀀스(holdDuration 1.4s + 대시·복귀 + exitDuration 0.6s = 약 **3초**) 동안 Tap 은 차단된다. 이 시간은 DPS 계산에서 공백이 아니라 **스킬 보상으로 채워져야** Tap-only 와 동등·우월하다. 세션 25 까지의 "실전 145 DPS" 는 이 시간 손실을 0 으로 가정한 탁상 추정이었고, 실측 결과 Rapier S1 Titan 71초(숙련 + 스킬 적극 사용 기준)로 확인됨 → 실측 DPS ≈ 35.
 
-**S1 HP 역산**: 125 × 20초 (Tap 순수 기준) = **2,500**. 실전 (스킬 포함) 시 145 DPS → **~17초** 소요 예상. 보스 7종 S1 HP 는 성격별 ±20% 차등.
+**기준 캐릭터 Rapier S1 실전 DPS** (세션 26 재조정 후, 장비 0):
+- Tap 유효 시간 비율 60% (Just 회피 40% 손실 가정) × 125 DPS = **75 DPS**
+- Just 회피 1회(3초) 당 표식 데미지 ATK×4 = 200 + ChargeSkill 5스택 환수 시 ATK×15 = 750 (5회 회피 주기)
+- 합산 실전 DPS ≈ **140** (숙련 기준)
+
+**S1 HP 역산**: 140 × 18초 = **2,520 ≈ 2,500 유지**. Tap 단독으로 스킬 미사용 시 125 × 20초 = 2,500 으로 동등한 하한선.
 
 **보스 S1 HP** (성격별 차등):
 - Titan 2,500 / Specter 2,000 / Pyromancer 2,500 / Berserker 2,700 / Stormcaller 2,500 / Gravekeeper 3,000 (탱커) / TwinPhantoms 1,500×2 = 3,000 (총량 기준)
@@ -151,7 +154,7 @@
 
 | 캐릭터 | 구조 특성 | S1 실전 DPS | S1 목표 시간 | 변동 요인 |
 |---|---|---|---|---|
-| Rapier | 조건부 사이클: Just 회피 → DashSkill(+표식) → ChargeSkill(표식 소모) | **145** | **17초** | Just 회피 성공률, 적 공격 빈도 |
+| Rapier | 조건부 사이클: Just 회피 → DashSkill(+표식 ATK×4) → ChargeSkill(표식 소모, 스택당 ATK×3) | **140** | **18초** | Just 회피 성공률, 표식 스택 환수 타이밍 |
 | Warrior | 차지 잠금 1.5s + 피해 감소 50% → GroundSmash(ATK×3.8) / ShieldSwing | **145** | **17초** | 차지 타이밍, 패링 성공률 |
 | Assassin | Just 회피 → 잔상 스폰 (최대 3, 5초 유지) → 본체 Tap 시 잔상 동참 (ATK×0.4) | **150** | **17초** | 잔상 유지율 50%, 잔상-보스 거리(ATTACK_RANGE 3m) |
 | Ranger | 독립 스트림 4종: Tap 화살 / 회피 지뢰 3발 / ChargeArrow / JustDodge Arrow | **145** | **17초** | 회피 빈도 (회피=딜), 지뢰 명중률 |
@@ -159,12 +162,19 @@
 **세션 25 조정 적용 SO 값**:
 - Warrior `_chargeDamagePercent`: 350 → **380**
 - Ranger `attackPower`: 55 → **50**, `_mineDamagePercent`: 80 → **40**, `_justDodgeArrowDamagePercent`: 300 → **200**, `_chargeArrowMaxDamagePercent`: 300 → **220**
-- Rapier / Assassin SO 유지
+- Assassin SO 유지
+
+**세션 26 조정 적용 SO 값** (Just 회피 리턴 대폭 상향):
+- Rapier `markDamagePercent`: 70 → **400** (표식 단일 히트 ATK×0.7 → ATK×4)
+- Rapier `chargeSkillPercent`: 100 → **300** (ChargeSkill 스택당 ATK×1 → ATK×3, 5스택 = ATK×15)
+- **이유**: Just 회피 슬로우 3초 동안 Tap 차단 → 기회비용 (Tap 7.5회 ≈ 375 데미지) 대비 이전 보상(표식 35 + Charge 250) 이 순손실. 표식·Charge 대폭 상향으로 Just 회피가 Tap 대비 확실한 이득 구조로 전환.
 
 **체감 시간 (회피·이동 포함)**:
-- 이상적 (숙련): 17~20초
-- 정상: 22~27초
-- 미숙련 상단: 28~30초
+- 이상적 (숙련, 스킬 적극 사용): 17~22초
+- 정상: 25~30초
+- Tap 단독 (스킬 미사용): 35~45초 (스킬 구조 허수 확인용 하한)
+
+**세션 25 실측 — 세션 26 조정 전**: Rapier vs S1 Titan 숙련 플레이 **71초** → 실전 DPS ≈ 35 (슬로우 시간 + 거리 복귀 손실). 세션 26 조정으로 슬로우당 보상이 ATK×4 로 Tap 7.5회 기회비용과 균형 → 사용자 재테스트 예정.
 
 ---
 
