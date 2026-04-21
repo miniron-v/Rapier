@@ -14,5 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Stage.StageData
   _stageName: Stage KF 48
   _stageIndex: 48
-  _hpMultiplier: 57.6
+  _hpMultiplier: 132
   _atkMultiplier: 3.6
