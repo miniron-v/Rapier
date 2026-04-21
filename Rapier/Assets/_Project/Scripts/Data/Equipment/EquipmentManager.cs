@@ -556,6 +556,7 @@ namespace Game.Data.Equipment
             if (instance == null) return;
             instance.SetLocked(locked);
             TrySave();
+            OnEquipmentInventoryChanged?.Invoke();
         }
 
         // ── IEquipmentSaveProvider (Game.Data.Save) 구현 ────────────────────

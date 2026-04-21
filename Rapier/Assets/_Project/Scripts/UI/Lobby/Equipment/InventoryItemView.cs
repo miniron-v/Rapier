@@ -22,7 +22,8 @@ namespace Game.UI.Lobby.Equipment
     {
         // ── 상수 ─────────────────────────────────────────────────────────────
 
-        private const float LONG_PRESS_DURATION = 0.5f;
+        private const float LONG_PRESS_HOLD_DELAY = 0.3f;  // 게이지 시작 전 홀드 대기
+        private const float LONG_PRESS_DURATION   = 0.5f;  // 게이지 완충까지 시간
         private const float ALPHA_UNSELECTED    = 0.4f;
         private const float ALPHA_SELECTED      = 1.0f;
         private const float ALPHA_EQUIPPED      = 0.4f;
@@ -178,6 +179,7 @@ namespace Game.UI.Lobby.Equipment
         public void OnPointerDown(PointerEventData eventData)
         {
             if (_instance == null) return;
+            if (!_isDismantleMode) return;
 
             CancelLongPress();
             _longPressRoutine = StartCoroutine(LongPressRoutine());
@@ -276,6 +278,15 @@ namespace Game.UI.Lobby.Equipment
 
         private IEnumerator LongPressRoutine()
         {
+            // 0.3초 홀드 대기 — 이 구간엔 게이지 미표시
+            float holdElapsed = 0f;
+            while (holdElapsed < LONG_PRESS_HOLD_DELAY)
+            {
+                holdElapsed += Time.unscaledDeltaTime;
+                yield return null;
+            }
+
+            // 0.3초 초과 → 게이지 표시 시작
             if (_longPressGauge != null)
             {
                 _longPressGauge.fillAmount = 0f;
