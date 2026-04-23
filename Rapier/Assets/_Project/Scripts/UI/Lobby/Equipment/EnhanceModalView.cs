@@ -396,20 +396,6 @@ namespace Game.UI.Lobby.Equipment
         // ── Private 유틸 ─────────────────────────────────────────────────────
 
         private static string GetStatLabel(StatType type)
-        {
-            return type switch
-            {
-                StatType.HP                  => "HP",
-                StatType.ATK                 => "공격력",
-                StatType.MoveSpeed           => "이동속도",
-                StatType.DodgeCDR            => "회피 쿨다운",
-                StatType.ChargeTimeReduction => "차지 시간 단축",
-                StatType.InvincibilityBonus  => "무적 시간",
-                StatType.CritChance          => "치명타 확률",
-                StatType.CritDamage          => "치명타 피해",
-                StatType.SkillDamage         => "스킬 피해",
-                _                            => type.ToString()
-            };
-        }
+            => StatLabelFormatter.GetLabel(type);
     }
 }

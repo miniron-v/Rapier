@@ -27,9 +27,10 @@ namespace Game.UI.Lobby
     {
         // ── Serialized Fields ────────────────────────────────────────────────
 
-        [SerializeField] private CharacterInfoPanelView      _view;
+        [SerializeField] private CharacterInfoPanelView       _view;
         [SerializeField] private CharacterSelectModalPresenter _modalPresenter;
         [SerializeField] private EquipmentPanelPresenter      _equipmentPanel;
+        [SerializeField] private CharacterStatsModalPresenter  _statsModalPresenter;
 
         // ── CharacterStatData 참조 (에디터에서 주입) ─────────────────────────
 
@@ -48,21 +49,23 @@ namespace Game.UI.Lobby
 
         /// <summary>LobbyHudSetup 에서 호출.</summary>
         public void InitReferences(
-            CharacterInfoPanelView       view,
-            CharacterSelectModalPresenter modalPresenter,
-            EquipmentPanelPresenter      equipmentPanel,
-            CharacterStatData            rapierData,
-            CharacterStatData            assassinData,
-            CharacterStatData            warriorData  = null,
-            CharacterStatData            rangerData   = null)
+            CharacterInfoPanelView        view,
+            CharacterSelectModalPresenter  modalPresenter,
+            EquipmentPanelPresenter       equipmentPanel,
+            CharacterStatData             rapierData,
+            CharacterStatData             assassinData,
+            CharacterStatData             warriorData         = null,
+            CharacterStatData             rangerData          = null,
+            CharacterStatsModalPresenter  statsModalPresenter = null)
         {
-            _view            = view;
-            _modalPresenter  = modalPresenter;
-            _equipmentPanel  = equipmentPanel;
-            _rapierData      = rapierData;
-            _assassinData    = assassinData;
-            _warriorData     = warriorData;
-            _rangerData      = rangerData;
+            _view                = view;
+            _modalPresenter      = modalPresenter;
+            _equipmentPanel      = equipmentPanel;
+            _rapierData          = rapierData;
+            _assassinData        = assassinData;
+            _warriorData         = warriorData;
+            _rangerData          = rangerData;
+            _statsModalPresenter = statsModalPresenter;
         }
 
         // ── 탭 진입점 ────────────────────────────────────────────────────────
@@ -76,8 +79,10 @@ namespace Game.UI.Lobby
             _view.gameObject.SetActive(true);
 
             // 이벤트 구독
-            _view.OnChangeCharacterClicked      -= HandleChangeClicked;
-            _view.OnChangeCharacterClicked      += HandleChangeClicked;
+            _view.OnChangeCharacterClicked -= HandleChangeClicked;
+            _view.OnChangeCharacterClicked += HandleChangeClicked;
+            _view.OnStatsClicked           -= HandleStatsClicked;
+            _view.OnStatsClicked           += HandleStatsClicked;
 
             if (_modalPresenter != null)
             {
@@ -97,13 +102,17 @@ namespace Game.UI.Lobby
             _isActive = false;
 
             if (_view != null)
+            {
                 _view.OnChangeCharacterClicked -= HandleChangeClicked;
+                _view.OnStatsClicked           -= HandleStatsClicked;
+            }
 
             if (_modalPresenter != null)
                 _modalPresenter.OnCharacterSelected -= HandleModalCharacterSelected;
 
             // 모달이 열려 있으면 닫음
             _modalPresenter?.CloseModal();
+            _statsModalPresenter?.Hide();
 
             if (_view != null)
                 _view.gameObject.SetActive(false);
@@ -114,6 +123,11 @@ namespace Game.UI.Lobby
         private void HandleChangeClicked()
         {
             _modalPresenter?.OpenModal(_currentCharacterId);
+        }
+
+        private void HandleStatsClicked()
+        {
+            _statsModalPresenter?.Show(_currentCharacterId, GetStatData(_currentCharacterId));
         }
 
         private void HandleModalCharacterSelected(string characterId)

@@ -24,6 +24,7 @@ namespace Game.UI.Lobby
 
         [Header("버튼")]
         [SerializeField] private Button _changeCharacterButton;
+        [SerializeField] private Button _statsButton;
 
         [Header("좌측 슬롯 (Weapon/Necklace/Ring)")]
         [SerializeField] private Equipment.EquipmentSlotView _leftSlot0; // Weapon
@@ -42,6 +43,9 @@ namespace Game.UI.Lobby
         /// <summary>캐릭터 변경 버튼 클릭 이벤트.</summary>
         public event Action OnChangeCharacterClicked;
 
+        /// <summary>스탯 보기 버튼 클릭 이벤트.</summary>
+        public event Action OnStatsClicked;
+
         // ── Properties ──────────────────────────────────────────────────────
 
         /// <summary>좌측 3슬롯: 무기, 목걸이, 반지 순.</summary>
@@ -58,18 +62,23 @@ namespace Game.UI.Lobby
         {
             if (_changeCharacterButton != null)
                 _changeCharacterButton.onClick.AddListener(HandleChangeClicked);
+            if (_statsButton != null)
+                _statsButton.onClick.AddListener(HandleStatsClicked);
         }
 
         private void OnDestroy()
         {
             if (_changeCharacterButton != null)
                 _changeCharacterButton.onClick.RemoveListener(HandleChangeClicked);
+            if (_statsButton != null)
+                _statsButton.onClick.RemoveListener(HandleStatsClicked);
         }
 
-        /// <summary>런타임 생성 시 참조 주입 (CharacterInfoPanelSetup 에서 호출).</summary>
+        /// <summary>런타임 생성 시 참조 주입 (LobbyHudSetup 에서 호출).</summary>
         public void InitReferences(
             Image illustrationImage,
             Button changeCharacterButton,
+            Button statsButton,
             Equipment.EquipmentSlotView leftSlot0,
             Equipment.EquipmentSlotView leftSlot1,
             Equipment.EquipmentSlotView leftSlot2,
@@ -81,6 +90,7 @@ namespace Game.UI.Lobby
         {
             _illustrationImage     = illustrationImage;
             _changeCharacterButton = changeCharacterButton;
+            _statsButton           = statsButton;
             _leftSlot0 = leftSlot0;  _leftSlot1 = leftSlot1;  _leftSlot2 = leftSlot2;
             _rightSlot0 = rightSlot0; _rightSlot1 = rightSlot1; _rightSlot2 = rightSlot2;
             _rightSlot3 = rightSlot3; _rightSlot4 = rightSlot4;
@@ -90,6 +100,11 @@ namespace Game.UI.Lobby
             {
                 _changeCharacterButton.onClick.RemoveListener(HandleChangeClicked);
                 _changeCharacterButton.onClick.AddListener(HandleChangeClicked);
+            }
+            if (_statsButton != null)
+            {
+                _statsButton.onClick.RemoveListener(HandleStatsClicked);
+                _statsButton.onClick.AddListener(HandleStatsClicked);
             }
         }
 
@@ -109,6 +124,11 @@ namespace Game.UI.Lobby
         private void HandleChangeClicked()
         {
             OnChangeCharacterClicked?.Invoke();
+        }
+
+        private void HandleStatsClicked()
+        {
+            OnStatsClicked?.Invoke();
         }
     }
 }

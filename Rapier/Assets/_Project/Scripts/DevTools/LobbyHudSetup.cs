@@ -682,16 +682,40 @@ namespace Game.DevTools
             for (int i = 0; i < 5; i++)
                 rightSlotViews[i] = CreateEquipmentSlotGo(rightColumnGo, rightSlotNames[i], SLOT_SIZE);
 
-            // 캐릭터 변경 버튼 (중하단, 일러스트를 약간 가림)
-            var changeBtnGo = new GameObject("ChangeCharacterButton", typeof(RectTransform));
-            changeBtnGo.transform.SetParent(infoPanel.transform, false);
+            // ── 버튼 행 컨테이너 (StatsButton + ChangeCharacterButton) ──────────
+            var btnRowGo = new GameObject("CharacterButtonRow", typeof(RectTransform));
+            btnRowGo.transform.SetParent(infoPanel.transform, false);
+            var btnRowRect = btnRowGo.GetComponent<RectTransform>();
+            SetAnchors(btnRowRect, new Vector2(0.25f, 0.02f), new Vector2(0.75f, 0.15f));
+            btnRowRect.offsetMin = btnRowRect.offsetMax = Vector2.zero;
+            var btnRowHLayout             = btnRowGo.AddComponent<HorizontalLayoutGroup>();
+            btnRowHLayout.spacing         = 8f;
+            btnRowHLayout.childAlignment           = TextAnchor.MiddleCenter;
+            btnRowHLayout.childControlWidth        = true;
+            btnRowHLayout.childControlHeight       = true;
+            btnRowHLayout.childForceExpandWidth    = true;
+            btnRowHLayout.childForceExpandHeight   = true;
+
+            // StatsButton (좌)
+            var statsBtnGo   = new GameObject("StatsButton", typeof(RectTransform));
+            statsBtnGo.transform.SetParent(btnRowGo.transform, false);
+            var statsBtnImg  = statsBtnGo.AddComponent<Image>();
+            statsBtnImg.color = new Color(0.15f, 0.45f, 0.80f, 0.9f);
+            var statsBtnBtn  = statsBtnGo.AddComponent<Button>();
+            statsBtnBtn.targetGraphic = statsBtnImg;
+            var statsLabelGo   = CreateTmpLabel(statsBtnGo, "Label_스탯", "스탯", 36f, GetFont());
+            var statsLabelRect = statsLabelGo.GetComponent<RectTransform>();
+            SetAnchors(statsLabelRect, Vector2.zero, Vector2.one);
+            statsLabelRect.offsetMin = statsLabelRect.offsetMax = Vector2.zero;
+
+            // ChangeCharacterButton (우)
+            var changeBtnGo   = new GameObject("ChangeCharacterButton", typeof(RectTransform));
+            changeBtnGo.transform.SetParent(btnRowGo.transform, false);
             var changeBtnImg  = changeBtnGo.AddComponent<Image>();
             changeBtnImg.color = new Color(0.15f, 0.45f, 0.80f, 0.9f);
             var changeBtnBtn  = changeBtnGo.AddComponent<Button>();
-            var changeBtnRect = changeBtnGo.GetComponent<RectTransform>();
-            SetAnchors(changeBtnRect, new Vector2(0.25f, 0.02f), new Vector2(0.75f, 0.15f));
-            changeBtnRect.offsetMin = changeBtnRect.offsetMax = Vector2.zero;
-            var changeLabelGo = CreateTmpLabel(changeBtnGo, "Label_캐릭터변경", "캐릭터 변경", 36f, GetFont());
+            changeBtnBtn.targetGraphic = changeBtnImg;
+            var changeLabelGo   = CreateTmpLabel(changeBtnGo, "Label_캐릭터변경", "캐릭터 변경", 36f, GetFont());
             var changeLabelRect = changeLabelGo.GetComponent<RectTransform>();
             SetAnchors(changeLabelRect, Vector2.zero, Vector2.one);
             changeLabelRect.offsetMin = changeLabelRect.offsetMax = Vector2.zero;
@@ -699,7 +723,7 @@ namespace Game.DevTools
             // CharacterInfoPanelView 컴포넌트 부착 및 참조 주입
             var infoPanelView = infoPanel.AddComponent<CharacterInfoPanelView>();
             infoPanelView.InitReferences(
-                illustImg, changeBtnBtn,
+                illustImg, changeBtnBtn, statsBtnBtn,
                 leftSlotViews[0],  // Weapon
                 leftSlotViews[1],  // Necklace
                 leftSlotViews[2],  // Ring
@@ -1054,11 +1078,16 @@ namespace Game.DevTools
             CreateLabel(levelRoot.gameObject, "[B3] 레벨업 패널 영역", 32, TextAlignmentOptions.Center,
                         new Color(0.5f, 0.6f, 0.9f, 0.6f));
 
+            // ── CharacterStatsModal ─────────────────────────────────────────────
+            var (statsModalView, statsModalPresenter) = CreateCharacterStatsModal(infoPanel, GetFont(), GetBoldFont());
+
             // CharacterInfoPanelPresenter 조립
             var infoPanelPresenter = panel.AddComponent<CharacterInfoPanelPresenter>();
-            infoPanelPresenter.InitReferences(infoPanelView, modalPresenter, equipPresenter, rapierData, assassinData, warriorData, rangerData);
+            infoPanelPresenter.InitReferences(infoPanelView, modalPresenter, equipPresenter, rapierData, assassinData, warriorData, rangerData, statsModalPresenter);
             EditorUtility.SetDirty(infoPanelPresenter);
             EditorUtility.SetDirty(modalPresenter);
+            EditorUtility.SetDirty(statsModalView);
+            EditorUtility.SetDirty(statsModalPresenter);
 
             // EquipmentPanelView の 8슬롯을 CharacterInfoPanelView 슬롯으로 재초기화
             // (좌3/우5 슬롯이 EquipmentPanelView 와는 별개로 직접 EquipmentSlotView 를 가짐)
@@ -2426,6 +2455,146 @@ namespace Game.DevTools
             lr.offsetMin = lr.offsetMax = Vector2.zero;
 
             return btnGo;
+        }
+
+        // ── CharacterStatsModal 생성 ─────────────────────────────────────────
+
+        private static (CharacterStatsModalView view, CharacterStatsModalPresenter presenter)
+            CreateCharacterStatsModal(GameObject parent, TMP_FontAsset font, TMP_FontAsset boldFont)
+        {
+            // 모달 루트 (비활성 시작) — infoPanel 하위에 생성
+            var modalGo = new GameObject("CharacterStatsModal", typeof(RectTransform));
+            modalGo.transform.SetParent(parent.transform, false);
+            var modalRect = modalGo.GetComponent<RectTransform>();
+            SetAnchors(modalRect, Vector2.zero, Vector2.one);
+            modalRect.offsetMin = modalRect.offsetMax = Vector2.zero;
+
+            // 별도 Canvas (sortingOrder 300)
+            var modalCanvas = modalGo.AddComponent<Canvas>();
+            modalCanvas.overrideSorting = true;
+            modalCanvas.sortingOrder    = 300;
+            modalGo.AddComponent<GraphicRaycaster>();
+
+            // Dimmer (반투명 검정, 전체 화면, 클릭 닫기용 Button)
+            var dimmerGo = new GameObject("Dimmer", typeof(RectTransform));
+            dimmerGo.transform.SetParent(modalGo.transform, false);
+            var dimmerRect = dimmerGo.GetComponent<RectTransform>();
+            SetAnchors(dimmerRect, Vector2.zero, Vector2.one);
+            dimmerRect.offsetMin = dimmerRect.offsetMax = Vector2.zero;
+            var dimmerImg = dimmerGo.AddComponent<Image>();
+            dimmerImg.color = new Color(0f, 0f, 0f, 0.7f);
+            var dimmerBtn = dimmerGo.AddComponent<Button>();
+            dimmerBtn.targetGraphic = dimmerImg;
+
+            // Panel 배경 (중앙 배치, 불투명)
+            var panelGo = new GameObject("StatPanel", typeof(RectTransform));
+            panelGo.transform.SetParent(modalGo.transform, false);
+            var panelRect = panelGo.GetComponent<RectTransform>();
+            SetAnchors(panelRect, new Vector2(0.1f, 0.2f), new Vector2(0.9f, 0.8f));
+            panelRect.offsetMin = panelRect.offsetMax = Vector2.zero;
+            var panelImg = panelGo.AddComponent<Image>();
+            panelImg.color = new Color(0.12f, 0.12f, 0.15f, 1.0f);
+
+            // 제목 텍스트 (상단 중앙)
+            var titleGo = new GameObject("TitleText", typeof(RectTransform));
+            titleGo.transform.SetParent(panelGo.transform, false);
+            var titleRect = titleGo.GetComponent<RectTransform>();
+            SetAnchors(titleRect, new Vector2(0f, 0.88f), new Vector2(1f, 1f));
+            titleRect.offsetMin = titleRect.offsetMax = Vector2.zero;
+            var titleTmp = titleGo.AddComponent<TextMeshProUGUI>();
+            titleTmp.text      = "캐릭터 스탯";
+            titleTmp.font      = boldFont ?? font;
+            titleTmp.fontSize  = 40f;
+            titleTmp.fontStyle = FontStyles.Bold;
+            titleTmp.alignment = TextAlignmentOptions.Center;
+            titleTmp.color     = Color.white;
+
+            // 스탯 표 컨테이너 (VLG — 9행)
+            var tableGo = new GameObject("StatTable", typeof(RectTransform));
+            tableGo.transform.SetParent(panelGo.transform, false);
+            var tableRect = tableGo.GetComponent<RectTransform>();
+            SetAnchors(tableRect, new Vector2(0.04f, 0.14f), new Vector2(0.96f, 0.86f));
+            tableRect.offsetMin = tableRect.offsetMax = Vector2.zero;
+            var tableVLayout           = tableGo.AddComponent<VerticalLayoutGroup>();
+            tableVLayout.spacing       = 4f;
+            tableVLayout.childAlignment           = TextAnchor.UpperCenter;
+            tableVLayout.childControlWidth        = true;
+            tableVLayout.childControlHeight       = true;
+            tableVLayout.childForceExpandWidth    = true;
+            tableVLayout.childForceExpandHeight   = true;
+
+            // 9개 스탯 행 생성
+            string[] rowNames = { "Hp", "Atk", "Ms", "CritChance", "CritDamage", "SkillDamage", "DodgeCdr", "ChargeTime", "Invinc" };
+            var labelTmps = new TextMeshProUGUI[9];
+            var valueTmps = new TextMeshProUGUI[9];
+            for (int i = 0; i < 9; i++)
+            {
+                var rowGo = new GameObject($"Row_{rowNames[i]}", typeof(RectTransform));
+                rowGo.transform.SetParent(tableGo.transform, false);
+                var rowHLayout           = rowGo.AddComponent<HorizontalLayoutGroup>();
+                rowHLayout.childAlignment           = TextAnchor.MiddleCenter;
+                rowHLayout.childControlWidth        = true;
+                rowHLayout.childControlHeight       = true;
+                rowHLayout.childForceExpandWidth    = true;
+                rowHLayout.childForceExpandHeight   = true;
+
+                // 라벨 (좌정렬)
+                var labelGo = new GameObject("Label", typeof(RectTransform));
+                labelGo.transform.SetParent(rowGo.transform, false);
+                var labelTmp = labelGo.AddComponent<TextMeshProUGUI>();
+                labelTmp.font      = font;
+                labelTmp.fontSize  = 28f;
+                labelTmp.alignment = TextAlignmentOptions.Left;
+                labelTmp.color     = new Color(0.8f, 0.8f, 0.8f, 1f);
+                labelTmps[i]       = labelTmp;
+
+                // 값 (우정렬)
+                var valueGo = new GameObject("Value", typeof(RectTransform));
+                valueGo.transform.SetParent(rowGo.transform, false);
+                var valueTmp = valueGo.AddComponent<TextMeshProUGUI>();
+                valueTmp.font      = font;
+                valueTmp.fontSize  = 28f;
+                valueTmp.alignment = TextAlignmentOptions.Right;
+                valueTmp.color     = Color.white;
+                valueTmps[i]       = valueTmp;
+            }
+
+            // 닫기 버튼 (하단 중앙)
+            var closeBtnGo = new GameObject("CloseButton", typeof(RectTransform));
+            closeBtnGo.transform.SetParent(panelGo.transform, false);
+            var closeBtnRect = closeBtnGo.GetComponent<RectTransform>();
+            SetAnchors(closeBtnRect, new Vector2(0.2f, 0.02f), new Vector2(0.8f, 0.12f));
+            closeBtnRect.offsetMin = closeBtnRect.offsetMax = Vector2.zero;
+            var closeBtnImg = closeBtnGo.AddComponent<Image>();
+            closeBtnImg.color = new Color(0.4f, 0.2f, 0.2f, 1f);
+            var closeBtn = closeBtnGo.AddComponent<Button>();
+            closeBtn.targetGraphic = closeBtnImg;
+            var closeLabelGo   = CreateTmpLabel(closeBtnGo, "Label", "닫기", 32f, font);
+            var closeLabelRect = closeLabelGo.GetComponent<RectTransform>();
+            SetAnchors(closeLabelRect, Vector2.zero, Vector2.one);
+            closeLabelRect.offsetMin = closeLabelRect.offsetMax = Vector2.zero;
+
+            // CharacterStatsModalView 부착 + InitReferences
+            var modalView = modalGo.AddComponent<CharacterStatsModalView>();
+            modalView.InitReferences(
+                dimmerBtn, titleTmp,
+                labelTmps[0], valueTmps[0],  // HP
+                labelTmps[1], valueTmps[1],  // ATK
+                labelTmps[2], valueTmps[2],  // MS
+                labelTmps[3], valueTmps[3],  // CritChance
+                labelTmps[4], valueTmps[4],  // CritDamage
+                labelTmps[5], valueTmps[5],  // SkillDamage
+                labelTmps[6], valueTmps[6],  // DodgeCdr
+                labelTmps[7], valueTmps[7],  // ChargeTime
+                labelTmps[8], valueTmps[8],  // Invinc
+                closeBtn);
+
+            // CharacterStatsModalPresenter 부착 + InitReferences
+            var presenter = modalGo.AddComponent<CharacterStatsModalPresenter>();
+            presenter.InitReferences(modalView);
+
+            modalGo.SetActive(false); // 비활성 시작
+            return (modalView, presenter);
         }
 
         // ── EventSystem 생성 ──────────────────────────────────────
