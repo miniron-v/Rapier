@@ -2503,9 +2503,9 @@ namespace Game.DevTools
             titleRect.offsetMin = titleRect.offsetMax = Vector2.zero;
             var titleTmp = titleGo.AddComponent<TextMeshProUGUI>();
             titleTmp.text      = "캐릭터 스탯";
-            titleTmp.font      = boldFont ?? font;
+            titleTmp.font      = boldFont;
             titleTmp.fontSize  = 40f;
-            titleTmp.fontStyle = FontStyles.Bold;
+            titleTmp.fontStyle = FontStyles.Normal;
             titleTmp.alignment = TextAlignmentOptions.Center;
             titleTmp.color     = Color.white;
 
