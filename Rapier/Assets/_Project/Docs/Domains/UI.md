@@ -123,6 +123,7 @@
 |---|---|---|
 | LobbyCanvas (기본) | 0 | |
 | ItemDetailPopup | 200 | 인벤토리 슬롯 탭/롱프레스 진입 |
+| CharacterStatsModal | 300 | 캐릭터 스탯 보기 모달 (캐릭터 탭) |
 | EnhanceModal | 300 | 상세 페이지 [강화] 진입, 불투명 배경 |
 | DismantleResultModal | 400 | 분해 완료 결과, 불투명 배경 |
 | PausePanel | (기존) | 인게임 — 별도 씬 |
@@ -213,6 +214,50 @@
 연출 중 `[강화하기]` 버튼 일시 비활성 (중복 호출 방지).
 
 서브스탯 강화 발동 (3/6/9/12/15) 성공 시: **결과 표기 모달은 추가 안 함**. 대신 닫기 후 다음 모달 호출 시 갱신된 서브 영역에서 강조 색으로 표시 (별도 정책 — 사용자 결정: "위쪽 서브 스탯 강조"). 강조 표시 방식: 새로 강화된 서브 항목의 텍스트를 1.5초간 노란색 펄스.
+
+---
+
+## 8. 캐릭터 스탯 보기 모달 (세션 28)
+
+### 8-1. 진입 방법
+
+캐릭터 탭 > 캐릭터 정보 패널 하단 버튼 행 (좌: **스탯**, 우: **캐릭터 변경**).
+- 두 버튼은 `CharacterButtonRow` (HorizontalLayoutGroup, `childForceExpandWidth=true`) 안에 균등 분할.
+- 버튼 색: `new Color(0.15f, 0.45f, 0.80f, 0.9f)` (변경 버튼과 동일).
+
+### 8-2. 모달 구조
+
+- sortingOrder 300, Dimmer `new Color(0,0,0,0.7f)` 전체화면. Dimmer 클릭 시 닫힘.
+- Panel 배경: 불투명 `new Color(0.12f, 0.12f, 0.15f, 1.0f)`, anchor `(0.1, 0.2)~(0.9, 0.8)`.
+- 제목: "캐릭터 스탯" (NEXONLv1Gothic **Bold** 에셋, 40px, `FontStyles.Normal`).
+- 스탯 표 (9행 × 스탯명+값): VerticalLayoutGroup, 각 행 HorizontalLayoutGroup.
+- 닫기 버튼: 하단 중앙.
+
+### 8-3. 표시 스탯 (고정 순서)
+
+| 행 | 스탯명 | 계산식 | 포맷 |
+|---|---|---|---|
+| 1 | HP | `ComputeHp(baseHp)` → RoundHalfUp | `:F0` |
+| 2 | 공격력 | `ComputeAtk(baseAtk)` → RoundHalfUp | `:F0` |
+| 3 | 이동속도 | `ComputeMs(baseMs)` | `:F2` |
+| 4 | 치명타 확률 | `CritChancePercent` | `:F1}%` |
+| 5 | 치명타 피해 | `CritDamagePercent` | `:F1}%` |
+| 6 | 스킬 피해 | `SkillDamagePercent` | `:F1}%` |
+| 7 | 회피 쿨타임 | `(1 − DodgeCdrMultiplier) × 100` | `:F1}%` |
+| 8 | 차지 시간 | `(1 − ChargeTimeMultiplier) × 100` | `:F1}%` |
+| 9 | 무적 시간 | `(1 − InvincMultiplier) × 100` | `:F1}%` |
+
+- 데이터 소스: `CharacterStatSnapshot.Build(characterId, baseData)` — `EquipmentMetaStatProvider.BuildContainer` 기반 (장비 메인/서브/강화/룬 모두 반영, RunStat 제외).
+- 한글 레이블: `StatLabelFormatter.GetLabel(StatType)` (공통 유틸, `Game.UI.Lobby.Equipment`).
+
+### 8-4. 관련 클래스
+
+| 클래스 | 파일 | 역할 |
+|---|---|---|
+| `CharacterStatSnapshot` | `Scripts/Data/Stats/` | 9개 스탯 POCO + `Build()` 팩토리 |
+| `CharacterStatsModalView` | `Scripts/UI/Lobby/` | 9행 표 View + 닫기/딤머 이벤트 |
+| `CharacterStatsModalPresenter` | `Scripts/UI/Lobby/` | Snapshot.Build → View.Show |
+| `StatLabelFormatter` | `Scripts/UI/Lobby/Equipment/` | StatType → 한글 레이블 공통 변환 |
 
 ### 7-4. 가루 표시 (로비 공통)
 
