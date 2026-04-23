@@ -37,6 +37,9 @@ namespace Game.Data.Save
                     case 3:
                         MigrateV3ToV4(data);
                         break;
+                    case 4:
+                        MigrateV4ToV5(data);
+                        break;
                     default:
                         // 알 수 없는 버전 — 루프 탈출로 무한 루프 방지
                         Debug.LogError($"[SaveMigrator] 알 수 없는 버전: {data.version}. 마이그레이션 중단.");
@@ -138,6 +141,27 @@ namespace Game.Data.Save
             // isLocked 신규 bool 필드 — JsonUtility 역직렬화 시 기본값 false로 초기화되므로 명시 작업 불필요.
             data.version = 4;
             Debug.Log("[SaveMigrator] v3 → v4 마이그레이션 완료");
+        }
+
+        // ── v4 → v5 ───────────────────────────────────────────────
+
+        /// <summary>
+        /// v4 → v5 마이그레이션.
+        /// - lastPlayedStage 신규 필드 추가.
+        ///   기존 유저는 highestClearedStage + 1 로 초기화하여 업데이트 직후에도 동일한 자동 선택 동작을 유지한다.
+        /// </summary>
+        private static void MigrateV4ToV5(SaveData data)
+        {
+            Debug.Log("[SaveMigrator] v4 → v5 마이그레이션 시작");
+
+            if (data.lastPlayedStage == 0)
+            {
+                data.lastPlayedStage = Math.Max(1, data.highestClearedStage + 1);
+                Debug.Log($"[SaveMigrator] lastPlayedStage 초기화 → {data.lastPlayedStage} (highestClearedStage+1)");
+            }
+
+            data.version = 5;
+            Debug.Log("[SaveMigrator] v4 → v5 마이그레이션 완료");
         }
     }
 }

@@ -44,8 +44,11 @@ namespace Game.UI.Lobby
         {
             if (_view == null) return;
 
-            // 초기 선택 스테이지 = 가장 높은 도전 가능 스테이지
-            _selectedStage = GetUnlockedStageCount();
+            // 초기 선택 스테이지 = 마지막 플레이 스테이지 (해금 범위로 클램프).
+            // 미플레이(0) 또는 데이터 손상(해금 범위 초과) 시 해금된 최고 스테이지로 폴백.
+            int unlocked  = GetUnlockedStageCount();
+            int lastPlayed = _saveManager != null ? _saveManager.Current.lastPlayedStage : 0;
+            _selectedStage = (lastPlayed > 0 && lastPlayed <= unlocked) ? lastPlayed : unlocked;
             RefreshStageNumber();
 
             _view.EnterStageButton.onClick.AddListener(HandleEnterStageClicked);
@@ -78,6 +81,7 @@ namespace Game.UI.Lobby
         // ── Event Handlers ────────────────────────────────────────
         private void HandleEnterStageClicked()
         {
+            _saveManager?.RecordLastPlayedStage(_selectedStage);
             SceneController.LoadGame(_selectedStage);
         }
 

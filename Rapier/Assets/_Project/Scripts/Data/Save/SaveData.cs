@@ -13,7 +13,7 @@ namespace Game.Data.Save
     {
         // ── 스키마 버전 상수 ────────────────────────────────────────
         /// <summary>현재 스키마 버전. SaveMigrator 단계와 반드시 쌍으로 유지.</summary>
-        public const int CurrentSchemaVersion = 4;
+        public const int CurrentSchemaVersion = 5;
 
         // ── 메타 (계정 연동 대비) ───────────────────────────────────
         /// <summary>스키마 버전. 로드 후 마이그레이션 시 CurrentSchemaVersion 으로 승격.</summary>
@@ -46,6 +46,8 @@ namespace Game.Data.Save
         [Obsolete("highestClearedStage 를 사용할 것. v2 마이그레이션에서 제거 예정.")]
         public int            highestStage     = 0;
         public List<int>      clearedStages    = new();
+        /// <summary>마지막으로 플레이한 스테이지(1-based). 0 = 미플레이. 홈 탭 진입 시 자동 선택값으로 사용.</summary>
+        public int            lastPlayedStage  = 0;
 
         // ── 재화 ───────────────────────────────────────────────────
         public int  gold             = 0;

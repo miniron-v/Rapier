@@ -128,6 +128,7 @@ namespace Game.Core.Stage
             }
 
             Debug.Log($"[StageClearManager] 스테이지 {nextIndex} 로드.");
+            _saveManager?.RecordLastPlayedStage(nextIndex);
             SceneController.LoadGame(nextIndex);
         }
     }

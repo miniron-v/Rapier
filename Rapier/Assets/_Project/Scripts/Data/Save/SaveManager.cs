@@ -144,6 +144,22 @@ namespace Game.Data.Save
         }
 
         /// <summary>
+        /// 스테이지 입장(선택해서 출격) 시 호출. lastPlayedStage 를 갱신하고 즉시 저장한다.
+        /// 클리어 여부와 무관하게 "선택해서 입장한 순간" 기록되어, 패배해도 다음 진입 시 동일 스테이지가 자동 선택된다.
+        /// </summary>
+        /// <param name="stageIndex">입장한 스테이지 1-based 인덱스.</param>
+        public void RecordLastPlayedStage(int stageIndex)
+        {
+            if (_current == null) return;
+            if (stageIndex < 1) return;
+            if (_current.lastPlayedStage == stageIndex) return;
+
+            _current.lastPlayedStage = stageIndex;
+            Debug.Log($"[SaveManager] lastPlayedStage 갱신 → {stageIndex}");
+            Save();
+        }
+
+        /// <summary>
         /// 저장 파일을 삭제하고 인메모리 데이터를 기본값으로 초기화한다.
         /// </summary>
         public void DeleteSave()

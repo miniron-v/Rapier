@@ -33,7 +33,8 @@
 - **순차 해금**: Stage N 클리어 → Stage N+1 해금. `SaveData.highestClearedStage` 로 영구 저장.
 - **재도전**: 로비에서 해금된 스테이지 중 원하는 것을 선택해 재입장 가능 (드롭 파밍 등).
 - **스테이지 선택 흐름**: 로비 "출격" 버튼 → 스테이지 선택 패널 (최고 도달+1 까지 표시) → `SceneController.LoadGame(stageIndex)`.
-- **스테이지 클리어 후**: "다음 스테이지" / "로비 복귀" 선택. 다음 스테이지 선택 시 `SceneController.LoadGame(stageIndex + 1)`.
+- **자동 선택값**: 홈 탭 진입 시 `SaveData.lastPlayedStage` 가 자동 선택된다 (해금 범위 초과 시 해금된 최고로 폴백). 입장(`LoadGame`) 시점에 `SaveManager.RecordLastPlayedStage(stageIndex)` 로 갱신 — 클리어 여부와 무관하므로 패배해도 동일 스테이지가 다음 진입 시 자동 선택됨.
+- **스테이지 클리어 후**: "다음 스테이지" / "로비 복귀" 선택. 다음 스테이지 선택 시 `SceneController.LoadGame(stageIndex + 1)` (lastPlayedStage 도 함께 갱신).
 - **클리어 보상**: Crystal 고정 보상 (수급량은 `BALANCE.md §7-2`).
 
 ---
@@ -75,7 +76,7 @@ PlayerPrefs 금지. `Application.persistentDataPath/save.json`. 구현: `Game.Da
 | 메타 | version, userId, deviceId, lastSavedAt, schemaCreatedAt | 모든 Save() |
 | 캐릭터 | 보유, 마지막 선택, 레벨/스킬 | 변경/강화 |
 | 장비 | 보유 인스턴스, 캐릭터별 장착, 룬 보유/장착 | 장비 변경 |
-| 진행 | 최고 도달 스테이지, 클리어 목록 | 클리어 |
+| 진행 | 최고 도달 스테이지, 클리어 목록, 마지막 플레이 스테이지 | 클리어 / 입장 |
 | 재화 | 골드, 가챠 티켓, 강화 재료, 룬 가챠 티켓 | 변동 |
 | 미션 | 일일/주간 진행, 마지막 리셋 시각 | 진행/리셋 |
 | 설정 | 사운드/진동/그래픽 | 변경 |
@@ -149,3 +150,4 @@ PlayerPrefs 금지. `Application.persistentDataPath/save.json`. 구현: `Game.Da
 | v1 → v2 | `highestStage`(레거시) → `highestClearedStage` 흡수 후 초기화 | 명시 변환 |
 | v2 → v3 | `crystal`, `epicPityCounter`, `uniquePityCounter` 신규 int 필드 | JsonUtility 기본값 0 자연 복원, 버전만 승격 |
 | v3 → v4 | `EquipmentSaveEntry.isLocked` 신규 bool 필드 (Phase 27 인벤토리 잠금) | JsonUtility 기본값 false 자연 복원, 버전만 승격 |
+| v4 → v5 | `lastPlayedStage` 신규 int 필드 (홈 탭 자동 선택 기준) | 기존 유저는 `highestClearedStage + 1` 로 명시 초기화하여 업데이트 후 동작 일관성 유지 |
