@@ -13,9 +13,10 @@ MonoBehaviour:
   m_Name: Gloves_Epic_CritGauntlet
   m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Equipment.EquipmentItemData
   _itemName: "\uBE44\uC7A5\uC758 \uAC74\uD2C0\uB9BF"
-  _description: "\uCE58\uBA85\uD0C0 \uC218\uCE58\uAC00 \uB192\uC544\uC9C8\uC218\uB85D
-    \uD06C\uB9AC\uD2F0\uCEEC \uB370\uBBF8\uC9C0\uAC00 \uD3ED\uBC1C\uC801\uC73C\uB85C
-    \uC99D\uAC00\uD55C\uB2E4."
+  _description: "\uC804\uC124\uC801\uC778 \uAC80\uD22C\uC0AC\uAC00 \uB0A8\uAE34
+    \uC720\uBB3C. \uAE09\uC18C\uB97C \uAFF0\uB6AB\uB294 \uC21C\uAC04,
+    \uADF8 \uC77C\uACA9\uC740 \uD3ED\uBC1C\uC801\uC73C\uB85C
+    \uC99D\uD3ED\uB41C\uB2E4."
   _icon: {fileID: 21300000, guid: 218529e136400b042bb1e73ba2f13087, type: 3}
   _slotType: 5
   _grade: 2

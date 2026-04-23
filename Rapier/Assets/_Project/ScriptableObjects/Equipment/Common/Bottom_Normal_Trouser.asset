@@ -13,8 +13,10 @@ MonoBehaviour:
   m_Name: Bottom_Normal_Trouser
   m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Equipment.EquipmentItemData
   _itemName: "\uD6C8\uB828\uC6A9 \uD558\uC758"
-  _description: "\uAC00\uBCBC\uC6B4 \uC804\uD22C \uD558\uC758. \uAE30\uCD08 \uCCB4\uB825
-    \uC99D\uAC00."
+  _description: "\uAE30\uC0AC\uB2E8 \uD6C8\uB828\uBCD1\uC774
+    \uC0AC\uC6A9\uD558\uB358 \uAC01\uBC18. \uC624\uB798 \uB2EC\uB824\uB3C4
+    \uBB34\uB98E\uC744 \uC9C0\uD0F1\uD574 \uC8FC\uB294 \uC9C8\uAE34
+    \uCC9C\uC73C\uB85C \uC9DC\uC600\uB2E4."
   _icon: {fileID: 21300000, guid: a66735d8313ed4e419d72f0adb77e724, type: 3}
   _slotType: 3
   _grade: 0

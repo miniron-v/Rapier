@@ -13,8 +13,9 @@ MonoBehaviour:
   m_Name: Ring_Unique_EternalFriendship
   m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Equipment.EquipmentItemData
   _itemName: "\uC601\uC6D0\uD55C \uC6B0\uC815"
-  _description: "\uC0DD\uACFC \uC0AC\uB97C \uAC19\uC774\uD55C \uC30D\uB465\uC774\uC758
-    \uC2E0\uAC00\uD55C \uC6B0\uC815. \uCC29\uC6A9\uC790\uC5D0\uAC8C \uC74C\uC808\uD560
+  _description: "\uC0B6\uACFC \uC8FD\uC74C\uC744 \uD568\uAED8\uD55C
+    \uC30D\uB465\uC774\uC758 \uC2E0\uC131\uD55C \uC720\uB300.
+    \uCC29\uC6A9\uC790\uC5D0\uAC8C \uC74C\uC808\uB85C\uB294 \uB2F4\uC744
     \uC218 \uC5C6\uB294 \uD798\uC744 \uBD80\uC5EC\uD55C\uB2E4."
   _icon: {fileID: 21300000, guid: 17ccc0f5e01d11940b9a4e251e12caa6, type: 3}
   _slotType: 7

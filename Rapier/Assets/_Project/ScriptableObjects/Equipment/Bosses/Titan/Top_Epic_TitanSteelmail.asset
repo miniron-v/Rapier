@@ -13,8 +13,9 @@ MonoBehaviour:
   m_Name: Top_Epic_TitanSteelmail
   m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Equipment.EquipmentItemData
   _itemName: "\uAC70\uC2E0\uC758 \uAC15\uCCA0 \uAC11\uC8FC"
-  _description: "\uAC70\uC2E0\uC758 \uD798\uC774 \uC2A4\uBC84\uB4E0 \uAC15\uCCA0
-    \uAC11\uC8FC. \uBC29\uC5B4\uB825\uACFC \uD798\uC744 \uB3D9\uC2DC\uC5D0 \uD64D\uC5F4\uD55C\uB2E4."
+  _description: "\uAC70\uC2E0\uC758 \uD798\uC774 \uC2A4\uBA70\uB4E0 \uAC15\uCCA0
+    \uAC11\uC8FC. \uBC29\uC5B4\uB825\uACFC \uD65C\uB825\uC744 \uD568\uAED8
+    \uB04C\uC5B4\uC62C\uB9B0\uB2E4."
   _icon: {fileID: 21300000, guid: 558131d41993e304080b4b00651ed08c, type: 3}
   _slotType: 2
   _grade: 2

@@ -13,9 +13,10 @@ MonoBehaviour:
   m_Name: Ring_Epic_TwinPact
   m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Equipment.EquipmentItemData
   _itemName: "\uC30D\uB465\uC774 \uC11C\uC57D"
-  _description: "\uC30D\uB465\uC774\uAC00 \uCF5C\uB860 \uB098\uB268 \uC57D\uC18D\uC758
-    \uBC18\uC9C0. \uCC29\uC6A9\uC790\uC5D0\uAC8C \uD1A0\uBCBC\uB418\uC5C8\uB358 \uAE30\uC5B5\uC744
-    \uC2EC\uC5B4\uC900\uB2E4."
+  _description: "\uC30D\uB465\uC774\uAC00 \uC8FD\uC74C\uC758
+    \uBB38\uD131\uC5D0\uC11C \uB9FA\uC740 \uC11C\uC57D\uC758 \uBC18\uC9C0.
+    \uCC29\uC6A9\uC790\uC5D0\uAC8C \uC78A\uD614\uB358 \uAE30\uC5B5\uACFC
+    \uD798\uC744 \uB418\uC0B4\uB824 \uC900\uB2E4."
   _icon: {fileID: 21300000, guid: ae16570f3bbddd243a9e0268ff02c448, type: 3}
   _slotType: 7
   _grade: 2

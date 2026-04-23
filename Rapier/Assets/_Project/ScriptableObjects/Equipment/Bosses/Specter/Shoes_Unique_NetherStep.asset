@@ -13,9 +13,10 @@ MonoBehaviour:
   m_Name: Shoes_Unique_NetherStep
   m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Equipment.EquipmentItemData
   _itemName: "\uD669\uCC9C\uC758 \uBC1C\uAC78\uC74C"
-  _description: "\uC800\uC2B9\uC0AC\uC790\uB9CC\uC774 \uBCC4\uC218 \uC788\uB294 \uD669\uCC9C\uC758
-    \uD790\uC801. \uBCF4\uC720\uC790\uC5D0\uAC8C \uC0AC\uC2E0\uAC19\uC740 \uBC1C\uB180\uB9BC\uC744
-    \uC120\uC0AC\uD55C\uB2E4."
+  _description: "\uC800\uC2B9\uC758 \uBB38\uD131\uC744 \uB118\uB098\uB4E0
+    \uC790\uB9CC\uC774 \uC5BB\uC744 \uC218 \uC788\uB294 \uBE44\uBCF4.
+    \uCC29\uC6A9\uC790\uC5D0\uAC8C \uC0AC\uC2E0\uACFC\uB3C4 \uAC19\uC740
+    \uAC78\uC74C\uC744 \uD5C8\uB77D\uD55C\uB2E4."
   _icon: {fileID: 21300000, guid: e5d1d573beccb4944b8a1bdef9458293, type: 3}
   _slotType: 4
   _grade: 3

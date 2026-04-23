@@ -13,8 +13,9 @@ MonoBehaviour:
   m_Name: Hat_Normal_Cap
   m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Equipment.EquipmentItemData
   _itemName: "\uB2E8\uCD95 \uB450\uAC74"
-  _description: "\uCC28\uC9C0 \uC2DC\uAC04\uC744 \uBBF8\uC138\uD558\uAC8C \uB2E8\uCD95\uD558\uB294
-    \uB450\uAC74."
+  _description: "\uB0A1\uC740 \uC220\uC0AC\uC758 \uB450\uAC74.
+    \uC9D1\uC911\uB825\uC744 \uB04C\uC5B4\uC62C\uB824 \uC8FC\uBB38\uC758
+    \uCC28\uC9C0 \uC2DC\uAC04\uC744 \uB2E4\uB4EC\uC5B4 \uC900\uB2E4."
   _icon: {fileID: 21300000, guid: 8af3bc80ff937aa4eb019686ea81a7cb, type: 3}
   _slotType: 1
   _grade: 0

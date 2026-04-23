@@ -13,8 +13,9 @@ MonoBehaviour:
   m_Name: Ring_Normal_Band
   m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Equipment.EquipmentItemData
   _itemName: "\uC804\uC0AC\uC758 \uBC18\uC9C0"
-  _description: "\uCE58\uBA85\uD0C0 \uC704\uB825\uC744 \uC18C\uD3ED \uC0C1\uC2B9\uC2DC\uD0A4\uB294
-    \uB2E8\uC21C\uD55C \uBC18\uC9C0."
+  _description: "\uCD08\uC784 \uC804\uC0AC\uC5D0\uAC8C \uC218\uC5EC\uB418\uB294
+    \uC18C\uBC15\uD55C \uBC18\uC9C0. \uD55C \uC90C\uC758 \uC6A9\uB9F9\uC774
+    \uCE58\uBA85\uC801 \uC77C\uACA9\uC5D0 \uC2E4\uB9B0\uB2E4."
   _icon: {fileID: 21300000, guid: ea56225f462b254448c11f4734c51fa9, type: 3}
   _slotType: 7
   _grade: 0

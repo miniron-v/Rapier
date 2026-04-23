@@ -13,9 +13,11 @@ MonoBehaviour:
   m_Name: Necklace_Rare_GravekeeperNecklace
   m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Equipment.EquipmentItemData
   _itemName: "\uBB18\uC9C0\uAE30\uC758 \uBAA9\uAC78\uC774"
-  _description: "\uBB18\uC9C0\uAE30\uAC00 \uCC3D\uACC4 \uD6A4\uC5D0 \uD56D\uC0C1
-    \uD3F4\uB358 \uBAA9\uAC78\uC774. \uC8E3\uC740 \uC601\uD63C\uC758 \uD798\uC774
-    \uC2A4\uBBBC\uC5B4 \uC624\uB978\uB2E4."
+  _description: "\uC218\uBC31 \uBC88\uC758 \uC7A5\uB840\uB97C \uC9D1\uC804\uD55C
+    \uBB18\uC9C0\uAE30\uAC00 \uBAB8\uC5D0\uC11C \uB5BC\uC9C0 \uC54A\uB358
+    \uBAA9\uAC78\uC774. \uC7A0\uB4E4\uC9C0 \uBABB\uD55C
+    \uC601\uD63C\uB4E4\uC758 \uD798\uC774 \uC8FC\uC778\uC744
+    \uC12C\uAE34\uB2E4."
   _icon: {fileID: 21300000, guid: 747e68d1f2816db458525b0ab870cd25, type: 3}
   _slotType: 6
   _grade: 1

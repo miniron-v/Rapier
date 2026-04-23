@@ -13,7 +13,10 @@ MonoBehaviour:
   m_Name: Weapon_Normal_Rapier
   m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Equipment.EquipmentItemData
   _itemName: "\uB808\uC774\uD53C\uC5B4"
-  _description: "\uD1B5\uC0C1\uC801\uC778 \uCCA0\uC81C \uB808\uC774\uD53C\uC5B4."
+  _description: "\uD55C \uC810\uC744 \uB178\uB9AC\uB294 \uAC00\uB290\uB2E4\uB780
+    \uCC0C\uB974\uAE30 \uAC80. \uBAA8\uB4E0 \uAC80\uC0AC\uC758
+    \uC5EC\uC815\uC774 \uC774 \uD55C \uC790\uB8E8\uC5D0\uC11C
+    \uC2DC\uC791\uB41C\uB2E4."
   _icon: {fileID: 21300000, guid: 4c190bc557585f941a67e352b13550dd, type: 3}
   _slotType: 0
   _grade: 0

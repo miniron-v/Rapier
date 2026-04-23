@@ -13,8 +13,9 @@ MonoBehaviour:
   m_Name: Ring_Normal_SoulRing
   m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Equipment.EquipmentItemData
   _itemName: "\uC601\uD63C\uC758 \uBC18\uC9C0"
-  _description: "\uC30D\uC73C\uB85C \uC5B0\uACB0\uB41C \uC601\uD63C\uC774 \uC5B4\uB9B0
-    \uBC18\uC9C0. \uD06C\uB9AC\uD2F0\uCEEC \uB370\uBBF8\uC9C0\uAC00 \uC7AC\uACE0\uB41C\uB2E4."
+  _description: "\uB450 \uC601\uD63C\uC774 \uD55C \uC30D\uC73C\uB85C \uC5EE\uC778
+    \uBC18\uC9C0. \uCE58\uBA85\uD0C0\uC758 \uC704\uB825\uC774 \uAC70\uB4ED
+    \uC313\uC778\uB2E4."
   _icon: {fileID: 21300000, guid: 63e31b45c67268842a230837f6fb6ff7, type: 3}
   _slotType: 7
   _grade: 0

@@ -13,7 +13,10 @@ MonoBehaviour:
   m_Name: Weapon_Rare_BerserkerSword
   m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Equipment.EquipmentItemData
   _itemName: "\uAD11\uC804\uC0AC\uC758 \uAC80"
-  _description: "\uAD11\uB780\uC5D0 \uBE60\uC9C4 \uAD11\uC804\uC0AC\uC758 \uC560\uAC80."
+  _description: "\uAD11\uB780\uC5D0 \uC0BC\uCF1C\uC9C4 \uAD11\uC804\uC0AC\uAC00
+    \uC190\uC5D0\uC11C \uB193\uC9C0 \uBABB\uD55C \uAC80.
+    \uD718\uB450\uB97C\uC218\uB85D \uBD89\uC740 \uAD11\uAE30\uAC00
+    \uC2A4\uBBFC\uB2E4."
   _icon: {fileID: -8240378279200114559, guid: 7980f8aaf2ec42a48bd6cd6efc525eb5, type: 3}
   _slotType: 0
   _grade: 1

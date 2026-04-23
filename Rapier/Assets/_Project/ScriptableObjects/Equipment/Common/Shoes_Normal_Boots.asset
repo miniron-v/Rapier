@@ -13,8 +13,9 @@ MonoBehaviour:
   m_Name: Shoes_Normal_Boots
   m_EditorClassIdentifier: Assembly-CSharp::Game.Data.Equipment.EquipmentItemData
   _itemName: "\uAD70\uD654"
-  _description: "\uBC1C\uB180\uB9BC\uC744 \uAC00\uBCBD\uAC8C \uD558\uB294 \uACBD\uB7C9
-    \uAD70\uD654."
+  _description: "\uC9C8\uAE30\uAC8C \uB2E4\uC838\uC9C4 \uAC00\uC8FD \uC7A5\uD654.
+    \uBC1C\uAC78\uC74C\uC744 \uAC00\uBCCD\uAC8C \uB9CC\uB4E4\uC5B4
+    \uC704\uAE30\uC5D0\uC11C \uBAB8\uC744 \uBE7C\uB0B8\uB2E4."
   _icon: {fileID: 21300000, guid: 0c9607d83544799468a668a9b5d158bd, type: 3}
   _slotType: 4
   _grade: 0
